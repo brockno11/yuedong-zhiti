@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 背景系统 */
+    --background: 210 40% 99%;
+    --foreground: 222 47% 11%;
+
+    /* 卡片层级 */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* 弹出层 */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* 主色 — 蓝色系 */
+    --primary: 210 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    /* 次要色 */
+    --secondary: 142 76% 36%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* 柔和背景层 */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* 强调 */
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    /* 破坏性操作 */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* 边框/输入 */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 210 100% 50%;
+
+    /* 圆角 */
+    --radius: 0.625rem;
+
+    /* 体测等级色 */
+    --level-excellent: 142 76% 36%;
+    --level-good: 210 100% 50%;
+    --level-pass: 38 92% 50%;
+    --level-improve: 0 84% 60%;
+
+    /* 图表色 */
+    --chart-1: 210 100% 50%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 262 83% 58%;
+
+    /* 表面层级 */
+    --surface: 0 0% 100%;
+    --surface-elevated: 0 0% 100%;
+    --surface-subtle: 210 40% 97%;
+
+    /* 阴影 token */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 12px 32px -4px rgb(0 0 0 / 0.08);
+  }
+
+  .dark {
+    --background: 222 47% 9%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 100% 56%;
+    --primary-foreground: 222 47% 9%;
+    --secondary: 142 60% 42%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 48%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 210 100% 56%;
+    --surface: 222 47% 13%;
+    --surface-elevated: 222 47% 17%;
+    --surface-subtle: 222 47% 10%;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 12px 32px -4px rgb(0 0 0 / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-surface-subtle text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+      "Helvetica Neue", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.16);
+  }
+
+  /* 安全区 */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .mb-safe {
+      margin-bottom: env(safe-area-inset-bottom);
+    }
+  }
+}
+
+/* 数字等宽 */
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  .app-card {
+    @apply rounded-2xl border border-border/70 bg-card shadow-sm;
+  }
+
+  .app-card-elevated {
+    box-shadow: var(--shadow-md);
+    @apply rounded-2xl border border-border/60 bg-surface-elevated;
+  }
+
+  .content-breathing-room {
+    @apply mx-auto w-full max-w-7xl;
+  }
+}
+
+/* 骨架屏 */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted) / 0.6) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* 页面进入 */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-enter 0.35s ease-out;
+}
+
+/* 卡片出现 */
+@keyframes card-appear {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.card-appear {
+  animation: card-appear 0.25s ease-out;
+}
