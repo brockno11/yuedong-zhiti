@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/features/empty-state";
 import { mockTeacherReviews, mockAIStudentReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";
 import {
-  Check,
+  CheckCircle2,
   Pencil,
   X,
   Clock,
@@ -21,10 +21,44 @@ import {
 } from "lucide-react";
 import type { TeacherReview } from "@/lib/types";
 
+function getOriginalAIText(reportType: "student" | "class"): string {
+  if (reportType === "student") {
+    return mockAIStudentReport.fitnessProfile.summary;
+  }
+  return mockAIClassReport.overallAnalysis.summary;
+}
+
 export function ReviewWorkflow() {
   const [reviews, setReviews] = useState<TeacherReview[]>(mockTeacherReviews);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState("");
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
+  const [rejectionErrorId, setRejectionErrorId] = useState<string | null>(null);
+  const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      Object.values(timers).forEach(clearTimeout);
+    };
+  }, []);
+
+  const showFeedback = (reviewId: string, message: string) => {
+    // Clear any existing timer for this review
+    if (timersRef.current[reviewId]) {
+      clearTimeout(timersRef.current[reviewId]);
+    }
+    setFeedbackMap((prev) => ({ ...prev, [reviewId]: message }));
+    timersRef.current[reviewId] = setTimeout(() => {
+      setFeedbackMap((prev) => {
+        const next = { ...prev };
+        delete next[reviewId];
+        return next;
+      });
+      delete timersRef.current[reviewId];
+    }, 2000);
+  };
 
   const pendingReviews = reviews.filter((r) => r.status === "pending");
   const processedReviews = reviews.filter((r) => r.status !== "pending");
@@ -34,6 +68,9 @@ export function ReviewWorkflow() {
     action: "approved" | "modified" | "rejected",
     notes?: string
   ) => {
+    // Clear rejection error when performing any action
+    setRejectionErrorId(null);
+
     setReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
@@ -41,13 +78,52 @@ export function ReviewWorkflow() {
               ...r,
               status: action,
               reviewedAt: new Date().toISOString(),
-              teacherNotes: notes || r.teacherNotes,
+              teacherNotes: notes !== undefined ? notes : r.teacherNotes,
             }
           : r
       )
     );
     setEditingId(null);
     setEditNotes("");
+
+    const messages: Record<string, string> = {
+      approved: "✓ 报告已通过审核",
+      modified: "✓ 报告已修改并通过",
+      rejected: "✓ 报告已退回",
+    };
+    showFeedback(reviewId, messages[action]);
+  };
+
+  const handleRejectClick = (reviewId: string) => {
+    if (editingId === reviewId) {
+      if (!editNotes.trim()) {
+        setRejectionErrorId(reviewId);
+        return;
+      }
+      handleAction(reviewId, "rejected", editNotes);
+    } else {
+      setRejectionErrorId(null);
+      setEditingId(reviewId);
+      setEditNotes("");
+    }
+  };
+
+  const handleModifyClick = (reviewId: string) => {
+    if (editingId === reviewId) {
+      handleAction(reviewId, "modified", editNotes);
+    } else {
+      setRejectionErrorId(null);
+      setEditingId(reviewId);
+      setEditNotes("");
+    }
+  };
+
+  const handleEditNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditNotes(e.target.value);
+    // Clear rejection error when user starts typing
+    if (rejectionErrorId) {
+      setRejectionErrorId(null);
+    }
   };
 
   return (
@@ -57,7 +133,7 @@ export function ReviewWorkflow() {
           <Clock className="h-4 w-4" />
           待审核
           {pendingReviews.length > 0 && (
-            <Badge variant="default" className="ml-1 h-4 px-1 text-[10px]">
+            <Badge variant="pass" className="ml-1 h-4 px-1 text-[10px]">
               {pendingReviews.length}
             </Badge>
           )}
@@ -86,8 +162,28 @@ export function ReviewWorkflow() {
                 ? "学生个人 AI 体质报告"
                 : "AI 班级报告";
 
+            const reportTypeLabel =
+              review.reportType === "student" ? "学生个人报告" : "班级报告";
+
+            const feedbackMessage = feedbackMap[review.id];
+
             return (
-              <Card key={review.id} className="rounded-xl shadow-sm">
+              <Card key={review.id} className="rounded-xl border shadow-sm">
+                {/* AI annotation strip */}
+                <div className="flex items-center justify-between rounded-t-xl border-b bg-muted/50 px-4 py-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-level-pass" />
+                    <span>
+                      <span className="font-medium text-foreground/80">AI生成</span>
+                      <span className="mx-1.5 text-border">·</span>
+                      需教师审核
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">
+                    {reportTypeLabel}
+                  </Badge>
+                </div>
+
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -112,57 +208,87 @@ export function ReviewWorkflow() {
 
                 <CardContent className="space-y-4">
                   {/* AI 报告预览 */}
-                  <div className="rounded-xl border bg-muted/30 p-4 space-y-3 max-h-64 overflow-y-auto">
+                  <div className="rounded-xl border bg-muted/30 p-4 max-h-64 overflow-y-auto">
                     {review.reportType === "student" ? (
-                      <>
-                        <p className="text-sm">{mockAIStudentReport.fitnessProfile.summary}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {mockAIStudentReport.fitnessProfile.strengths.map((s) => (
-                            <Badge key={s} variant="excellent" className="text-[10px]">
-                              {s}
-                            </Badge>
-                          ))}
-                          {mockAIStudentReport.fitnessProfile.improvements.map((s) => (
-                            <Badge key={s} variant="pass" className="text-[10px]">
-                              {s}
-                            </Badge>
-                          ))}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <p className="text-sm">
+                          {mockAIStudentReport.fitnessProfile.summary}
+                        </p>
+                        <div className="flex flex-wrap gap-1 content-start">
+                          {mockAIStudentReport.fitnessProfile.strengths.map(
+                            (s) => (
+                              <Badge key={s} variant="excellent" className="text-[10px]">
+                                {s}
+                              </Badge>
+                            )
+                          )}
+                          {mockAIStudentReport.fitnessProfile.improvements.map(
+                            (s) => (
+                              <Badge key={s} variant="pass" className="text-[10px]">
+                                {s}
+                              </Badge>
+                            )
+                          )}
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        <p className="text-sm">{mockAIClassReport.overallAnalysis.summary}</p>
-                        <div className="flex flex-wrap gap-1">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <p className="text-sm">
+                          {mockAIClassReport.overallAnalysis.summary}
+                        </p>
+                        <div className="flex flex-wrap gap-1 content-start">
                           {mockAIClassReport.commonWeaknesses.map((w) => (
-                            <Badge key={w.itemId} variant="pass" className="text-[10px]">
+                            <Badge
+                              key={w.itemId}
+                              variant="pass"
+                              className="text-[10px]"
+                            >
                               {w.itemName} {w.passRate}%
                             </Badge>
                           ))}
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
 
                   {/* 编辑备注 */}
                   {editingId === review.id && (
                     <div className="space-y-2">
+                      {/* Original AI text preview when modifying */}
+                      <div className="rounded-lg border bg-muted/30 p-3">
+                        <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                          AI 原文参考
+                        </p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {getOriginalAIText(review.reportType)}
+                        </p>
+                      </div>
+
                       <label className="text-sm font-medium">
                         教师备注 / 修改说明
                       </label>
                       <Textarea
                         placeholder="输入审核意见、修改建议或退回原因..."
                         value={editNotes}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditNotes(e.target.value)}
-                        rows={3}
+                        onChange={handleEditNotesChange}
+                        rows={4}
                       />
+
+                      {/* Rejection validation error */}
+                      {rejectionErrorId === review.id && (
+                        <p className="text-sm text-destructive font-medium">
+                          请填写退回原因
+                        </p>
+                      )}
                     </div>
                   )}
 
-                  {/* AI 免责标注 */}
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg p-2.5">
-                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                    AI生成，需经体育教师审核后使用
-                  </div>
+                  {/* Operation feedback */}
+                  {feedbackMessage && (
+                    <div className="rounded-lg bg-level-excellent/10 px-3 py-2 text-sm font-medium text-level-excellent animate-in fade-in">
+                      {feedbackMessage}
+                    </div>
+                  )}
 
                   <Separator />
 
@@ -173,40 +299,26 @@ export function ReviewWorkflow() {
                       className="gap-1.5 h-10"
                       onClick={() => handleAction(review.id, "approved")}
                     >
-                      <Check className="h-4 w-4" />
-                      通过
+                      <CheckCircle2 className="h-4 w-4" />
+                      通过，推送给学生
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       className="gap-1.5 h-10"
-                      onClick={() => {
-                        if (editingId === review.id) {
-                          handleAction(review.id, "modified", editNotes);
-                        } else {
-                          setEditingId(review.id);
-                          setEditNotes(review.teacherNotes);
-                        }
-                      }}
+                      onClick={() => handleModifyClick(review.id)}
                     >
                       <Pencil className="h-4 w-4" />
-                      {editingId === review.id ? "确认修改" : "修改"}
+                      {editingId === review.id ? "确认修改" : "修改后通过"}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="gap-1.5 h-10 text-muted-foreground"
-                      onClick={() => {
-                        if (editingId === review.id) {
-                          handleAction(review.id, "rejected", editNotes);
-                        } else {
-                          setEditingId(review.id);
-                          setEditNotes("");
-                        }
-                      }}
+                      onClick={() => handleRejectClick(review.id)}
                     >
                       <X className="h-4 w-4" />
-                      退回
+                      {editingId === review.id ? "确认退回" : "退回，暂不推送"}
                     </Button>
                   </div>
                 </CardContent>
@@ -227,33 +339,56 @@ export function ReviewWorkflow() {
         ) : (
           processedReviews.map((review) => {
             const statusConfig = {
-              approved: { label: "已通过", variant: "excellent" as const, icon: Check },
-              modified: { label: "已修改", variant: "good" as const, icon: Pencil },
-              rejected: { label: "已退回", variant: "improve" as const, icon: X },
+              approved: {
+                label: "已通过",
+                variant: "excellent" as const,
+                icon: CheckCircle2,
+              },
+              modified: {
+                label: "已修改",
+                variant: "good" as const,
+                icon: Pencil,
+              },
+              rejected: {
+                label: "已退回",
+                variant: "improve" as const,
+                icon: X,
+              },
             };
-            const info = statusConfig[review.status as keyof typeof statusConfig];
+            const info =
+              statusConfig[review.status as keyof typeof statusConfig];
             const StatusIcon = info?.icon;
+            const feedbackMessage = feedbackMap[review.id];
 
             return (
-              <Card key={review.id} className="rounded-xl shadow-sm">
-                <CardContent className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="text-sm font-semibold">
-                      {review.reportType === "student"
-                        ? "学生个人 AI 体质报告"
-                        : "AI 班级报告"}
-                    </p>
-                    {review.teacherNotes && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        备注：{review.teacherNotes.slice(0, 50)}
-                        {review.teacherNotes.length > 50 ? "..." : ""}
+              <Card key={review.id} className="rounded-xl border shadow-sm">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {review.reportType === "student"
+                          ? "学生个人 AI 体质报告"
+                          : "AI 班级报告"}
                       </p>
-                    )}
+                      {review.teacherNotes && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          备注：{review.teacherNotes.slice(0, 50)}
+                          {review.teacherNotes.length > 50 ? "..." : ""}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant={info?.variant} className="gap-1">
+                      {StatusIcon && <StatusIcon className="h-3 w-3" />}
+                      {info?.label}
+                    </Badge>
                   </div>
-                  <Badge variant={info?.variant} className="gap-1">
-                    {StatusIcon && <StatusIcon className="h-3 w-3" />}
-                    {info?.label}
-                  </Badge>
+
+                  {/* Operation feedback in processed card */}
+                  {feedbackMessage && (
+                    <div className="rounded-lg bg-level-excellent/10 px-3 py-2 text-sm font-medium text-level-excellent animate-in fade-in">
+                      {feedbackMessage}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
