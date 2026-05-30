@@ -34,7 +34,31 @@ export interface StoredRecord {
   date: string;
   selectedItems: FitnessItemId[];
   scores: Record<string, number>;
-  feeling: BodyFeeling;
+  feelings: Partial<Record<FitnessItemId, BodyFeeling>>;
+  overallDiscomfort: { hasDiscomfort: boolean; discomfortNotes: string };
+}
+
+// ===== AI 分析持久化（跨页面导航不中断） =====
+const AI_ANALYSIS_KEY = "ai_analysis_cache";
+
+interface CachedAnalysis {
+  studentReport: Record<string, unknown> | null;
+  classReport: Record<string, unknown> | null;
+  lastUpdated: string;
+  mode: "ai" | "mock" | "fallback";
+}
+
+export function getCachedAnalysis(): CachedAnalysis | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(AI_ANALYSIS_KEY);
+    return raw ? (JSON.parse(raw) as CachedAnalysis) : null;
+  } catch { return null; }
+}
+
+export function saveCachedAnalysis(analysis: CachedAnalysis): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(AI_ANALYSIS_KEY, JSON.stringify(analysis));
 }
 
 export function getRecords(): StoredRecord[] {
@@ -131,6 +155,7 @@ export function seedDemoData(): void {
     date: new Date().toISOString(),
     selectedItems: ["50m_run", "standing_long_jump", "1000m_run", "vital_capacity", "sit_and_reach", "pull_up"],
     scores: { "50m_run": 8.2, standing_long_jump: 185, "1000m_run": 250, vital_capacity: 2800, sit_and_reach: 10, pull_up: 5 },
-    feeling: { fatigueLevel: 5, recoveryStatus: "normal", hasSoreness: false, sorenessAreas: [], hasDiscomfort: false, discomfortNotes: "" },
+    feelings: {},
+    overallDiscomfort: { hasDiscomfort: false, discomfortNotes: "" },
   });
 }

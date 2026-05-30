@@ -103,7 +103,7 @@ export const FITNESS_ITEMS: FitnessItemDef[] = [
 export const PHYSICAL_RANGES: Record<string, { min: number; max: number; unit: string }> = {
   height: { min: 120, max: 210, unit: "cm" },
   weight: { min: 30, max: 120, unit: "kg" },
-  vital_capacity: { min: 1000, max: 6000, unit: "ml" },
+  vital_capacity: { min: 1000, max: 10000, unit: "ml" },
   "50m_run": { min: 6.0, max: 12.0, unit: "秒" },
   standing_long_jump: { min: 100, max: 280, unit: "cm" },
   sit_and_reach: { min: -10, max: 30, unit: "cm" },

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AIGenerationStatus, type AIStatus } from "@/components/features/ai-generation-status";
 import { mockAIStudentReport } from "@/lib/data/mock-ai-reports";
 import { mockStudents } from "@/lib/data/mock-students";
 import { getLatestRecord } from "@/lib/data/mock-fitness-records";
+import { getCachedAnalysis, saveCachedAnalysis } from "@/lib/demo-store";
 import {
   Brain,
   Sparkles,
@@ -18,6 +19,9 @@ import {
 } from "lucide-react";
 import type { AIStudentReport } from "@/lib/types";
 
+// 模块级缓存：跨页面导航不中断 AI 请求
+const inFlightRequests = new Map<string, Promise<{ data: unknown; mode: string; fallback: boolean }>>();
+
 interface AIStudentReportProps {
   studentId?: string;
 }
@@ -27,59 +31,99 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
   const [status, setStatus] = useState<AIStatus>("idle");
   const [mode, setMode] = useState<"ai" | "mock" | "fallback" | undefined>();
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const mountedRef = useRef(true);
 
   const student = mockStudents.find((s) => s.id === studentId) || mockStudents[0];
   const latestRecord = getLatestRecord(studentId);
+  const cacheKey = `student-${studentId}`;
 
   const fetchReport = useCallback(async () => {
+    // 检查本地缓存
+    const cached = getCachedAnalysis();
+    if (cached?.studentReport) {
+      setReport(cached.studentReport as unknown as AIStudentReport);
+      setMode(cached.mode as "ai" | "mock" | "fallback");
+      setStatus("complete");
+      return;
+    }
+
+    // 检查是否有正在进行的同 ID 请求（跨页面导航场景）
+    if (inFlightRequests.has(cacheKey)) {
+      try {
+        const result = await inFlightRequests.get(cacheKey)!;
+        if (mountedRef.current) {
+          const parsed = result.data;
+          setReport(parsed as unknown as AIStudentReport);
+          setMode(result.fallback ? "fallback" : (result.mode as "ai" | "mock"));
+          setStatus(result.fallback ? "fallback" : "complete");
+        }
+      } catch {
+        if (mountedRef.current) {
+          setReport(mockAIStudentReport);
+          setMode("fallback");
+          setStatus("fallback");
+        }
+      }
+      return;
+    }
+
     setStatus("analyzing");
     setErrorMsg("");
 
-    try {
-      // 构建完整的 studentData
-      const studentData = {
-        student,
-        currentRecord: latestRecord,
-        previousRecords: [],
-      };
+    // 创建持久化请求
+    const requestPromise = (async () => {
+      const studentData = { student, currentRecord: latestRecord, previousRecords: [] };
 
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "student-report",
-          studentId,
-          studentData,
-        }),
+        body: JSON.stringify({ type: "student-report", studentId, studentData }),
       });
 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
 
       const data = await res.json();
-      const responseMode = data._mode as "ai" | "mock";
-      setMode(data._fallback ? "fallback" : responseMode);
+      const responseMode = data._mode as string;
+      const isFallback = !!data._fallback;
+      const parsed = data.content ? { ...mockAIStudentReport, ...safeMerge(data) } : data;
 
-      // AI 返回时可能嵌套在 content 中，尝试合并
-      const parsed = data.content
-        ? { ...data, ...safeMerge(data) }
-        : data;
+      // 存入 localStorage 缓存
+      saveCachedAnalysis({
+        studentReport: parsed as unknown as Record<string, unknown>,
+        classReport: null,
+        lastUpdated: new Date().toISOString(),
+        mode: isFallback ? "fallback" : (responseMode as "ai" | "mock"),
+      });
 
-      setReport(parsed as AIStudentReport);
-      setStatus(data._fallback ? "fallback" : "complete");
+      return { data: parsed, mode: responseMode, fallback: isFallback };
+    })();
+
+    inFlightRequests.set(cacheKey, requestPromise);
+
+    try {
+      const result = await requestPromise;
+      inFlightRequests.delete(cacheKey);
+      if (mountedRef.current) {
+        setReport(result.data as unknown as AIStudentReport);
+        setMode(result.fallback ? "fallback" : (result.mode as "ai" | "mock"));
+        setStatus(result.fallback ? "fallback" : "complete");
+      }
     } catch (err) {
-      console.error("AI report fetch failed:", err);
-      // 回退到 mock
-      setReport(mockAIStudentReport);
-      setMode("fallback");
-      setErrorMsg(err instanceof Error ? err.message : "未知错误");
-      setStatus("fallback");
+      inFlightRequests.delete(cacheKey);
+      if (mountedRef.current) {
+        setReport(mockAIStudentReport);
+        setMode("fallback");
+        setErrorMsg(err instanceof Error ? err.message : "未知错误");
+        setStatus("fallback");
+      }
     }
-  }, [studentId, student, latestRecord]);
+  }, [studentId, student, latestRecord, cacheKey]);
 
-  // 首次加载自动请求
   useEffect(() => {
+    mountedRef.current = true;
     fetchReport();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { mountedRef.current = false; };
+  }, [fetchReport]);
 
   useEffect(() => {
     if (status !== "analyzing") return;

@@ -11,7 +11,7 @@ interface RecordScoreInputProps {
 }
 
 const PICKER_CONFIGS: Record<string, { min: number; max: number; step: number; unit: string }> = {
-  vital_capacity: { min: 1000, max: 6000, step: 50, unit: "ml" },
+  vital_capacity: { min: 1000, max: 10000, step: 50, unit: "ml" },
   "50m_run": { min: 6.0, max: 12.0, step: 0.1, unit: "秒" },
   standing_long_jump: { min: 100, max: 280, step: 1, unit: "cm" },
   sit_and_reach: { min: -10, max: 30, step: 0.5, unit: "cm" },
