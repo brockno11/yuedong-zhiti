@@ -7,7 +7,7 @@ import { AIGenerationStatus, type AIStatus } from "@/components/features/ai-gene
 import { mockAIStudentReport } from "@/lib/data/mock-ai-reports";
 import { mockStudents } from "@/lib/data/mock-students";
 import { getLatestRecord } from "@/lib/data/mock-fitness-records";
-import { getCachedAnalysis, saveCachedAnalysis } from "@/lib/demo-store";
+import { getCachedAnalysis, saveCachedAnalysis, getLatestStoredRecord } from "@/lib/demo-store";
 import {
   Brain,
   Sparkles,
@@ -72,7 +72,18 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
 
     // 创建持久化请求
     const requestPromise = (async () => {
-      const studentData = { student, currentRecord: latestRecord, previousRecords: [] };
+      const storedRecord = getLatestStoredRecord();
+      const studentData = {
+        student,
+        currentRecord: latestRecord,
+        previousRecords: [],
+        storedRecord: storedRecord ? {
+          scores: storedRecord.scores,
+          feelings: storedRecord.feelings,
+          items: storedRecord.selectedItems,
+          overallDiscomfort: storedRecord.overallDiscomfort,
+        } : null,
+      };
 
       const res = await fetch("/api/ai", {
         method: "POST",

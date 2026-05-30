@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档
 
-> 生成日期：2026-05-31 | 版本：MVP 0.2.1 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误
+> 生成日期：2026-05-31 | 版本：MVP 0.3.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | 路由：✅ 15/15
 
 ---
 
@@ -55,19 +55,19 @@
 ### 完整路由表
 
 ```
-/                          → 学生首页（(student)/page.tsx）
+/                          → 登录首页（角色选择 + 账号密码登录）
+/dashboard                 → 学生首页（体质画像仪表盘）
 /onboarding                → 5步引导式信息填写
-/record                    → 体测记录向导
-/dashboard                 → 体质画像仪表盘
-/ai-guide                  → AI 智能指导
-/profile                   → 个人中心
+/record                    → 体测记录向导（逐项体感）
+/ai-guide                  → AI 智能指导（跨页面持久化）
+/profile                   → 个人中心（含退出登录）
 
 /teacher                   → 教师端班级总览仪表盘
-/teacher/students          → 学生画像列表
+/teacher/students          → 学生画像列表（搜索过滤）
+/teacher/students/[id]     → 学生详情页
 /teacher/report            → AI 班级报告
 /teacher/review            → 审核中心
-
-/teacher/students/[id]      → 学生详情页（NEW）
+/teacher/profile           → 教师个人中心（含退出登录）
 
 /api/ai                    → AI API 路由（POST）
 ```

@@ -162,7 +162,7 @@ export const RECOVERY_OPTIONS = [
 
 // ---- 导航配置 ----
 export const STUDENT_NAV_ITEMS = [
-  { href: "/", label: "首页", icon: "Home" },
+  { href: "/dashboard", label: "首页", icon: "Home" },
   { href: "/record", label: "记录", icon: "PlusCircle" },
   { href: "/dashboard", label: "画像", icon: "BarChart3" },
   { href: "/ai-guide", label: "AI指导", icon: "Sparkles" },
@@ -174,4 +174,5 @@ export const TEACHER_NAV_ITEMS = [
   { href: "/teacher/students", label: "学生", icon: "Users" },
   { href: "/teacher/report", label: "报告", icon: "FileText" },
   { href: "/teacher/review", label: "审核", icon: "CheckSquare" },
+  { href: "/teacher/profile", label: "我的", icon: "User" },
 ] as const;

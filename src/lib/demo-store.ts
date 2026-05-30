@@ -76,6 +76,8 @@ export function saveRecord(record: StoredRecord): void {
   const records = getRecords();
   records.unshift(record);
   localStorage.setItem(STORAGE_KEYS.records, JSON.stringify(records));
+  // 清除旧的 AI 缓存，下次打开 AI 分析将基于最新记录重新生成
+  localStorage.removeItem(AI_ANALYSIS_KEY);
 }
 
 export function getLatestStoredRecord(): StoredRecord | null {

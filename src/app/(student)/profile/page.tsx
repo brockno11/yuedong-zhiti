@@ -20,6 +20,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { LogoutButton } from "@/components/features/logout-button";
 
 const DEMO_STUDENT_ID = "S001";
 
@@ -165,6 +166,29 @@ export default function ProfilePage() {
 
       <Separator />
 
+      {/* 教师入口 */}
+      <Link href="/teacher">
+        <Card className="cursor-pointer rounded-xl border shadow-sm transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">教师工作台</p>
+                <p className="text-xs text-muted-foreground">班级总览 · 学生管理 · AI 审核</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      <Separator />
+
       {/* 隐私说明 */}
       <Card>
         <CardHeader className="pb-2">
@@ -209,6 +233,9 @@ export default function ProfilePage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* 退出登录 */}
+      <LogoutButton />
     </div>
   );
 }
