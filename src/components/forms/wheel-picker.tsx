@@ -147,7 +147,7 @@ export function WheelPicker({
               key={opt.value}
               onClick={() => handleQuickOption(opt.value)}
               className={cn(
-                "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all active:scale-95",
+                "min-h-11 rounded-lg border px-3 py-2 text-xs font-medium transition-all active:scale-95",
                 value === opt.value
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-primary/20 hover:text-foreground"

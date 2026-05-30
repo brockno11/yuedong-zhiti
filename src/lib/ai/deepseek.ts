@@ -1,8 +1,10 @@
 // ===== 跃动智体 — DeepSeek API 接口预留 =====
 // 当配置 DEEPSEEK_API_KEY 环境变量后，可切换为真实 AI 调用
 
-const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
-const MODEL = "deepseek-chat"; // 或 "deepseek-reasoner" 用于深度推理
+const DEEPSEEK_BASE_URL =
+  process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
+const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+const DEEPSEEK_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 12000);
 
 interface DeepSeekMessage {
   role: "system" | "user" | "assistant";
@@ -38,20 +40,23 @@ export async function callDeepSeek(
     { role: "user", content: userPrompt },
   ];
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DEEPSEEK_TIMEOUT_MS);
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
+    signal: controller.signal,
     body: JSON.stringify({
       model: MODEL,
       messages,
-      temperature: 0.7,
+      temperature: 0.4,
       max_tokens: 4096,
       stream: false,
     }),
-  });
+  }).finally(() => clearTimeout(timeoutId));
 
   if (!response.ok) {
     const error = await response.text();

@@ -296,7 +296,7 @@ export function ReviewWorkflow() {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      className="gap-1.5 h-10"
+                      className="gap-1.5"
                       onClick={() => handleAction(review.id, "approved")}
                     >
                       <CheckCircle2 className="h-4 w-4" />
@@ -305,7 +305,7 @@ export function ReviewWorkflow() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="gap-1.5 h-10"
+                      className="gap-1.5"
                       onClick={() => handleModifyClick(review.id)}
                     >
                       <Pencil className="h-4 w-4" />
@@ -314,7 +314,7 @@ export function ReviewWorkflow() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="gap-1.5 h-10 text-muted-foreground"
+                      className="gap-1.5 text-muted-foreground"
                       onClick={() => handleRejectClick(review.id)}
                     >
                       <X className="h-4 w-4" />

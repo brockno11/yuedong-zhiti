@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档
 
-> 生成日期：2026-05-31 | 版本：MVP 0.3.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | 路由：✅ 15/15
+> 生成日期：2026-05-31 | 版本：MVP 0.3.1 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 15/15
 
 ---
 
@@ -211,8 +211,8 @@ API Key 仅在服务端 `process.env` 中，前端永不可见。
 | 输出格式无结构化约束 | 高 | 增加 JSON Schema 约束，要求 AI 返回结构化数据，便于前端解析 |
 | 未设置 system prompt 与 user prompt 分离 | 中 | 当前全部内容作为 user prompt 发送；建议将角色和规则作为 system prompt，数据作为 user prompt |
 | 温度参数 0.7 偏高 | 中 | 分析类任务建议降至 0.3-0.5，输出更稳定 |
-| 模型名称硬编码 | 低 | `deepseek.ts` 中写死 `deepseek-chat`，但 `.env.example` 配置为 `deepseek-v4-flash`，应从环境变量读取 |
-| 无输出长度控制 | 低 | 训练计划可能过长，建议增加 `max_tokens` 约束 |
+| 模型配置 | 已优化 | `deepseek.ts` 与 `/api/ai` 均从环境变量读取模型和 base URL |
+| 输出长度控制 | 已优化 | `/api/ai` 已设置 `max_tokens: 4096` |
 | 缺少 few-shot 示例 | 低 | 建议在 prompt 中提供 1-2 个标准输出示例，引导 AI 输出格式 |
 
 ### 7.3 AI 调用层
@@ -222,7 +222,7 @@ API Key 仅在服务端 `process.env` 中，前端永不可见。
 | `src/lib/ai/deepseek.ts` | DeepSeek API 客户端（服务端调用） |
 | `src/lib/ai/mock-ai.ts` | Mock AI 输出（1.5s 模拟延迟） |
 | `src/lib/data/mock-ai-reports.ts` | Mock AI 报告数据（学生报告 + 班级报告 + 审核数据） |
-| `src/app/api/ai/route.ts` | AI API 路由（双模式切换入口） |
+| `src/app/api/ai/route.ts` | AI API 路由（双模式切换入口，含超时回退） |
 
 ---
 
@@ -379,7 +379,7 @@ src/components/
 | 教师端 - 学生列表 | 85% | 列表展示 + 搜索入口 |
 | 教师端 - AI 班级报告 | 85% | 当前展示 Mock 数据 |
 | 教师端 - 审核中心 | 90% | 通过/修改/退回流程 |
-| AI API 路由 | 95% | Mock + DeepSeek 双模式 + 失败回退 |
+| AI API 路由 | 98% | Mock + DeepSeek 双模式 + 失败/超时回退 |
 | 文档体系 | 100% | README + PRD + SKILLS + HANDOFF |
 
 ---
@@ -390,20 +390,20 @@ src/components/
 
 | 问题 | 严重度 | 说明 |
 |------|--------|------|
-| AI 指导页未对接真实 API | 中 | `/ai-guide` 静态展示 Mock 数据，需调用 `/api/ai` |
-| 班级报告页未对接真实 API | 中 | `/teacher/report` 同样静态展示 |
+| AI 指导页真实 API 体验 | 低 | `/ai-guide` 已调用 `/api/ai`，真实接口响应慢时会超时回退到示例报告 |
+| 班级报告真实 API 体验 | 低 | `/teacher/report` 已调用 `/api/ai`，真实接口响应慢时会超时回退到示例报告 |
 | 学生首页数据硬编码 | 低 | 展示"学生A"的数据，应从 localStorage 读取引导数据 |
-| 学生详情页缺失 | 中 | `/teacher/students/[id]` 路由未创建 |
+| 学生详情页 | 已完成 | `/teacher/students/[id]` 已创建，并修复了 Server/Client 边界导致的错误边界问题 |
 | 无数据持久化 | 中 | 所有数据在内存中，刷新即丢失 |
 
 ### 技术层面
 
 | 问题 | 严重度 | 说明 |
 |------|--------|------|
-| ESLint 警告 ~15 | 低 | 主要是未使用的 import（已大幅减少，原 ~50+） |
+| ESLint 警告 | 已修复 | `npm run lint` 0 警告 |
 | 暗色模式 | 低 | CSS Variables 已定义但未充分测试 |
-| 无测试覆盖 | 中 | 无单元测试、集成测试、E2E 测试 |
-| `deepseek.ts` 模型名硬编码 | 低 | 写死 `deepseek-chat`，未从环境变量读取 |
+| 自动化测试覆盖 | 中 | 尚未引入 Vitest/Playwright 测试套件；本轮已进行浏览器烟测、路由烟测、typecheck、lint、build |
+| AI 响应无限等待风险 | 已修复 | `/api/ai` 与前端 AI 页面均增加超时控制与回退展示 |
 
 ### ✅ 已修复（2026-05-30 体验优化）
 
@@ -426,6 +426,10 @@ src/components/
 | Dashboard 桌面端空间浪费 | ✅ 改为 `max-w-7xl` 多列数据仪表盘 |
 | AI 生成慢时缺少反馈 | ✅ 增加分阶段进度、骨架屏、处理中状态 |
 | AI 训练计划授权提示不完整 | ✅ 统一补充“训练计划须经体育教师审核授权后实施” |
+| 学生详情页进入错误边界 | ✅ 拆分 `StudentReviewStatus` 客户端组件，避免 Server Component 直接读取 localStorage |
+| 体测记录日期显示 ISO 时间戳 | ✅ 教师端学生详情页改为 `YYYY-MM-DD` 展示 |
+| 触控目标偏小 | ✅ 调整返回链接、快捷年龄按钮、审核按钮、搜索输入等为 ≥44px |
+| AI 外部服务响应过慢导致一直“处理中” | ✅ 服务端 12s 超时、前端 15s 超时，自动展示回退报告 |
 
 ### 开发运行态注意事项
 

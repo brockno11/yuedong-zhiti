@@ -12,8 +12,8 @@ interface RecordFeelingStepProps {
   selectedItems: FitnessItemId[];
   feelings: Partial<Record<FitnessItemId, BodyFeeling>>;
   overallDiscomfort: { hasDiscomfort: boolean; discomfortNotes: string };
-  onChangeItem: (itemId: FitnessItemId, feeling: BodyFeeling) => void;
-  onChangeDiscomfort: (data: { hasDiscomfort: boolean; discomfortNotes: string }) => void;
+  onChangeItem: (_itemId: FitnessItemId, _feeling: BodyFeeling) => void;
+  onChangeDiscomfort: (_data: { hasDiscomfort: boolean; discomfortNotes: string }) => void;
 }
 
 const defaultFeeling = (): BodyFeeling => ({
@@ -79,7 +79,7 @@ export function RecordFeelingStep({
                       onChangeItem(itemId, { ...feeling, recoveryStatus: opt.value })
                     }
                     className={cn(
-                      "rounded-lg border px-2 py-2 text-center transition-all min-h-[40px]",
+                      "min-h-11 rounded-lg border px-2 py-2 text-center transition-all",
                       feeling.recoveryStatus === opt.value
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/30 hover:bg-accent"
@@ -153,7 +153,7 @@ export function RecordFeelingStep({
             onChange={(e) =>
               onChangeDiscomfort({ ...overallDiscomfort, discomfortNotes: e.target.value })
             }
-            className="h-10"
+            className="h-11"
           />
         )}
       </div>

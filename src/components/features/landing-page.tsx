@@ -16,7 +16,6 @@ import {
   TrendingUp,
   Heart,
   Target,
-  ArrowRight,
   User,
   Users,
   Eye,
@@ -134,7 +133,7 @@ export function LandingPage() {
             <button
               onClick={() => { setRole("student"); setUsername(""); setPassword(""); setError(""); }}
               className={cn(
-                "relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300",
+                "relative flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300",
                 role === "student"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -146,7 +145,7 @@ export function LandingPage() {
             <button
               onClick={() => { setRole("teacher"); setUsername(""); setPassword(""); setError(""); }}
               className={cn(
-                "relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300",
+                "relative flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300",
                 role === "teacher"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -231,7 +230,8 @@ export function LandingPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label={showPassword ? "隐藏密码" : "显示密码"}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -303,8 +303,8 @@ function StudentHero() {
           <div><p className="font-semibold">隐私保护</p><p className="text-xs text-muted-foreground">匿名编号，不排名</p></div>
         </div>
         <div className="flex items-start gap-2.5 rounded-xl border bg-card p-3.5">
-          <Heart className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
-          <div><p className="font-semibold">科学锻炼</p><p className="text-xs text-muted-foreground">不做医学诊断</p></div>
+          <Heart className="mt-0.5 h-5 w-5 shrink-0 text-level-improve" />
+          <div><p className="font-semibold">科学锻炼</p><p className="text-xs text-muted-foreground">仅作锻炼参考</p></div>
         </div>
       </div>
     </div>

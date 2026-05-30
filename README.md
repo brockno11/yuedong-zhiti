@@ -46,6 +46,7 @@
 - 学生 Dashboard 从窄屏卡片堆叠升级为移动端单列、桌面端多列数据仪表盘
 - 底部导航在手机端填充两侧，在宽屏端限制最大宽度，全部功能始终展开
 - AI 生成区域增加分步骤进度、骨架屏和处理状态，避免用户误以为页面卡住
+- AI 真实接口响应较慢时自动超时回退到示例报告，页面不会一直停在“处理中”
 - AI 报告统一提示：**AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。**
 
 ---
@@ -62,7 +63,7 @@
 | 表单 | react-hook-form + zod |
 | 图标 | lucide-react |
 | AI | DeepSeek API（支持 Mock 回退） |
-| 质量验证 | TypeScript typecheck + Next build + 浏览器响应式走查 |
+| 质量验证 | TypeScript typecheck + ESLint + Next build + 浏览器响应式走查 |
 
 ---
 
@@ -89,6 +90,7 @@ npm run dev
 cp .env.example .env.local
 # 编辑 .env.local 填入 DeepSeek API Key
 # 不配置则自动使用 Mock 数据
+# 可选：AI_REQUEST_TIMEOUT_MS=12000 控制服务端 AI 超时回退
 ```
 
 ```bash

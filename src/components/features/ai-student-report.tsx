@@ -21,6 +21,7 @@ import type { AIStudentReport } from "@/lib/types";
 
 // 模块级缓存：跨页面导航不中断 AI 请求
 const inFlightRequests = new Map<string, Promise<{ data: unknown; mode: string; fallback: boolean }>>();
+const CLIENT_AI_TIMEOUT_MS = 15000;
 
 interface AIStudentReportProps {
   studentId?: string;
@@ -85,11 +86,14 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
         } : null,
       };
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), CLIENT_AI_TIMEOUT_MS);
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({ type: "student-report", studentId, studentData }),
-      });
+      }).finally(() => window.clearTimeout(timeoutId));
 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
 

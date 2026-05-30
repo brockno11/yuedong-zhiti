@@ -20,6 +20,7 @@ export type AIStatus = "idle" | "analyzing" | "generating_profile" | "generating
 interface AIGenerationStatusProps {
   status: AIStatus;
   mode?: "ai" | "mock" | "fallback";
+  subjectLabel?: string;
   errorMessage?: string;
   onRetry?: () => void;
   className?: string;
@@ -40,6 +41,7 @@ const MODE_LABELS: Record<string, { label: string; variant: "excellent" | "secon
 export function AIGenerationStatus({
   status,
   mode,
+  subjectLabel = "你的体测数据",
   errorMessage,
   onRetry,
   className,
@@ -62,7 +64,7 @@ export function AIGenerationStatus({
                 variant="outline"
                 size="sm"
                 onClick={onRetry}
-                className="mt-3 gap-1.5 h-8"
+                className="mt-3 gap-1.5"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 重新生成
@@ -81,9 +83,9 @@ export function AIGenerationStatus({
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium">AI 服务暂不可用，已展示示例报告</p>
+            <p className="text-sm font-medium">AI 响应较慢，已展示示例报告</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              数据基于历史体测记录生成，可供参考
+              页面不会继续卡住，可稍后重新生成真实 AI 分析
             </p>
           </div>
           {mode && (
@@ -120,7 +122,7 @@ export function AIGenerationStatus({
       {/* Header */}
       <div className="flex items-center gap-2">
         <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-        <p className="text-sm font-semibold">AI 正在分析你的体测数据</p>
+        <p className="text-sm font-semibold">AI 正在分析{subjectLabel}</p>
         {mode && (
           <Badge variant={MODE_LABELS[mode]?.variant || "secondary"} className="ml-auto text-[10px]">
             {MODE_LABELS[mode]?.label || mode}

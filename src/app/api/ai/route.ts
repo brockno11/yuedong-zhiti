@@ -22,6 +22,7 @@ const DEEPSEEK_BASE_URL =
   process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
 const DEEPSEEK_MODEL =
   process.env.DEEPSEEK_MODEL || "deepseek-chat";
+const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 12000);
 
 // Mock 报告（从数据层导入）
 import { mockAIStudentReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";
@@ -76,13 +77,16 @@ export async function POST(request: NextRequest) {
       userPrompt = buildClassUserPrompt(classData || {});
     }
 
-    // 调用 DeepSeek API
+    // 调用 DeepSeek API，避免外部服务慢时页面无限等待
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
     const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
         messages: [
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
         temperature: 0.4,
         max_tokens: 4096,
       }),
-    });
+    }).finally(() => clearTimeout(timeoutId));
 
     if (!response.ok) {
       const errorText = await response.text();

@@ -3,9 +3,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FitnessRadarChart } from "@/components/charts/fitness-radar-chart";
+import { StudentReviewStatus } from "@/components/features/student-review-status";
 import { getStudentById } from "@/lib/data/mock-students";
 import { getLatestRecord, getRecordsByStudentId } from "@/lib/data/mock-fitness-records";
-import { getReviewByReportId } from "@/lib/demo-store";
 import { FITNESS_ITEMS, GRADE_STANDARDS } from "@/lib/constants";
 import {
   User,
@@ -14,13 +14,17 @@ import {
   Ruler,
   TrendingUp,
   Target,
-  Sparkles,
   AlertTriangle,
 } from "lucide-react";
 import type { RadarChartDataPoint } from "@/lib/types";
 
 interface StudentDetailPageProps {
   params: { id: string };
+}
+
+function formatDisplayDate(date: string) {
+  const [day] = date.split("T");
+  return day || date;
 }
 
 export default function StudentDetailPage({ params }: StudentDetailPageProps) {
@@ -41,15 +45,6 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
 
   const latestRecord = getLatestRecord(student.id);
   const allRecords = getRecordsByStudentId(student.id);
-  const reviewStatus = getReviewByReportId(`report-${student.id}`);
-  const reviewLabel = reviewStatus?.status === "approved" ? "已审核通过"
-    : reviewStatus?.status === "modified" ? "已修改"
-    : reviewStatus?.status === "rejected" ? "已退回"
-    : "待审核";
-
-  const reviewVariant = reviewStatus?.status === "approved" ? "excellent" as const
-    : reviewStatus?.status === "rejected" ? "improve" as const
-    : "pass" as const;
 
   // 雷达图
   const radarData: RadarChartDataPoint[] = latestRecord ? [
@@ -144,23 +139,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
         </Card>
 
         {/* 审核状态卡 */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <p className="text-sm font-semibold">AI 建议状态</p>
-            </div>
-            <Badge variant={reviewVariant} className="mb-2 text-[11px]">{reviewLabel}</Badge>
-            <p className="text-xs text-muted-foreground">
-              AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。
-            </p>
-            {reviewStatus?.teacherNotes && (
-              <p className="text-xs text-muted-foreground mt-2 border-t pt-2">
-                教师备注：{reviewStatus.teacherNotes}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <StudentReviewStatus studentId={student.id} />
       </div>
 
       {/* 体质雷达图 */}
@@ -232,7 +211,9 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
                 <div key={r.id} className="rounded-xl border p-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-semibold">{r.semester}</p>
-                    <span className="text-xs text-muted-foreground">{r.date}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDisplayDate(r.date)}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {r.items.map((item) => {

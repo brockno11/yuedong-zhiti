@@ -267,7 +267,7 @@ Codex 应将 Skills 视为**设计规范文档**而非可执行代码：
 | Playwright Interactive / Playwright CLI Skill | 响应式与交互验证 | 用于 375px、768px、1440px 等视口验证导航和图表 |
 | Screenshot Capture | 截图留档 | 用于记录优化前后页面状态 |
 | Frontend Code Review | 前端审查 | 用于检查组件边界、样式反模式、可访问性 |
-| Senior QA | 测试策略 | 用于补充多端验证清单和 E2E 验收 |
+| Senior QA | 测试策略 | 用于补充多端验证清单、路由烟测、AI 回退验证和 E2E 验收 |
 | Security Best Practices | 安全检查 | 用于确认 API Key、学生隐私和 AI 安全标注 |
 
 如果协作 Agent 没有上述 skills，可先通过 `npx skills find "<关键词>"` 搜索，再按需安装到自己的 skills 环境中。

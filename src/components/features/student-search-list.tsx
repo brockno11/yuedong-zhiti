@@ -55,7 +55,7 @@ export function StudentSearchList() {
           placeholder="搜索学生编号、年级、性别，或输入「关注」查看需关注学生..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 h-10"
+          className="h-11 pl-9"
         />
         {searchQuery && (
           <p className="text-xs text-muted-foreground mt-1.5 ml-1">

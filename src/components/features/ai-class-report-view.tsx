@@ -21,12 +21,7 @@ import {
 import Link from "next/link";
 import type { AIClassReport } from "@/lib/types";
 
-// ===== 状态标签映射 =====
-const MODE_BADGE: Record<string, { label: string; variant: "excellent" | "secondary" | "pass" }> = {
-  ai: { label: "AI 生成", variant: "excellent" },
-  mock: { label: "示例数据", variant: "secondary" },
-  fallback: { label: "AI 回退", variant: "pass" },
-};
+const CLIENT_AI_TIMEOUT_MS = 15000;
 
 // ===== 主组件 =====
 export function AIClassReportView() {
@@ -49,14 +44,17 @@ export function AIClassReportView() {
         summary: mockClassSummary,
       };
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), CLIENT_AI_TIMEOUT_MS);
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           type: "class-report",
           classData,
         }),
-      });
+      }).finally(() => window.clearTimeout(timeoutId));
 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
 
@@ -100,7 +98,7 @@ export function AIClassReportView() {
 
   // ---- 生成中 ----
   if (status === "analyzing" || status === "generating_profile" || status === "generating_plan") {
-    return <AIGenerationStatus status={status} mode={mode} />;
+    return <AIGenerationStatus status={status} mode={mode} subjectLabel="班级体测数据" />;
   }
 
   // ---- 错误 / 回退 ----
@@ -146,21 +144,11 @@ export function AIClassReportView() {
 }
 
 // ===== 报告内容渲染 =====
-function ReportContent({ report, mode }: { report: AIClassReport; mode?: string }) {
+function ReportContent({ report }: { report: AIClassReport; mode?: string }) {
   const overall = report.overallAnalysis;
-  const badge = mode ? MODE_BADGE[mode] : undefined;
 
   return (
     <>
-      {/* 模式标签 — 顶部醒目展示 */}
-      {badge && (
-        <div className="flex items-center justify-center">
-          <Badge variant={badge.variant} className="px-3 py-1 text-xs font-semibold">
-            {badge.label}
-          </Badge>
-        </div>
-      )}
-
       {/* ============ 桌面布局网格 ============ */}
       <div className="lg:grid lg:grid-cols-12 lg:gap-5 space-y-5 lg:space-y-0">
 
