@@ -129,7 +129,13 @@ export default async function DashboardPage() {
       </div>
 
       {/* ===== 3. 最近记录 ===== */}
-      <RecentRecordCard record={latestRecord} gender={student.gender} />
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-medium text-muted-foreground">最近记录</p>
+          <Link href="/records" className="text-xs text-primary flex items-center gap-0.5">查看全部 <ChevronRight className="h-3 w-3" /></Link>
+        </div>
+        <RecentRecordCard record={latestRecord} gender={student.gender} />
+      </div>
 
       {/* ===== 4. 下一步建议 ===== */}
       {completeness.isPartial && (
