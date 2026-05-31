@@ -377,8 +377,25 @@ export function AIStudentReportView({
         </div>
       )}
 
+      {/* ===== 3a. 生成依据 ===== */}
+      {completeness && latestRecord && (
+        <Card className="rounded-xl border-muted bg-muted/20 shadow-sm">
+          <CardContent className="p-4 space-y-1.5 text-xs text-muted-foreground">
+            <p className="font-semibold text-sm text-foreground">📋 生成依据</p>
+            <p>本计划参考了：</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li>你本次录入的 {latestRecord.items.map(i => FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId).join("、")}</li>
+              {latestRecord.bodyFeeling && <li>疲劳程度 {latestRecord.bodyFeeling.fatigueLevel}/10 · 恢复：{latestRecord.bodyFeeling.recoveryStatus === "quick" ? "较快" : latestRecord.bodyFeeling.recoveryStatus === "slow" ? "较慢" : "正常"}</li>}
+              {student?.sportGoal && <li>运动目标：{student.sportGoal === "improve_endurance" ? "提升耐力" : student.sportGoal === "build_strength" ? "增强力量" : student.sportGoal === "overall_health" ? "全面健康提升" : student.sportGoal === "improve_flexibility" ? "提高柔韧性" : student.sportGoal === "lose_weight" ? "控制体重" : student.sportGoal === "exam_preparation" ? "体测考试准备" : student.sportGoal}</li>}
+              <li>数据完整度 {completeness.recordedCount}/{completeness.expectedCount} · {completeness.completionRate >= 70 ? "综合体质分析" : "局部体质分析"}</li>
+              {completeness.missingItems.length > 0 && <li>未录入项目暂不评价</li>}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ===== 4. 完整报告内容 ===== */}
-      <ReportContent report={report} />
+      <ReportContent report={report} completeness={completeness} />
 
       {/* ===== 5. 历史报告（底部，默认折叠）===== */}
       {reportHistory.length > 0 && (
@@ -482,9 +499,9 @@ function ReportHero({
 
 // ===== 报告详情 =====
 function ReportContent({
-  report,
+  report, completeness,
 }: {
-  report: AIStudentReport;
+  report: AIStudentReport; completeness?: ReturnType<typeof calculateRecordCompleteness> | null;
 }) {
   const reviewStatus = report.status || "pending_review";
   const reviewLabel = reviewStatus === "approved" ? "体育教师已审核通过，可在教师指导下实施"
@@ -539,6 +556,42 @@ function ReportContent({
                 <p className="text-xs text-primary mt-1 flex items-center gap-1"><Sparkles className="h-3 w-3" />{w.improvementPotential}</p>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 待补充项目 */}
+      {completeness && completeness.missingItems.length > 0 && (
+        <Card className="rounded-xl border-muted bg-muted/10 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">待补充项目</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {completeness.missingItems.map(id => {
+              const def = FITNESS_ITEMS.find(f => f.id === id);
+              const reasons: Record<string, string> = {
+                "50m_run": "用于分析速度素质",
+                standing_long_jump: "用于分析下肢爆发力",
+                pull_up: "用于分析上肢力量耐力",
+                sit_up: "用于分析核心力量耐力",
+                "1000m_run": "用于分析心肺耐力",
+                "800m_run": "用于分析心肺耐力",
+                sit_and_reach: "用于分析柔韧性",
+                vital_capacity: "用于分析呼吸机能",
+              };
+              return (
+                <div key={id} className="flex items-center justify-between text-sm">
+                  <div>
+                    <span className="font-medium">{def?.name ?? id}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{reasons[id] ?? "建议补充记录"}</span>
+                  </div>
+                  <Badge variant="secondary" className="text-[10px]">建议补充</Badge>
+                </div>
+              );
+            })}
+            <div className="pt-2">
+              <Link href="/record">
+                <Button variant="outline" size="sm" className="gap-1"><PlusCircle className="h-3.5 w-3.5" />补充本批次记录</Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       )}
