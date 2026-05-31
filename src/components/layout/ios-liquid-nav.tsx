@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -16,21 +15,19 @@ interface IosLiquidNavProps {
 }
 
 export function IosLiquidNav({ items, className }: IosLiquidNavProps) {
+  const router = useRouter();
   const pathname = usePathname();
 
   return (
     <nav
       className={cn(
-        // 宽度：手机填充到两边留 12px；桌面最大 480px
         "mx-auto w-full max-w-[480px]",
-        // 液态玻璃胶囊
         "flex items-center rounded-full px-1.5 py-1.5",
         "bg-card/82 backdrop-blur-xl",
         "dark:bg-zinc-900/70 dark:backdrop-blur-xl",
         "border border-border/70 dark:border-white/10",
         "shadow-[0_2px_16px_rgba(0,0,0,0.06),0_0_0_0.5px_rgba(0,0,0,0.04)]",
         "dark:shadow-[0_2px_16px_rgba(0,0,0,0.3),0_0_0_0.5px_rgba(255,255,255,0.06)]",
-        // 安全区
         "pb-safe",
         className
       )}
@@ -46,15 +43,15 @@ export function IosLiquidNav({ items, className }: IosLiquidNavProps) {
             : pathname.startsWith(item.href);
 
         return (
-          <Link
+          <button
             key={item.href}
-            href={item.href}
+            type="button"
+            onClick={() => router.push(item.href)}
             className={cn(
-              // 等宽分布
               "flex-1 flex flex-col items-center justify-center gap-0.5 rounded-full py-2",
               "min-h-[56px]",
               "text-xs font-medium leading-none",
-              "transition-all duration-200",
+              "transition-all duration-200 active:scale-95",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
               isActive
                 ? "text-primary"
@@ -66,7 +63,7 @@ export function IosLiquidNav({ items, className }: IosLiquidNavProps) {
           >
             <NavIcon name={item.icon} isActive={isActive} />
             <span className="select-none whitespace-nowrap leading-none">{item.label}</span>
-          </Link>
+          </button>
         );
       })}
     </nav>

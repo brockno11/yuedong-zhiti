@@ -24,7 +24,7 @@ import type { AIStudentReport, FitnessRecord, StudentProfile } from "@/lib/types
 
 // 模块级缓存：跨页面导航不中断 AI 请求
 const inFlightRequests = new Map<string, Promise<{ data: unknown; mode: string; fallback: boolean }>>();
-const CLIENT_AI_TIMEOUT_MS = 15000;
+const CLIENT_AI_TIMEOUT_MS = 35000;
 
 interface AIStudentReportProps {
   studentId?: string;
@@ -114,11 +114,13 @@ export function AIStudentReportView({
       if (!res.ok) throw new Error(`API error: ${res.status}`);
 
       const data = await res.json();
-      const responseMode = data._mode as string;
+      const responseMode = (data._mode as string) || "mock";
       const isFallback = !!data._fallback;
-      const parsed = data.content ? { ...mockAIStudentReport, ...safeMerge(data) } : data;
 
-      return { data: parsed, mode: responseMode, fallback: isFallback };
+      // 服务器已返回结构化报告（顶层即为 AIStudentReport 字段）
+      // AI 模式直接使用 data，mock 模式也直接使用（服务器已合并 mockAIStudentReport）
+      // 不再客户端重复合并 mock 数据，避免覆盖 AI 真实结果
+      return { data: data as unknown as AIStudentReport, mode: responseMode, fallback: isFallback };
     })();
 
     inFlightRequests.set(cacheKey, requestPromise);
@@ -635,30 +637,4 @@ function getAnalysisType(itemCount: number | undefined): { label: string; icon: 
   return { label: "综合分析", icon: TrendingUp, variant: "excellent" };
 }
 
-// 安全深合并：AI 返回数据深度合并到 mock 默认结构，不丢失嵌套字段
-function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
-  const result = { ...target };
-  for (const key of Object.keys(source)) {
-    const sv = source[key];
-    const tv = target[key];
-    if (sv && typeof sv === "object" && !Array.isArray(sv) && tv && typeof tv === "object" && !Array.isArray(tv)) {
-      result[key] = deepMerge(tv as Record<string, unknown>, sv as Record<string, unknown>);
-    } else if (sv !== undefined && sv !== null) {
-      result[key] = sv;
-    }
-  }
-  return result;
-}
-
-function safeMerge(data: Record<string, unknown>): Record<string, unknown> {
-  try {
-    if (data.content && typeof data.content === "string") {
-      const jsonMatch = data.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-        return deepMerge(mockAIStudentReport as unknown as Record<string, unknown>, parsed);
-      }
-    }
-  } catch { /* ignore parse errors */ }
-  return {};
-}
+// (deepMerge / safeMerge 已移除 — 服务器端已完成合并，客户端直接使用结构化数据)

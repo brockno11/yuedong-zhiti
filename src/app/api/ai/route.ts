@@ -25,7 +25,7 @@ const DEEPSEEK_BASE_URL =
   process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
 const DEEPSEEK_MODEL =
   process.env.DEEPSEEK_MODEL || "deepseek-chat";
-const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 12000);
+const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 30000);
 
 // Mock 报告（从数据层导入）
 import { mockAIStudentReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";

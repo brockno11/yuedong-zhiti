@@ -1,8 +1,7 @@
 // ===== 跃动智体 — 教师端桌面侧边栏 =====
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -32,6 +31,7 @@ interface DesktopSidebarProps {
 }
 
 export function DesktopSidebar({ items }: DesktopSidebarProps) {
+  const router = useRouter();
   const pathname = usePathname();
 
   return (
@@ -59,11 +59,12 @@ export function DesktopSidebar({ items }: DesktopSidebarProps) {
               : pathname.startsWith(item.href);
 
           return (
-            <Link
+            <button
               key={item.href}
-              href={item.href}
+              type="button"
+              onClick={() => router.push(item.href)}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive
                   ? "bg-primary/10 text-primary"
@@ -73,7 +74,7 @@ export function DesktopSidebar({ items }: DesktopSidebarProps) {
             >
               {Icon && <Icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 2} />}
               {item.label}
-            </Link>
+            </button>
           );
         })}
       </nav>
