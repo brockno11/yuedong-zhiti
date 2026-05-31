@@ -350,7 +350,7 @@ npm run dev           # 启动 → http://localhost:3000
 ├── docs/                          # 比赛申报文档
 │   └── 2026年教师人工智能应用案例征集通知及附件/
 ├── src/
-│   ├── app/                       # Next.js App Router（22 个路由）
+│   ├── app/                       # Next.js App Router（23 个路由）
 │   │   ├── layout.tsx             # 根布局（字体、metadata、viewport）
 │   │   ├── globals.css            # CSS Variables 主题 + 液态玻璃动画 + 骨架屏
 │   │   ├── page.tsx               # 登录首页 "/"

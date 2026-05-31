@@ -2,7 +2,7 @@
 
 > 本文档约束 Claude Code 和 Codex 两个 AI Agent 在本项目中的协作行为。所有 Agent 在开始工作前必须阅读并遵守。
 >
-> 项目阶段：MVP 0.7.0 | 技术栈：Next.js 14 + TypeScript + shadcn/ui + Prisma + SQLite + DeepSeek
+> 项目阶段：MVP 0.8.0 | 技术栈：Next.js 14 + TypeScript + shadcn/ui + Prisma + SQLite + DeepSeek
 
 ---
 
@@ -91,6 +91,9 @@
 - ❌ 不得在代码中硬编码颜色（必须使用 Tailwind CSS Variables）
 - ✅ 提交前必须运行 npm run typecheck && npm run lint && npm run build
 - ✅ 修改功能后必须同步更新 PROJECT_HANDOFF.md / README.md / AGENTS.md
+- ✅ 正式体测(official_test)学生端只读，修改须教师操作
+- ✅ 日常训练(daily_training)学生可编辑/删除
+- ✅ 删除日常训练记录须二次确认
 
 ---
 
@@ -253,4 +256,4 @@ prisma/
 
 > 📋 **本文档目标**：让 Claude Code 和 Codex 在协作开发中保持一致的规范认知，避免各自为政。
 >
-> **最后更新**：2026-05-31 · 项目版本 MVP 0.7.0
+> **最后更新**：2026-05-31 · 项目版本 MVP 0.8.0

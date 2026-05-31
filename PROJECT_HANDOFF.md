@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-06-01 | 版本：MVP 0.7.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 22/22
+> 生成日期：2026-06-01 | 版本：MVP 0.8.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
@@ -121,6 +121,7 @@
 | 3 | GET | `/api/students` | 获取所有学生列表 | — | `StudentProfile[]` |
 | 4 | GET | `/api/students/[id]` | 获取学生详情+体测记录 | — | `{student, records}` |
 | 5 | GET/POST | `/api/fitness-records` | 读/写体测记录 | `{studentId, items[]}` | `FitnessRecord` |
+| 5a | PATCH/DELETE | `/api/fitness-records/[id]` | 编辑/删除记录（日常训练学生可操作，正式体测仅教师） | `{items[], bodyFeeling}` | — |
 | 6 | GET | `/api/class-summary` | 班级统计摘要 | — | `ClassSummary` |
 | 7 | GET | `/api/reviews` | 获取审核列表 | — | `TeacherReview[]` |
 | 8 | PATCH | `/api/reviews/[id]` | 更新审核状态 | `{status, notes}` | `TeacherReview` |
@@ -981,7 +982,7 @@ resetDemoData()         // 清除所有 localStorage
 
 ## 14. 已完成/待完成状态
 
-### ✅ 已完成（MVP 0.7.0）
+### ✅ 已完成（MVP 0.8.0）
 
 | 模块 | 完成度 | 说明 |
 |------|--------|------|
