@@ -155,7 +155,7 @@ export default async function ProfilePage() {
       )}
 
       {/* 历史记录入口 */}
-      <Link href="/record">
+      <Link href="/records">
         <Card className="cursor-pointer transition-all hover:shadow-md active:scale-[0.98]">
           <CardContent className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
@@ -186,7 +186,10 @@ export default async function ProfilePage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-semibold">教师工作台</p>
+                <p className="text-sm font-semibold flex items-center gap-1.5">
+                  教师工作台
+                  <Badge variant="secondary" className="text-[9px] py-0 px-1">演示入口</Badge>
+                </p>
                 <p className="text-xs text-muted-foreground">班级总览 · 学生管理 · AI 审核</p>
               </div>
             </div>
