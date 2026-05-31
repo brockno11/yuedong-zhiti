@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fail, handleApiError, ok } from "@/lib/server/api-response";
-import { createFitnessRecord, getFitnessRecords } from "@/lib/server/data-service";
+import { createFitnessRecord, getFitnessRecords, getStudentProfile } from "@/lib/server/data-service";
 
 const bodyFeelingSchema = z.object({
   fatigueLevel: z.number().int().min(1).max(10),
@@ -20,15 +20,8 @@ const createRecordSchema = z.object({
   items: z.array(
     z.object({
       itemId: z.enum([
-        "height_weight",
-        "vital_capacity",
-        "50m_run",
-        "standing_long_jump",
-        "sit_and_reach",
-        "pull_up",
-        "sit_up",
-        "800m_run",
-        "1000m_run",
+        "height_weight", "vital_capacity", "50m_run", "standing_long_jump",
+        "sit_and_reach", "pull_up", "sit_up", "800m_run", "1000m_run",
       ]),
       value: z.number(),
     })
@@ -36,15 +29,15 @@ const createRecordSchema = z.object({
   bodyFeeling: bodyFeelingSchema,
 });
 
+// 性别不允许的项目映射
+const MALE_ONLY_ITEMS = new Set(["pull_up", "1000m_run"]);
+const FEMALE_ONLY_ITEMS = new Set(["sit_up", "800m_run"]);
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
-
-    if (!studentId) {
-      return fail("缺少 studentId", 400);
-    }
-
+    if (!studentId) return fail("缺少 studentId", 400);
     return ok(await getFitnessRecords(studentId));
   } catch (error) {
     return handleApiError(error);
@@ -54,6 +47,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const input = createRecordSchema.parse(await request.json());
+
+    // 后端性别校验
+    const student = await getStudentProfile(input.studentId);
+    if (student) {
+      const isMale = student.gender === "male";
+      for (const item of input.items) {
+        if (isMale && FEMALE_ONLY_ITEMS.has(item.itemId)) {
+          return fail(`男生不可录入该项目: ${item.itemId}`, 400);
+        }
+        if (!isMale && MALE_ONLY_ITEMS.has(item.itemId)) {
+          return fail(`女生不可录入该项目: ${item.itemId}`, 400);
+        }
+      }
+    }
+
     return ok(await createFitnessRecord(input));
   } catch (error) {
     return handleApiError(error);

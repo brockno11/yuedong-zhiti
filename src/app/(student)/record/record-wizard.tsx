@@ -37,8 +37,21 @@ export function RecordWizard() {
     hasDiscomfort: false,
     discomfortNotes: "",
   });
+  const [studentGender, setStudentGender] = useState<"male" | "female">("male");
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string>("");
   const savedRef = useRef(false);
+
+  // 读取当前学生性别
+  useEffect(() => {
+    const rawLogin = localStorage.getItem("demo_login");
+    if (rawLogin) {
+      const login = JSON.parse(rawLogin) as { gender?: string };
+      if (login.gender === "male" || login.gender === "female") {
+        setStudentGender(login.gender);
+      }
+    }
+  }, []);
 
   // 加载批次列表
   useEffect(() => {
@@ -130,12 +143,15 @@ export function RecordWizard() {
 
     if (!response.ok) {
       setIsSaving(false);
+      savedRef.current = true;
+      setSaveError("保存失败，请检查网络后重试。");
       return;
     }
 
     localStorage.removeItem("ai_analysis_cache");
     setIsSaving(false);
     savedRef.current = true;
+    setSaveError("");
   };
 
   const completionStep = hasPhysicalItems ? 4 : 3;
@@ -257,7 +273,7 @@ export function RecordWizard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <RecordProjectSelect selected={selectedItems} onToggle={toggleItem} />
+              <RecordProjectSelect selected={selectedItems} onToggle={toggleItem} gender={studentGender} />
             </CardContent>
           </>
         )}
@@ -297,6 +313,11 @@ export function RecordWizard() {
         {/* 完成 */}
         {(step === 3 && !hasPhysicalItems) || step === 4 ? (
           <CardContent>
+            {saveError && (
+              <div className="mb-4 rounded-xl border border-level-improve/30 bg-level-improve/5 p-3 text-sm text-level-improve">
+                {saveError}
+              </div>
+            )}
             <RecordComplete
               itemCount={selectedItems.length}
               hasPhysicalItems={hasPhysicalItems}
