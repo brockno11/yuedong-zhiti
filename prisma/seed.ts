@@ -50,6 +50,14 @@ async function main() {
     create: { id: ACTIVE_BATCH_ID, name: "2026春季日常训练", academicYear: "2025-2026", semester: "春季", round: 1, type: "daily", classId: CLASS_ID, status: "active" },
   });
 
+  // 2025秋季正式体测批次（上一学期，用于展示体质变化趋势）
+  const PREV_BATCH_ID = "batch-2025-autumn-official";
+  await prisma.assessmentBatch.upsert({
+    where: { id: PREV_BATCH_ID },
+    update: { name: "2025秋季学期首测", academicYear: "2025-2026", semester: "秋季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
+    create: { id: PREV_BATCH_ID, name: "2025秋季学期首测", academicYear: "2025-2026", semester: "秋季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
+  });
+
   await prisma.userAccount.deleteMany({
     where: { role: "teacher", username: { not: "zhoulaoshi" } },
   });
@@ -270,6 +278,28 @@ async function main() {
       create: { id: dr.id, studentId: "S001", date: new Date(dr.date), semester: "高二下 · 2026春季", batchId: ACTIVE_BATCH_ID, recordType: "daily_training", fatigueLevel: dr.fatigue, recoveryStatus: dr.recovery, hasSoreness: dr.soreness, sorenessAreasJson: "[]", hasDiscomfort: false, discomfortNotes: "", items: { create: dr.items } },
     });
   }
+
+  // S001 2025秋季正式体测（上期成绩偏低，与2026春季形成上升趋势）
+  const S001_FALL_RECORD_ID = "R-S001-fall";
+  await prisma.fitnessRecord.upsert({
+    where: { id: S001_FALL_RECORD_ID },
+    update: { studentId: "S001", date: new Date("2025-11-01T09:00:00Z"), semester: "高二上 · 2025秋季", batchId: PREV_BATCH_ID, recordType: "official_test", fatigueLevel: 6, recoveryStatus: "normal", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部","肩部"]), hasDiscomfort: false, discomfortNotes: "", items: { deleteMany: {}, create: [
+      { id: "S001-fall-50m", itemId: "50m_run", value: 8.5, score: 65, grade: "pass" },
+      { id: "S001-fall-jump", itemId: "standing_long_jump", value: 175, score: 62, grade: "pass" },
+      { id: "S001-fall-pull", itemId: "pull_up", value: 3, score: 55, grade: "improve" },
+      { id: "S001-fall-1000m", itemId: "1000m_run", value: 280, score: 58, grade: "improve" },
+      { id: "S001-fall-reach", itemId: "sit_and_reach", value: 7, score: 58, grade: "improve" },
+      { id: "S001-fall-vc", itemId: "vital_capacity", value: 2600, score: 62, grade: "pass" },
+    ] } },
+    create: { id: S001_FALL_RECORD_ID, studentId: "S001", date: new Date("2025-11-01T09:00:00Z"), semester: "高二上 · 2025秋季", batchId: PREV_BATCH_ID, recordType: "official_test", fatigueLevel: 6, recoveryStatus: "normal", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部","肩部"]), hasDiscomfort: false, discomfortNotes: "", items: { create: [
+      { id: "S001-fall-50m", itemId: "50m_run", value: 8.5, score: 65, grade: "pass" },
+      { id: "S001-fall-jump", itemId: "standing_long_jump", value: 175, score: 62, grade: "pass" },
+      { id: "S001-fall-pull", itemId: "pull_up", value: 3, score: 55, grade: "improve" },
+      { id: "S001-fall-1000m", itemId: "1000m_run", value: 280, score: 58, grade: "improve" },
+      { id: "S001-fall-reach", itemId: "sit_and_reach", value: 7, score: 58, grade: "improve" },
+      { id: "S001-fall-vc", itemId: "vital_capacity", value: 2600, score: 62, grade: "pass" },
+    ] } },
+  });
 
   await prisma.aIReport.upsert({
     where: { id: mockAIStudentReport.id },

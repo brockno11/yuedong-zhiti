@@ -31,7 +31,7 @@ export function PortraitTrendSection({ options, dailyData }: {
         </div>
       </CardHeader>
       <CardContent>
-        <FitnessTrendChart data={current.data.map(d => ({ date: d.date, value: d.value, grade: d.grade }))} height={200} unit={current.unit} />
+        <FitnessTrendChart data={current.data.map(d => ({ date: d.date, value: d.value, grade: d.grade }))} dailyData={dailyData} height={220} unit={current.unit} />
         <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
           {options.map(o => (
             <button key={o.key} type="button" onClick={() => setActive(o.key)}
