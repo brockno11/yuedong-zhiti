@@ -19,6 +19,24 @@ function getDemoStudentId(): string {
   catch { return ""; }
 }
 
+function bmiReferenceScore(bmi: number): number {
+  if (bmi >= 18.5 && bmi < 24) return 85;
+  if (bmi >= 17 && bmi < 18.5) return 65;
+  if (bmi >= 24 && bmi < 28) return 60;
+  return 50;
+}
+
+// 聚合同一批次下所有记录，取每个 itemId 最新值
+function getBatchLatestItems(records: { items: { itemId: string; score: number; value: number; grade: string }[] }[]) {
+  const map = new Map<string, { itemId: string; score: number; value: number; grade: string }>();
+  for (const r of records) {
+    for (const i of r.items) {
+      if (!map.has(i.itemId)) map.set(i.itemId, i);
+    }
+  }
+  return Array.from(map.values());
+}
+
 export default async function PortraitPage() {
   const studentId = getDemoStudentId();
   const student = studentId ? await getStudentProfile(studentId) : null;
@@ -35,32 +53,44 @@ export default async function PortraitPage() {
     );
   }
 
-  const completeness = calculateRecordCompleteness(latestRecord.items.map(i => i.itemId), student.gender);
+  // 聚合当前批次所有记录的 item
+  const batchLatestItems = getBatchLatestItems(allRecords);
+  const batchItemIds = batchLatestItems.map(i => i.itemId);
+  const completeness = calculateRecordCompleteness(batchItemIds, student.gender);
 
-  const dimensionDefs: { dimension: string; itemId: string; classAverage: number }[] = [
-    { dimension: "速度", itemId: "50m_run", classAverage: 70 },
-    { dimension: "力量", itemId: student.gender === "male" ? "pull_up" : "sit_up", classAverage: 65 },
-    { dimension: "耐力", itemId: student.gender === "male" ? "1000m_run" : "800m_run", classAverage: 66 },
-    { dimension: "柔韧", itemId: "sit_and_reach", classAverage: 72 },
-    { dimension: "身体形态", itemId: "height_weight", classAverage: 74 },
+  // 身体形态参考（基于 BMI，不上场 item）
+  const bodyScore = bmiReferenceScore(student.bmi);
+
+  // 雷达图：5个运动维度（从聚合数据取最新得分）+ 身体形态参考
+  const dims = [
+    { dimension: "速度", itemId: "50m_run", classAvg: 70 },
+    { dimension: "力量", itemId: student.gender === "male" ? "pull_up" : "sit_up", classAvg: 65 },
+    { dimension: "耐力", itemId: student.gender === "male" ? "1000m_run" : "800m_run", classAvg: 66 },
+    { dimension: "柔韧", itemId: "sit_and_reach", classAvg: 72 },
+    { dimension: "身体形态参考", itemId: "__body_ref__", classAvg: 74 },
   ];
 
-  const allRadarData: RadarChartDataPoint[] = dimensionDefs.map(d => {
-    const item = latestRecord.items.find(i => i.itemId === d.itemId);
-    return { dimension: d.dimension, score: item?.score ?? null, classAverage: d.classAverage, fullMark: 100 };
+  const allRadarData: RadarChartDataPoint[] = dims.map(d => {
+    if (d.itemId === "__body_ref__") {
+      return { dimension: d.dimension, score: bodyScore, classAverage: d.classAvg, fullMark: 100 };
+    }
+    const item = batchLatestItems.find(i => i.itemId === d.itemId);
+    return { dimension: d.dimension, score: item?.score ?? null, classAverage: d.classAvg, fullMark: 100 };
   });
 
   const radarWithData = allRadarData.filter(d => d.score !== null);
   const missingDims = allRadarData.filter(d => d.score === null).map(d => d.dimension);
+  const sportDimsWithData = allRadarData.filter(d => d.score !== null && d.dimension !== "身体形态参考");
 
+  // 趋势：50米跑
   const trendData: TrendChartDataPoint[] = allRecords.filter(r => r.items.some(i => i.itemId === "50m_run")).slice(0, 3).reverse().map(r => {
     const runItem = r.items.find(i => i.itemId === "50m_run")!;
     return { date: r.semester, value: runItem.value, grade: runItem.grade };
   });
 
-  const avgScore = Math.round(latestRecord.items.reduce((sum, i) => sum + i.score, 0) / latestRecord.items.length);
-  const strengths = latestRecord.items.filter(i => i.grade === "excellent" || i.grade === "good").map(i => FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId);
-  const improvements = latestRecord.items.filter(i => i.grade === "improve" || i.grade === "pass").map(i => FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId);
+  const avgScore = Math.round(batchLatestItems.reduce((sum, i) => sum + i.score, 0) / batchLatestItems.length);
+  const strengths = batchLatestItems.filter(i => i.grade === "excellent" || i.grade === "good").map(i => FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId);
+  const improvements = batchLatestItems.filter(i => i.grade === "improve" || i.grade === "pass").map(i => FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId);
 
   const lowest = radarWithData.length > 0 ? radarWithData.reduce((a, b) => (a.score! < b.score!) ? a : b) : null;
   const insightText = lowest && lowest.score !== null && lowest.score! < 60
@@ -75,14 +105,17 @@ export default async function PortraitPage() {
     <div className="mx-auto max-w-6xl space-y-5 px-4 sm:px-0">
       <PageHeader title="体质画像" description={`${student.name} · ${student.grade} · ${latestRecord.semester}`} />
 
-      {/* 批次 + 记录类型 */}
+      {/* 记录类型 + 批次 */}
       {(latestRecord.batchName || latestRecord.recordType) && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {latestRecord.batchName && <Badge variant="secondary" className="text-[10px]">{latestRecord.batchName}</Badge>}
-          <Badge variant="outline" className="text-[10px]">{latestRecord.recordType === "daily_training" ? "日常训练" : "正式体测"}</Badge>
+          <Badge variant="outline" className="text-[10px]">
+            {latestRecord.recordType === "daily_training" ? "日常训练观察" : "正式体测画像"}
+          </Badge>
         </div>
       )}
 
+      {/* 数据完整度提示 */}
       {completeness.isPartial && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           当前画像基于已录入的 {completeness.recordedCount}/{completeness.expectedCount} 个项目生成，部分维度因缺少数据暂不评价。
@@ -90,11 +123,12 @@ export default async function PortraitPage() {
         </div>
       )}
 
+      {/* 核心指标 + 洞察 */}
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="rounded-xl border shadow-sm lg:col-span-1">
           <CardContent className="p-5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {completeness.isComplete ? "综合评分" : "已记录项目平均分"}
+              {completeness.isComplete ? "综合评分" : "已录项目平均分"}
             </p>
             <div className="mt-2 flex items-baseline gap-1.5">
               <span className="text-4xl font-bold tabular-nums">{avgScore}</span>
@@ -119,21 +153,32 @@ export default async function PortraitPage() {
         </Card>
       </div>
 
+      {/* 雷达图 */}
       <Card className="rounded-xl border shadow-sm">
         <CardHeader className="pb-2"><CardTitle className="text-base">体质雷达图</CardTitle></CardHeader>
         <CardContent>
-          <FitnessRadarChart data={allRadarData} height={300} showComparison />
-          {radarWithData.length > 0 && (
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              虚线为班级均值，实线为你的表现{lowest ? `。${lowest.dimension}维度的提升空间最大` : ""}
-            </p>
+          {sportDimsWithData.length >= 3 ? (
+            <>
+              <FitnessRadarChart data={allRadarData} height={300} showComparison />
+              {radarWithData.length > 0 && (
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  虚线为班级均值，实线为你的表现·身体形态为BMI参考维度
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">已录数据不足以形成雷达图，请至少补充 3 个维度</p>
+              <Link href="/record"><Button variant="outline" size="sm" className="gap-1 mt-2"><PlusCircle className="h-3.5 w-3.5" />补充体测项目</Button></Link>
+            </div>
           )}
-          {missingDims.length > 0 && (
+          {missingDims.length > 0 && missingDims[0] !== "身体形态参考" && (
             <p className="mt-1 text-center text-xs text-muted-foreground">暂无数据：{missingDims.join("、")}</p>
           )}
         </CardContent>
       </Card>
 
+      {/* 趋势图 */}
       {trendData.length >= 2 && (
         <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">50米跑趋势</CardTitle></CardHeader>
@@ -141,6 +186,7 @@ export default async function PortraitPage() {
         </Card>
       )}
 
+      {/* 优势/待提升 */}
       <div className="grid gap-5 sm:grid-cols-2">
         <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-level-excellent" />优势项目</CardTitle></CardHeader>

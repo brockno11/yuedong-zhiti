@@ -195,8 +195,6 @@ export function RecordWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, completionStep, isSaving]);
 
-  const selectedBatch = batches.find(b => b.id === selectedBatchId);
-
   return (
     <>
       <Link
@@ -221,72 +219,92 @@ export function RecordWizard() {
       </div>
 
       <Card className="rounded-xl shadow-sm">
-        {/* Step 0: 选择批次 */}
+        {/* Step 0: 选择记录类型 */}
         {step === 0 && (
           <>
             <CardHeader>
-              <CardTitle className="text-lg">选择体测批次</CardTitle>
-              <CardDescription>请选择本次记录所属的体测批次</CardDescription>
+              <CardTitle className="text-lg">选择记录类型</CardTitle>
+              <CardDescription>请选择本次记录的用途</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {batches.length > 0 ? (
-                batches.map((batch) => (
-                  <button
-                    key={batch.id}
-                    type="button"
-                    onClick={() => { setSelectedBatchId(batch.id); setRecordType("official_test"); }}
-                    className={cn(
-                      "w-full rounded-xl border p-4 text-left transition-all",
-                      selectedBatchId === batch.id
-                        ? "border-primary bg-primary/5 ring-1 ring-primary"
-                        : "border-border hover:border-primary/30 hover:bg-accent"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                        batch.type === "daily" ? "bg-blue-500/10" : "bg-primary/10"
-                      )}>
-                        {batch.type === "daily" ? (
-                          <Dumbbell className="h-5 w-5 text-blue-500" />
-                        ) : (
-                          <GraduationCap className="h-5 w-5 text-primary" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">{batch.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {batch.type === "daily" ? "日常训练" : batch.status === "archived" ? "正式体测 · 已归档" : "正式体测"}
-                        </p>
-                      </div>
-                      <Badge variant={batch.status === "active" ? "excellent" : "secondary"} className="text-[10px]">
-                        {batch.status === "active" ? "进行中" : batch.status === "archived" ? "已归档" : batch.status}
-                      </Badge>
+            <CardContent className="space-y-4">
+              {/* 正式体测入口 */}
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => { setRecordType("official_test"); setSelectedBatchId(""); }}
+                  className={cn(
+                    "w-full rounded-xl border p-4 text-left transition-all",
+                    recordType === "official_test"
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:border-primary/30 hover:bg-accent"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <GraduationCap className="h-5 w-5 text-primary" />
                     </div>
-                  </button>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">暂无可用批次，将以独立记录方式保存</p>
-              )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold flex items-center gap-1.5">
+                        正式体测数据
+                        {recordType === "official_test" && <Badge variant="pass" className="text-[9px] py-0">需谨慎确认</Badge>}
+                      </p>
+                      <p className="text-xs text-muted-foreground">用于录入学校统一体测成绩</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">请确认成绩无误后提交。提交后如需修改请联系体育教师更正。</p>
+                    </div>
+                  </div>
+                </button>
 
-              {/* 日常训练快捷入口 */}
+                {/* 正式批次选择 */}
+                {recordType === "official_test" && (
+                  <div className="ml-2 pl-4 border-l-2 border-primary/20 space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">选择体测批次</p>
+                    {batches.filter(b => b.type !== "daily").length > 0 ? (
+                      batches.filter(b => b.type !== "daily").map((batch) => (
+                        <button key={batch.id} type="button" onClick={() => setSelectedBatchId(batch.id)}
+                          className={cn("w-full rounded-lg border p-2.5 text-left text-xs transition-colors",
+                            selectedBatchId === batch.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent")}>
+                          <span className="font-medium">{batch.name}</span>
+                          <Badge variant={batch.status === "active" ? "excellent" : "secondary"} className="text-[9px] ml-2">
+                            {batch.status === "active" ? "进行中" : "已归档"}
+                          </Badge>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground py-2">暂无可录入的正式体测批次</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 分隔 */}
+              <div className="flex items-center gap-2">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[10px] text-muted-foreground">或</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
+              {/* 日常训练入口 */}
               <button
                 type="button"
-                onClick={() => { setSelectedBatchId(""); setRecordType("daily_training"); }}
+                onClick={() => { setRecordType("daily_training"); setSelectedBatchId(""); }}
                 className={cn(
                   "w-full rounded-xl border p-4 text-left transition-all",
                   recordType === "daily_training"
                     ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
-                    : "border-dashed border-muted-foreground/30 hover:border-blue-300 hover:bg-blue-50/50"
+                    : "border-border hover:border-blue-300 hover:bg-blue-50/50"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
                     <Dumbbell className="h-5 w-5 text-blue-500" />
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">日常训练记录</p>
-                    <p className="text-xs text-muted-foreground">不绑定正式体测批次，用于训练过程追踪</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold flex items-center gap-1.5">
+                      日常训练记录
+                      {recordType === "daily_training" && <Badge variant="excellent" className="text-[9px] py-0">可随时更新</Badge>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">用于记录平时练习和阶段变化</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">练习数据可随时补充或更新，体育教师也可协助调整。</p>
                   </div>
                 </div>
               </button>
@@ -298,11 +316,13 @@ export function RecordWizard() {
         {step === 1 && (
           <>
             <CardHeader>
-              <CardTitle className="text-lg">选择体测项目</CardTitle>
+              <CardTitle className="text-lg">
+                {recordType === "daily_training" ? "选择训练记录项目" : "选择正式体测项目"}
+              </CardTitle>
               <CardDescription>
                 {recordType === "daily_training"
-                  ? "日常训练 — 选择要记录的项目"
-                  : `批次：${selectedBatch?.name ?? "—"} — 选择项目，可多选`}
+                  ? "可记录阶段性练习表现"
+                  : "请按实际测试成绩录入，确认无误后提交"}
               </CardDescription>
             </CardHeader>
             <CardContent>
