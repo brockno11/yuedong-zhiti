@@ -126,6 +126,74 @@ export const mockAIStudentReport: AIStudentReport = {
     "不要在空腹或刚吃饱时进行剧烈运动",
     "穿着合适的运动鞋和透气服装",
     "训练强度应循序渐进，不要突然大幅增加",
+    "每次训练后进行5-10分钟拉伸放松",
+  ],
+
+  // ---- 扩展字段（batch_report 全维度报告）----
+  itemScores: [
+    { itemId: "vital_capacity", itemName: "肺活量", valueText: "3200ml", score: 78, grade: "pass", statusLabel: "稳定项", analysis: "肺活量处于及格偏上水平，有一定提升空间。与心肺耐力直接相关，建议通过有氧训练逐步提升。", suggestion: "每周安排2-3次有氧训练，如慢跑、游泳等" },
+    { itemId: "50m_run", itemName: "50米跑", valueText: "8.1秒", score: 70, grade: "pass", statusLabel: "需关注项", analysis: "短距离速度表现偏弱，起跑反应和爆发力有待提高。与下肢力量、核心稳定性均有关系。", suggestion: "增加起跑练习和下肢爆发力训练，每周2次短距离冲刺" },
+    { itemId: "standing_long_jump", itemName: "立定跳远", valueText: "210cm", score: 82, grade: "good", statusLabel: "优势项", analysis: "下肢爆发力表现良好，起跳技术和落地稳定性较好。这是速度类项目的重要基础。", suggestion: "继续保持，可结合深蹲和跳跃练习进一步提升" },
+    { itemId: "sit_and_reach", itemName: "坐位体前屈", valueText: "12cm", score: 78, grade: "pass", statusLabel: "稳定项", analysis: "柔韧性处于中等水平。良好的柔韧性有助于跑步步幅、动作舒展和损伤预防。", suggestion: "每次训练后增加5-10分钟拉伸，特别是腿后侧和腰背" },
+    { itemId: "pull_up", itemName: "引体向上", valueText: "8次", score: 85, grade: "good", statusLabel: "优势项", analysis: "上肢力量表现良好，肩背力量基础扎实。可作为其他力量训练的基础支撑。", suggestion: "保持引体向上练习，可尝试增加负重或变式训练" },
+    { itemId: "1000m_run", itemName: "1000米跑", valueText: "260秒", score: 68, grade: "pass", statusLabel: "需关注项", analysis: "中长跑成绩偏低，心肺耐力是目前的主要短板。配速在后半程明显下降，说明有氧基础需要加强。", suggestion: "重点突破：每周3次有氧训练，从慢跑开始逐步增加距离和强度" },
+  ],
+
+  relationshipAnalysis: [
+    { title: "速度与爆发力的协同关系", relatedItems: ["50米跑", "立定跳远"], analysis: "50米跑和立定跳远都依赖下肢爆发力和核心稳定性。立定跳远的良好基础（82分）说明下肢力量较好，但50米跑（70分）没有充分体现这一优势，可能与起跑技术和协调性有关。", suggestion: "在爆发力训练中融入起跑反应练习，将力量优势转化为速度表现" },
+    { title: "心肺耐力的综合支撑", relatedItems: ["肺活量", "1000米跑"], analysis: "肺活量（78分）和1000米跑（68分）都处于及格水平，表明心肺耐力整体偏弱。肺活量是耐力表现的基础，两者之间存在直接关联。", suggestion: "优先建立有氧基础，从低强度长时间慢跑开始，逐步过渡到间歇训练" },
+    { title: "柔韧性与跑步效率", relatedItems: ["坐位体前屈", "50米跑", "1000米跑"], analysis: "坐位体前屈（78分）处于中等水平。柔韧性不足可能影响跑步时的步幅和动作效率，特别是中长跑后半程动作容易变形。", suggestion: "将柔韧训练融入每次训练的热身和放松环节，重点拉伸腿后侧和髋部" },
+  ],
+
+  strengthsAnalysis: [
+    { item: "立定跳远（82分）", reason: "下肢爆发力和协调性表现良好，是整体体能的一个亮点项目", foundationFor: "可作为50米跑和1000米跑训练的基础，良好的下肢力量有助于提升速度耐力" },
+    { item: "引体向上（85分）", reason: "上肢和背部力量扎实，核心稳定性较好", foundationFor: "可在综合训练中发挥上肢力量优势，带动其他力量类项目" },
+  ],
+
+  stageTrainingPlan: [
+    {
+      stage: "第1阶段：适应与动作质量",
+      goal: "建立规律训练习惯，提升动作质量，打好有氧基础",
+      duration: "2-3周",
+      focus: "低强度、高频率，以动作学习和心肺适应为主",
+      exercises: [
+        { name: "慢跑热身", description: "以轻松配速慢跑，关注呼吸节奏", sets: "1组", frequency: "每周4次", duration: "每次15-20分钟", notes: "心率控制在轻松对话的水平" },
+        { name: "基础力量训练", description: "俯卧撑+深蹲+平板支撑", sets: "3组 × 10-12次", frequency: "每周3次", duration: "每次约15分钟", notes: "动作标准优先于数量" },
+        { name: "柔韧训练", description: "全身静态拉伸+腿后侧动态拉伸", sets: "1组", frequency: "每次训练后", duration: "5-10分钟", notes: "不要弹振，保持每个拉伸15-30秒" },
+      ],
+      recoveryAdvice: "训练后充分拉伸，保证充足睡眠，可进行轻度散步作为主动恢复",
+    },
+    {
+      stage: "第2阶段：能力强化",
+      goal: "提升心肺耐力和专项能力，逐步增加训练强度和量",
+      duration: "3-4周",
+      focus: "以中长跑耐力提升为主，兼顾速度和力量",
+      exercises: [
+        { name: "变速跑", description: "慢跑2分钟+快跑30秒交替", sets: "5-6轮", frequency: "每周3次", duration: "每次约25分钟", notes: "快跑阶段保持80%用力，不要全力冲刺" },
+        { name: "起跑与冲刺练习", description: "练习起跑姿势、加速跑、途中跑技术", sets: "5组 × 50米", frequency: "每周2次", duration: "每次约15分钟", notes: "在跑道上进行，穿运动鞋" },
+        { name: "引体向上训练", description: "标准引体向上+弹力带辅助", sets: "4组 × 6-8次", frequency: "每周2次", duration: "每次约10分钟", notes: "每组做到力竭前1-2次停止" },
+        { name: "核心力量", description: "仰卧起坐+平板支撑+侧平板", sets: "3组 × 15次/30秒", frequency: "每周3次", duration: "每次约10分钟", notes: "核心收紧，呼吸均匀" },
+      ],
+      recoveryAdvice: "高强度训练日之间至少间隔一天，可用散步或轻度拉伸作为主动恢复",
+    },
+    {
+      stage: "第3阶段：综合巩固",
+      goal: "综合提升各项能力，模拟体测场景，巩固训练成果",
+      duration: "2-3周",
+      focus: "全面巩固，关注弱项突破和整体协调",
+      exercises: [
+        { name: "间歇跑", description: "400米×4组，组间慢走2分钟", sets: "4组", frequency: "每周2次", duration: "每次约25分钟", notes: "每组保持稳定配速，目标是逐步缩短用时" },
+        { name: "循环力量训练", description: "俯卧撑→深蹲跳→引体向上→仰卧起坐→平板支撑", sets: "3轮", frequency: "每周2次", duration: "每次约20分钟", notes: "动作间休息30秒，轮间休息2分钟" },
+        { name: "完整拉伸", description: "全身柔韧训练，重点腿后侧、髋部、肩背", sets: "1组", frequency: "每次训练后", duration: "10-15分钟", notes: "结合呼吸，深度拉伸" },
+      ],
+      recoveryAdvice: "本阶段训练强度较高，务必保证充足睡眠和营养，感觉疲劳可适当降低强度",
+    },
+  ],
+
+  teachingSuggestions: [
+    { scenario: "课堂教学", suggestion: "该生在有氧耐力方面需要重点关注。体育课上可安排中长跑训练时的分组配速，让该生从较慢组开始逐步建立信心和节奏感。", observationPoint: "观察跑步后半程动作是否明显变形，呼吸节奏是否稳定" },
+    { scenario: "分层指导", suggestion: "该生上肢力量（引体向上85分）是班级中的优势项，可作为小组力量训练的示范者，带动其他同学训练积极性。", observationPoint: "关注动作规范性，避免追求数量导致代偿" },
+    { scenario: "练习形式", suggestion: "建议在课堂中引入间歇跑和趣味追逐游戏，提高该生对耐力训练的兴趣。可结合跳绳、障碍跑等形式增加趣味性。", observationPoint: "注意强度递进，不要一次性增加过多训练量" },
   ],
 };
 

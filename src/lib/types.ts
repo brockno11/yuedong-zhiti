@@ -126,11 +126,15 @@ export interface BodyFeeling {
 
 // ---- 体质画像维度 ----
 export interface FitnessDimension {
-  key: "speed" | "strength" | "endurance" | "flexibility" | "body_composition";
+  key: string;  // "speed" | "strength" | "endurance" | "flexibility" | "body_composition" | "explosive_power" | "muscle_strength" | "cardiorespiratory"
   label: string;
   score: number; // 0-100
   grade: GradeTier;
   classAverage: number;
+  // 扩展字段（batch_report 全维度报告使用）
+  relatedItems?: string[];   // 关联项目中文名
+  analysis?: string;         // 维度分析说明
+  suggestion?: string;       // 提升方向
 }
 
 // ---- AI 学生报告 ----
@@ -157,6 +161,8 @@ export interface AIStudentReport {
     currentLevel: string;
     possibleCauses: string[];
     improvementPotential: string;
+    priority?: "high" | "medium";
+    relatedDimensions?: string[];
   }[];
 
   trainingPlan: {
@@ -174,6 +180,58 @@ export interface AIStudentReport {
   }[];
 
   safetyReminders: string[];
+
+  // ---- 扩展字段（batch_report 全维度报告）----
+  // 逐项分析：每个正式体测项目的成绩详情
+  itemScores?: {
+    itemId: FitnessItemId;
+    itemName: string;
+    valueText: string;       // "6.0秒" / "185cm"
+    score: number;
+    grade: GradeTier;
+    statusLabel: string;     // "优势项" | "稳定项" | "需关注项"
+    analysis: string;
+    suggestion: string;
+  }[];
+
+  // 项目关系分析
+  relationshipAnalysis?: {
+    title: string;
+    relatedItems: string[];  // 中文项目名
+    analysis: string;
+    suggestion: string;
+  }[];
+
+  // 优势项目深度分析
+  strengthsAnalysis?: {
+    item: string;
+    reason: string;
+    foundationFor: string;
+  }[];
+
+  // 阶段训练方案（替代简单周结构）
+  stageTrainingPlan?: {
+    stage: string;           // "第1阶段：适应与动作质量"
+    goal: string;
+    duration: string;        // "2-3周"
+    focus: string;
+    exercises: {
+      name: string;
+      description: string;
+      sets: string;
+      frequency: string;
+      duration: string;
+      notes: string;
+    }[];
+    recoveryAdvice: string;
+  }[];
+
+  // 教学参考
+  teachingSuggestions?: {
+    scenario: string;        // "课堂教学" / "分层指导" / "练习形式"
+    suggestion: string;
+    observationPoint?: string;
+  }[];
 }
 
 // ---- AI 班级报告 ----

@@ -1,5 +1,5 @@
 // ===== 跃动智体 — 体测评分逻辑 =====
-import type { FitnessItemId, GradeLevel, Gender } from "./types";
+import type { FitnessItemId, GradeLevel, Gender, GradeTier } from "./types";
 
 // ---- 评分标准（高中生，参考国家学生体质健康标准）----
 // 结构: [性别][年级][项目] = { excellent, good, pass } 阈值
@@ -180,4 +180,170 @@ function getGradeToScore(grade: string): number {
     default:
       return 70;
   }
+}
+
+// ---- 维度兜底计算 ----
+// 当 AI 未返回完整 dimensions 时，基于正式体测项目计算维度数据
+
+export interface DimensionInput {
+  itemId: string;
+  itemName: string;
+  score: number;
+  grade: GradeTier;
+}
+
+export function computeDimensionsFromItems(
+  scoredItems: DimensionInput[],
+  bmi: number | null,
+  gender: "male" | "female"
+): Array<{
+  key: string;
+  label: string;
+  score: number | null;
+  grade: GradeTier | null;
+  relatedItems: string[];
+  analysis: string;
+  suggestion: string;
+}> {
+  // 6 维度定义
+  const dimensionDefs = [
+    {
+      key: "body_composition",
+      label: "身体形态",
+      itemIds: ["height_weight"],
+      description: "BMI 指数反映身体形态基础",
+    },
+    {
+      key: "cardiorespiratory",
+      label: "心肺耐力",
+      itemIds: ["vital_capacity", gender === "male" ? "1000m_run" : "800m_run"],
+      description: "肺活量与中长跑综合反映心肺功能",
+    },
+    {
+      key: "speed",
+      label: "速度能力",
+      itemIds: ["50m_run"],
+      description: "短距离冲刺反映速度与反应能力",
+    },
+    {
+      key: "explosive_power",
+      label: "爆发力",
+      itemIds: ["standing_long_jump"],
+      description: "立定跳远反映下肢爆发力与协调性",
+    },
+    {
+      key: "flexibility",
+      label: "柔韧性",
+      itemIds: ["sit_and_reach"],
+      description: "坐位体前屈反映身体柔韧程度",
+    },
+    {
+      key: "muscle_strength",
+      label: "肌肉力量",
+      itemIds: gender === "male" ? ["pull_up"] : ["sit_up"],
+      description: gender === "male"
+        ? "引体向上反映上肢与背部力量"
+        : "仰卧起坐反映核心与腰腹力量",
+    },
+  ];
+
+  const itemMap = new Map<string, DimensionInput>();
+  for (const item of scoredItems) {
+    itemMap.set(item.itemId, item);
+  }
+
+  return dimensionDefs.map((def) => {
+    const relatedNames: string[] = [];
+    let totalScore = 0;
+    let totalGrade: GradeTier | null = null;
+    let count = 0;
+
+    for (const id of def.itemIds) {
+      const item = itemMap.get(id);
+      if (item && item.score > 0) {
+        relatedNames.push(item.itemName);
+        totalScore += item.score;
+        count++;
+        // 取最低等级作为维度等级（保守估计）
+        if (!totalGrade || gradeToOrder(item.grade) < gradeToOrder(totalGrade)) {
+          totalGrade = item.grade;
+        }
+      }
+    }
+
+    // 身体形态特殊处理：基于 BMI
+    if (def.key === "body_composition" && bmi !== null) {
+      if (bmi < 18.5) {
+        return {
+          key: def.key, label: def.label, score: 70,
+          grade: "pass" as GradeTier, relatedItems: ["身高体重"],
+          analysis: `BMI ${bmi}，属于偏瘦范围。建议在训练中适当增加力量训练和营养补充。`,
+          suggestion: "关注体重变化，增加蛋白质摄入配合力量训练",
+        };
+      }
+      if (bmi >= 24) {
+        return {
+          key: def.key, label: def.label, score: 65,
+          grade: "pass" as GradeTier, relatedItems: ["身高体重"],
+          analysis: `BMI ${bmi}，BMI 指标值得关注。建议通过规律有氧运动和饮食调整逐步改善身体形态。`,
+          suggestion: "增加有氧运动频率，关注饮食结构和作息规律",
+        };
+      }
+      return {
+        key: def.key, label: def.label, score: 85,
+        grade: "good" as GradeTier, relatedItems: ["身高体重"],
+        analysis: `BMI ${bmi}，属于正常范围，体重控制良好。`,
+        suggestion: "保持当前体重管理习惯，继续规律运动",
+      };
+    }
+
+    if (count === 0) {
+      return {
+        key: def.key, label: def.label, score: null, grade: null,
+        relatedItems: def.itemIds.map(idToName),
+        analysis: "暂无该项目正式体测数据，建议补充后获得完整评价。",
+        suggestion: "建议完成该维度对应项目的正式体测",
+      };
+    }
+
+    const avgScore = Math.round(totalScore / count);
+    return {
+      key: def.key, label: def.label,
+      score: avgScore, grade: totalGrade ?? "pass",
+      relatedItems: relatedNames,
+      analysis: count === def.itemIds.length
+        ? `该维度 ${relatedNames.join("、")} 均已测试，${avgScore >= 80 ? "表现良好" : avgScore >= 60 ? "有一定提升空间" : "建议重点关注"}。${def.description}。`
+        : `已测试 ${relatedNames.join("、")}，${avgScore >= 80 ? "表现良好" : avgScore >= 60 ? "有一定提升空间" : "建议重点关注"}。${def.description}。`,
+      suggestion: avgScore >= 80
+        ? "继续保持并适度挑战更高目标"
+        : avgScore >= 60
+          ? "建议纳入常规训练计划，逐步提升"
+          : "建议作为重点训练方向，每周安排专项练习",
+    };
+  });
+}
+
+function gradeToOrder(grade: GradeTier): number {
+  switch (grade) {
+    case "excellent": return 4;
+    case "good": return 3;
+    case "pass": return 2;
+    case "improve": return 1;
+    default: return 0;
+  }
+}
+
+function idToName(id: string): string {
+  const names: Record<string, string> = {
+    vital_capacity: "肺活量",
+    "50m_run": "50米跑",
+    standing_long_jump: "立定跳远",
+    sit_and_reach: "坐位体前屈",
+    pull_up: "引体向上",
+    sit_up: "仰卧起坐",
+    "1000m_run": "1000米跑",
+    "800m_run": "800米跑",
+    height_weight: "身高体重",
+  };
+  return names[id] ?? id;
 }

@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-06-01 | 版本：MVP 0.9.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23
+> 生成日期：2026-06-01 | 版本：MVP 0.9.2 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 22/22
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
@@ -188,15 +188,31 @@ noRecord → hasRecordNoReport → [用户点击生成] → hasCurrentReport
 1. 优先 `sourceRecordId === latestRecord.id`
 2. 其次 `sourceRecordDate === latestRecord.date`
 
-### 页面结构（从上到下）
-1. 报告状态卡（根据状态显示不同内容）
-2. 首屏摘要（审核状态 + 一句话画像 + 本周目标）
-3. 数据完整度（局部分析/综合分析 + 已录/待补充列表）
-4. 重点提升（weaknessAnalysis，最多3项）
-5. 本周训练计划（按周展示）
-6. 恢复与安全提醒
-7. 教师审核状态
-8. 历史报告（底部 Accordion，默认折叠）
+### 页面结构（从上到下，v0.9.2 — 全维度报告中心）
+1. **页面标题**：AI 智能指导 + 简要描述，简洁不臃肿
+2. **正式体测分析**：完成度/最新日期/报告状态，操作按钮（查看/生成/更新），批次列表可点击进入对应报告
+3. **单项分析**：6 个性别适配项目卡片，每卡含正式得分、日常训练次数、趋势、新数据角标
+4. **训练情况**：近 7/30 天训练、最近训练、训练节奏、项目分布、轻量建议
+5. **历史报告**：底部折叠，按类型分组（正式体测分析/单项分析/其他报告）
+6. **报告详情**（v0.9.2 全维度）：
+   1. 顶部操作区（返回按钮+Badge行+批次切换器）
+   2. 报告总览（摘要/评分/等级）
+   3. 各项目成绩表（6项完整展示）
+   4. 各维度表现（6维度，AI未返回时前端兜底计算）
+   5. 项目关系分析（速度+爆发力、心肺+耐力等）
+   6. 重点关注项目（全部展示，含优先级Badge）
+   7. 优势与提升空间（含优势深度分析）
+   8. 阶段训练参考（3阶段可折叠：适应→强化→巩固）
+   9. 教学参考（给体育教师的课堂指导）
+   10. 恢复与安全提醒（5-6条）
+   11. 审核状态说明
+
+### 新增特性（v0.9.2）
+- **批次切换生效**：建立批次-报告映射，点击不同批次切换对应报告，无报告批次显示空状态
+- **底部导航返回**：Tab re-click 自定义事件重置报告详情回到报告中心
+- **维度兜底**：AI 未返回完整 dimensions 时基于正式体测项目自动计算 6 维度
+- **无截断**：所有 slice() 截断已移除，长内容用折叠/展开替代
+- **新类型字段**：`itemScores[]`、`relationshipAnalysis[]`、`strengthsAnalysis[]`、`stageTrainingPlan[]`、`teachingSuggestions[]`
 
 ## 6. 学生端功能详解
 
@@ -325,9 +341,9 @@ noRecord → hasRecordNoReport → [用户点击生成] → hasCurrentReport
 
 ### 5.5 AI 智能指导 `/ai-guide`（核心功能）
 
-**组件**：`src/app/(student)/ai-guide/page.tsx`（Server Component）+ `src/components/features/ai-student-report.tsx`（Client Component）
+**组件**：`src/app/(student)/ai-guide/page.tsx`（Server Component）+ `src/components/features/ai-student-report.tsx`（主控 Client Component）+ 5 个子组件（`ai-formal-analysis.tsx` / `ai-item-cards.tsx` / `ai-training-observation.tsx` / `ai-report-detail.tsx` / `ai-generation-status.tsx`）
 **数据源**：Prisma 数据库（学生信息 + 体测记录 + AI 报告历史）
-**展示学生**：当前固定 S001（演示模式）
+**展示学生**：当前登录学生（通过 `demo_student_id` cookie 获取，演示账号 S001-S020）
 
 #### 分析策略（核心设计决策）
 
@@ -346,27 +362,14 @@ noRecord → hasRecordNoReport → [用户点击生成] → hasCurrentReport
 ```
 
 #### 页面结构
-1. **PageHeader**：标题"AI 智能指导" + 返回按钮
-2. **GuidanceStrategyCard**：蓝色提示卡片，说明当前分析模式
-   - 显示分析类型标签（专项分析/综合分析）
-   - 显示来源记录摘要（时间+项目列表）
-   - 相对时间显示（如"3天前记录"）
-   - "生成分析报告"按钮
-3. **AIGenerationStatus**：步骤进度指示器
-   - 3 步：分析体测数据 → 生成体质画像 → 生成训练建议
-   - 每步有独立图标（Activity/Brain/Target）
-   - 已完成步骤显示 ✓，当前步骤有骨架屏动画
-   - 底部骨架屏预览文本
-4. **ReportHistoryList**：历史分析报告列表
-   - 每项显示：来源记录名、分析类型标签（⚡专项/📈综合）、生成时间（绝对+相对）、审核状态、摘要预览
-   - 点击切换查看不同时期的报告
-   - 最新报告有"最新"标签
-5. **ReportContent**：报告内容（4 个卡片）
-   - 🧠 体质画像卡：综合评分+BMI 状态+优劣标签+生成时间+来源记录
-   - 🎯 待提升项目卡：编号列表，含当前水平、可能原因、提升潜力评估
-   - 💪 训练计划卡：2 周递进式（Week1 建立习惯→Week2 提升强度），每动作含名称/描述/组数/频率/时长/注意事项
-   - 🛡️ 安全提醒卡：3-5 条安全注意事项
-6. **审核状态卡**：显示当前报告的审核状态（待审核/已审核/已退回）
+1. **PageHeader**：标题"AI 智能指导" + 副标题
+2. **顶部状态条**：正式体测与日常训练为可点击快捷入口，第三列显示当前指导状态
+3. **本周行动建议**：首屏主卡，给出本周重点、依据和两个主操作（查看/生成分析、记录训练）
+4. **正式体测分析**：只处理正式体测基线；数据不完整时提示待补充项目
+5. **专项提升区**：按"优先关注 / 稳定保持 / 暂无正式数据"分组，显示正式分数、日常训练次数、趋势、审核/新鲜度状态；生成单项专项时融合正式体测基线与同项目日常训练记录
+6. **训练观察**：近 7/30 天训练次数、最近训练、恢复提示，并明确"日常训练不参与正式体测评分"
+7. **历史分析**：底部折叠列表，区分报告类型、生成时间和审核状态
+8. **ReportContent**：报告详情包含训练建议、体测分析、恢复与安全提醒、教师审核状态
 
 #### AI 调用流程
 ```
@@ -828,7 +831,12 @@ src/components/
     ├── record-score-input.tsx     — 成绩输入：每个已选项目一个滚轮
     ├── record-feeling-step.tsx    — 逐项体感：每个项目独立疲劳/恢复/酸痛卡片
     ├── record-complete.tsx        — 完成页：确认摘要 + 跳转
-    ├── ai-student-report.tsx      — AI 学生报告：分析策略+生成状态+历史列表+报告内容
+    ├── ai-student-report.tsx       — AI 报告中心主控：状态管理+生成逻辑+4区域编排
+    │   ├── ai-formal-analysis.tsx   — 正式体测分析区：完成度/批次列表/报告操作
+    │   ├── ai-item-cards.tsx        — 单项分析卡组：6项目卡片+新数据角标
+    │   ├── ai-training-observation.tsx — 训练情况区：近7/30天/节奏/项目分布
+    │   ├── ai-report-detail.tsx     — 报告详情：全维度10板块 batch_report + 简版 item_report
+    │   └── ai-generation-status.tsx — 生成状态：分步进度条+骨架屏+错误/回退态
     ├── ai-class-report-view.tsx   — AI 班级报告视图
     ├── ai-generation-status.tsx   — AI 生成状态：3 步进度+进度条+骨架屏+错误/回退状态
     ├── review-workflow.tsx        — 审核工作流：Tab+通过/修改/退回+内联反馈

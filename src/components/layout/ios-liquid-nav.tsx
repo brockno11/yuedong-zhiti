@@ -46,7 +46,13 @@ export function IosLiquidNav({ items, className }: IosLiquidNavProps) {
           <button
             key={item.href}
             type="button"
-            onClick={() => router.push(item.href)}
+            onClick={() => {
+              // 如果已经在当前 Tab，dispatch 自定义事件让页面重置状态
+              if (isActive) {
+                window.dispatchEvent(new CustomEvent("tab-reclick", { detail: { href: item.href } }));
+              }
+              router.push(item.href);
+            }}
             className={cn(
               "flex-1 flex flex-col items-center justify-center gap-0.5 rounded-full py-2",
               "min-h-[56px]",
