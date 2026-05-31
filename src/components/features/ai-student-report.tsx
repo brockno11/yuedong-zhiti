@@ -93,54 +93,93 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
         </div>
       </div>
 
-      {/* ===== 2. 正式体测分析 ===== */}
-      <Card className="rounded-xl border-primary/20 bg-primary/5 shadow-sm">
+      {/* ===== 2. 本周行动建议 ===== */}
+      <Card className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 shadow-sm">
         <CardContent className="p-5 space-y-3">
-          <div className="flex items-center gap-2"><Brain className="h-5 w-5 text-primary" /><span className="text-base font-semibold">正式体测分析</span></div>
-          <p className="text-sm text-muted-foreground">基于当前正式体测批次生成体质画像、薄弱项判断与训练参考。</p>
+          <div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><span className="text-base font-semibold">本周行动建议</span></div>
           {completeness.recordedCount > 0 ? (
-            <div className="flex gap-2">
-              <Button size="sm" className="gap-1" onClick={() => generateReport({ reportType: "batch_report" })}><Sparkles className="h-3.5 w-3.5" />生成正式体测分析</Button>
-              {reportHistory.filter(h => (h.report as AIStudentReport)?.reportType === "batch_report").length > 0 && (
-                <Button size="sm" variant="ghost" onClick={() => { const r = reportHistory.find(h => (h.report as AIStudentReport)?.reportType === "batch_report"); if (r) { setViewingReport(r.report); setMode(r.mode==="ai"?"ai":"mock"); setStatus("complete"); } }}>查看已有分析</Button>
+            <>
+              <p className="text-sm text-muted-foreground">
+                {completeness.isComplete
+                  ? "正式体测已全部完成，以保持训练节奏为主"
+                  : `当前已录 ${completeness.recordedCount}/${completeness.expectedCount} 项，建议优先补充缺失项目`}
+                {daily30d > 0 ? ` · 近30天训练 ${daily30d} 次，节奏${daily30d >= 8 ? "稳定" : daily30d >= 3 ? "适中" : "偏少"}` : ""}
+              </p>
+              {completeness.isPartial && completeness.missingItems.length > 0 && (
+                <p className="text-xs text-muted-foreground">优先关注：{completeness.missingItems.slice(0, 3).map(id => itemName(id)).join("、")}</p>
               )}
-            </div>
-          ) : <p className="text-xs text-muted-foreground">暂无正式体测数据</p>}
+              <div className="flex gap-2">
+                <Link href="/record"><Button size="sm" variant="outline" className="gap-1 h-8"><PlusCircle className="h-3.5 w-3.5" />去记录</Button></Link>
+                <Link href="/portrait"><Button size="sm" variant="outline" className="gap-1 h-8"><Target className="h-3.5 w-3.5" />查看画像</Button></Link>
+              </div>
+            </>
+          ) : (
+            <><p className="text-sm text-muted-foreground">完成一次正式体测后，可生成更完整的指导。也可以先记录日常训练，积累过程数据。</p><Link href="/record"><Button size="sm" className="gap-1"><PlusCircle className="h-3.5 w-3.5" />开始首次记录</Button></Link></>
+          )}
         </CardContent>
       </Card>
 
-      {/* ===== 3. 专项评估 ===== */}
+      {/* ===== 3. 正式体测分析 ===== */}
+      <Card className="rounded-xl border shadow-sm"><CardContent className="p-4 space-y-2">
+        <div className="flex items-center gap-2"><Brain className="h-4 w-4 text-primary" /><span className="text-sm font-semibold">正式体测分析</span><Badge variant={completeness.isComplete?"excellent":"pass"} className="text-[10px]">{completeness.isComplete?"完整":"不完整"}</Badge></div>
+        <p className="text-xs text-muted-foreground">基于当前正式体测批次生成体质画像与薄弱项判断。日常训练不参与评分。</p>
+        {completeness.recordedCount > 0 ? (
+          <div className="flex gap-2">
+            <Button size="sm" className="gap-1 h-8" onClick={() => generateReport({ reportType: "batch_report" })}><Sparkles className="h-3.5 w-3.5" />生成正式体测分析</Button>
+          </div>
+        ) : <p className="text-xs text-muted-foreground">暂无正式体测数据</p>}
+      </CardContent></Card>
+
+      {/* ===== 4. 专项评估（分组）===== */}
       <div>
         <p className="text-sm font-semibold mb-3 flex items-center gap-1.5"><Target className="h-4 w-4 text-primary" />专项评估</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {genderItems.map(itemId => {
-            const def = FITNESS_ITEMS.find(f => f.id === itemId); if (!def) return null;
-            const officialItem = officialRecords.find(r => r.items.some(i => i.itemId === itemId))?.items.find(i => i.itemId === itemId);
-            const relatedDaily = dailyRecords.filter(r => r.items.some(i => i.itemId === itemId)).length;
-            const hasReport = findLatestItemReport(reportHistory, itemId);
+        {(() => {
+          // 分组：优先关注 / 稳定保持 / 暂无数据
+          const focus: { itemId: string; def: typeof FITNESS_ITEMS[0]; official: typeof officialRecords[0] extends { items: (infer I)[] } ? I : never; daily: number; trend: ReturnType<typeof itemTrendLabel>; hasReport: boolean; generating: boolean }[] = [];
+          const stable: typeof focus = [];
+          const nodata: typeof focus = [];
+          for (const itemId of genderItems) {
+            const def = FITNESS_ITEMS.find(f => f.id === itemId); if (!def) continue;
+            const r = officialRecords.find(rr => rr.items.some(i => i.itemId === itemId));
+            const officialItem = r?.items.find(i => i.itemId === itemId);
+            const relatedDaily = dailyRecords.filter(rr => rr.items.some(i => i.itemId === itemId)).length;
+            const hasReport = !!findLatestItemReport(reportHistory, itemId);
             const generating = generatingItemId === itemId;
-            const itemRecs = records.filter(r => r.items.some(i => i.itemId === itemId));
-            const vals = itemRecs.map(r => r.items.find(i => i.itemId === itemId)!.score);
+            const vals = records.filter(rr => rr.items.some(i => i.itemId === itemId)).map(rr => rr.items.find(i => i.itemId === itemId)!.score);
             const trend = itemTrendLabel(vals, def.higherIsBetter ?? true);
+            const entry = { itemId, def, official: officialItem!, daily: relatedDaily, trend, hasReport, generating };
+            if (!officialItem) nodata.push(entry);
+            else if (officialItem.score < 70) focus.push(entry);
+            else stable.push(entry);
+          }
+          const groups = [
+            { label: "优先关注", items: focus, color: "border-amber-200 bg-amber-50/50" },
+            { label: "稳定保持", items: stable, color: "border-muted" },
+            { label: "暂无正式数据", items: nodata, color: "border-muted bg-muted/10" },
+          ].filter(g => g.items.length > 0);
 
-            return (
-              <Card key={itemId} className="rounded-xl shadow-sm"><CardContent className="p-3.5 space-y-2">
-                <div className="flex items-center gap-1.5"><span className="text-lg">{def.icon}</span><p className="text-xs font-semibold truncate">{def.name}</p></div>
-                {!officialItem ? (
-                  <><p className="text-[11px] text-muted-foreground">暂无正式体测成绩</p>{relatedDaily>0 && <p className="text-[10px] text-muted-foreground">相关训练 {relatedDaily} 次</p>}</>
-                ) : generating ? <p className="text-[11px] text-muted-foreground animate-pulse">生成中...</p> : (
-                  <>
-                    <div className="flex items-center gap-1.5"><Badge variant={officialItem.grade==="excellent"||officialItem.grade==="good"?"excellent":"pass"} className="text-[10px]">{officialItem.score}分</Badge>{relatedDaily>0 && <span className="text-[10px] text-muted-foreground">训练 {relatedDaily}次</span>}</div>
-                    {trend && <p className="text-[10px] text-muted-foreground flex items-center gap-0.5"><trend.icon className="h-3 w-3" />{trend.label}</p>}
-                    <Button size="sm" className="w-full h-7 text-xs gap-1" onClick={() => hasReport ? (setViewingReport(hasReport.report), setViewingItemId(itemId), setMode(hasReport.mode==="ai"?"ai":"mock"), setStatus("complete")) : handleItemClick(itemId)} disabled={generating}>
-                      <Sparkles className="h-3 w-3" />{hasReport ? "查看专项评估" : "生成专项评估"}
-                    </Button>
-                  </>
-                )}
-              </CardContent></Card>
-            );
-          })}
-        </div>
+          return groups.map(g => (
+            <div key={g.label} className="mb-3">
+              <p className="text-[11px] font-medium text-muted-foreground mb-1.5">{g.label} · {g.items.length} 项</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {g.items.map(({ itemId, def, official, daily, trend, hasReport, generating }) => (
+                  <Card key={itemId} className={`rounded-xl shadow-sm ${g.color}`}><CardContent className="p-3 space-y-1.5">
+                    <div className="flex items-center gap-1"><span className="text-base">{def.icon}</span><p className="text-[11px] font-semibold truncate">{def.name}</p></div>
+                    {!official ? (
+                      <p className="text-[10px] text-muted-foreground">暂无正式成绩</p>
+                    ) : generating ? <p className="text-[10px] text-muted-foreground animate-pulse">生成中...</p> : (
+                      <><div className="flex items-center gap-1"><Badge variant={official.grade==="excellent"||official.grade==="good"?"excellent":"pass"} className="text-[10px]">{official.score}分</Badge>{daily>0 && <span className="text-[10px] text-muted-foreground">训练{daily}次</span>}</div>
+                        {trend && <p className="text-[9px] text-muted-foreground flex items-center gap-0.5"><trend.icon className="h-2.5 w-2.5" />{trend.label}</p>}
+                        <Button size="sm" className="w-full h-6 text-[10px] gap-0.5" onClick={() => hasReport ? (setViewingReport(findLatestItemReport(reportHistory, itemId)!.report), setViewingItemId(itemId), setMode(findLatestItemReport(reportHistory, itemId)!.mode==="ai"?"ai":"mock"), setStatus("complete")) : handleItemClick(itemId)} disabled={generating}>
+                          <Sparkles className="h-2.5 w-2.5" />{hasReport ? "查看" : "生成"}
+                        </Button></>
+                    )}
+                  </CardContent></Card>
+                ))}
+              </div>
+            </div>
+          ));
+        })()}
       </div>
 
       {/* ===== 4. 训练观察与下一步建议 ===== */}
