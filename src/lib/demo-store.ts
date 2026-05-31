@@ -1,7 +1,18 @@
 "use client";
 
-// ===== 跃动智体 — 演示模式统一状态管理 =====
-// 替代分散的 useState/localStorage，提供统一数据读写和审核同步
+// ===== 跃动智体 — 演示模式客户端缓存 =====
+//
+// ⚠️ 数据源层级（按权威性从高到低）：
+//   1. SQLite（Prisma）— 权威数据源，所有页面读写的唯一真相来源
+//   2. API 路由 — 服务端桥接，读写 SQLite
+//   3. localStorage — 仅存登录态（demo_login）、引导草稿（onboardingData）、
+//      AI 缓存（ai_analysis_cache），不参与主展示逻辑
+//
+// 当前文件中的 getRecords/saveRecord/getReviews/updateReview 仅被
+// seedDemoData() 使用，不是活跃数据路径。页面级读写全部通过
+// @/lib/server/data-service → SQLite。
+//
+// 如需重置演示数据，请运行 `npm run db:seed`。
 
 import type { FitnessItemId, BodyFeeling, OnboardingData } from "@/lib/types";
 

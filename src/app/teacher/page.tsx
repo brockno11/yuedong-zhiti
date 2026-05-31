@@ -19,12 +19,56 @@ import {
   Clock,
 } from "lucide-react";
 import Link from "next/link";
+import { DemoBanner } from "@/components/features/demo-banner";
 
 export default async function TeacherOverviewPage() {
   const summary = await getClassSummary();
 
+  // 从实际数据生成今日教学建议
+  const weakItems = summary.weakItemRanking;
+  const topWeak = weakItems[0];
+  const secondWeak = weakItems[1];
+  const attentionCount = summary.attentionStudents.length;
+  const suggestionParts: string[] = [];
+
+  if (topWeak && topWeak.passRate < 70) {
+    suggestionParts.push(
+      `${topWeak.itemName}通过率仅${topWeak.passRate}%，建议本周课堂融入针对性训练环节`
+    );
+  }
+  if (secondWeak && secondWeak.passRate < 70) {
+    suggestionParts.push(
+      `${secondWeak.itemName}也需关注（通过率${secondWeak.passRate}%）`
+    );
+  }
+  if (summary.passRate < 80) {
+    suggestionParts.push(
+      `班级整体及格率${summary.passRate}%，建议采用分层教学，将学生按能力分组进行差异化训练`
+    );
+  }
+  if (attentionCount > 0) {
+    suggestionParts.push(
+      `有${attentionCount}名学生需要重点关注（BMI偏高/体测不达标/运动不适），建议课后一对一沟通`
+    );
+  }
+  if (summary.pendingReviewCount > 0) {
+    suggestionParts.push(
+      `还有${summary.pendingReviewCount}份AI报告等待审核，审核后学生端才能查看`
+    );
+  }
+  if (suggestionParts.length === 0) {
+    suggestionParts.push("班级整体表现良好，继续保持当前训练节奏，关注学生个体差异即可");
+  }
+
+  const teachingSuggestion = suggestionParts.join("。");
+
   return (
     <div className="mx-auto max-w-6xl space-y-5 lg:grid lg:grid-cols-12 lg:gap-6 lg:space-y-0">
+      {/* 演示模式提示 */}
+      <div className="lg:col-span-12">
+        <DemoBanner />
+      </div>
+
       {/* ===== 页面标题 — 全宽 ===== */}
       <div className="lg:col-span-12">
         <PageHeader title="高二(1)班" description="2025年春季学期" />
@@ -42,7 +86,7 @@ export default async function TeacherOverviewPage() {
               </Badge>
             </div>
             <p className="text-sm leading-relaxed text-foreground/80">
-              本周重点加强耐力训练，建议安排2次中长跑练习。班级50米跑及格率偏低，可融入短跑技术教学。引体向上及格率仅55%，建议每节课安排上肢力量训练环节。课堂可采用分层教学模式，将学生按能力分组进行差异化训练。
+              {teachingSuggestion}
             </p>
           </CardContent>
         </Card>

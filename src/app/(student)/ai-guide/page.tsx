@@ -2,15 +2,23 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { AIStudentReportView } from "@/components/features/ai-student-report";
 import { getFitnessRecords, getStudentProfile, getStudentReportHistory } from "@/lib/server/data-service";
+import { cookies } from "next/headers";
 
-// 默认展示学生 S001
-const DEMO_STUDENT_ID = "S001";
+function getDemoStudentId(): string {
+  try {
+    const store = cookies();
+    return store.get("demo_student_id")?.value || "";
+  } catch {
+    return "";
+  }
+}
 
 export default async function AIGuidePage() {
+  const studentId = getDemoStudentId();
   const [student, records, reportHistory] = await Promise.all([
-    getStudentProfile(DEMO_STUDENT_ID),
-    getFitnessRecords(DEMO_STUDENT_ID),
-    getStudentReportHistory(DEMO_STUDENT_ID),
+    studentId ? getStudentProfile(studentId) : Promise.resolve(null),
+    studentId ? getFitnessRecords(studentId) : Promise.resolve([]),
+    studentId ? getStudentReportHistory(studentId) : Promise.resolve([]),
   ]);
 
   return (
@@ -22,7 +30,7 @@ export default async function AIGuidePage() {
       />
 
       <AIStudentReportView
-        studentId={DEMO_STUDENT_ID}
+        studentId={studentId}
         student={student}
         records={records}
         reportHistory={reportHistory}

@@ -1,6 +1,6 @@
 # 跃动智体（YueDong ZhiTi）
 
-> 面向高中生体质健康提升的 AI 智能评价与个性化运动指导系统
+> 面向中学生体质健康提升的 AI 智能评价与个性化运动指导系统。当前演示场景以高二(1)班为例。
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
@@ -16,7 +16,7 @@
 
 ## 📖 项目概述
 
-**跃动智体**是一个面向高中体育教学场景的 AI 智能信息系统。系统采用移动端优先的响应式设计，以 **「AI 辅助 · 教师主导」** 为核心理念，完整覆盖 **「数据采集 → AI 分析 → 教师审核 → 学生查看」** 全闭环流程。
+**跃动智体**是一个面向中学体育教学场景的 AI 智能信息系统。系统采用移动端优先的响应式设计，以 **「AI 辅助 · 教师主导」** 为核心理念，完整覆盖 **「数据采集 → AI 分析 → 教师审核 → 学生查看」** 全闭环流程。
 
 ### 核心价值
 
@@ -279,6 +279,47 @@ npm run db:reset     # 重置数据库
 
 ---
 
+## 🎬 演示流程
+
+比赛演示建议按以下路径操作，覆盖「学生 → AI → 教师审核」完整闭环。
+
+### 准备
+
+```bash
+npm install           # 安装依赖
+npx prisma db push    # 初始化 SQLite 数据库
+npm run db:seed       # 写入演示种子数据（20 学生 + 1 教师 + 体测记录 + AI 报告）
+npm run dev           # 启动 → http://localhost:3000
+```
+
+### 学生侧演示路径（约 3 分钟）
+
+| 步骤 | 操作 | 页面 | 演示要点 |
+|------|------|------|----------|
+| 1 | 打开 `/`，选"我是学生"→ 下拉选 `S001` → 输入 `demo123` → 登录 | 登录页 | 展示角色切换、账号下拉、自动填充 |
+| 2 | 自动进入 `/dashboard` | 体质画像 | **亮点**：雷达图（个人 vs 班级）、综合评分、AI 洞察标签 |
+| 3 | 点击"查看 AI 体质分析"→ 进入 `/ai-guide` | AI 指导 | **亮点**：专项/综合分析切换、报告历史、训练计划、安全提醒、教师审核状态 |
+| 4 | 回到 `/`，退出登录，换 `S005` 重新登录 | — | **验证**：不同学生看到不同体质数据（证明不是静态页面） |
+
+### 教师侧演示路径（约 3 分钟）
+
+| 步骤 | 操作 | 页面 | 演示要点 |
+|------|------|------|----------|
+| 1 | 打开 `/`，选"我是教师"→ 选 `周老师` → 输入 `demo123` → 登录 | 登录页 | 教师角色切换 |
+| 2 | 自动进入 `/teacher` | 班级总览 | **亮点**：今日教学建议、等级分布、薄弱项排行、重点关注学生 |
+| 3 | 点击"AI 班级报告"→ `/teacher/report` | AI 班级报告 | **亮点**：AI 生成的班级体质分析、分层教学建议 |
+| 4 | 点击"审核中心"→ `/teacher/review` | 审核中心 | **亮点**：教师审核 AI 报告（通过/退回/修改），展示「AI 辅助 · 教师主导」理念 |
+| 5 | 进入某学生详情 `/teacher/students/S001` | 学生详情 | **亮点**：教师视角查看学生体质画像、记录历史、AI 报告 |
+
+### 核心亮点话术
+
+- **逐项体感采集**（`/record`）：每项运动后采集疲劳程度、恢复速度、肌肉酸痛 —— 这是区别于传统体测系统的创新点
+- **专项/综合分析**（`/ai-guide`）：单项目深度分析 vs 多项目综合评估，AI 自动选择策略
+- **教师审核闭环**：AI 生成 → 教师审核（通过/退回/修改）→ 学生查看，完整「AI 辅助 · 教师主导」
+- **数据口径透明**：登录页顶部演示模式提示条，明确标注匿名模拟数据
+
+---
+
 ## 📁 项目结构
 
 ```
@@ -405,7 +446,7 @@ TeacherReview       — 教师审核（id, reportId, reportType, reviewerName, s
 ### 数据保护
 - **匿名标识**：Mock 数据使用 S001-S020 编号，不包含真实学生身份信息
 - **最小化收集**：仅收集必要的体测和身体数据
-- **权限控制**：学生仅查看自己数据（演示模式固定 S001），教师查看班级数据
+- **权限控制**：学生仅查看自己数据（通过登录态 cookie 关联），教师查看班级数据
 - **不公开排名**：不进行学生之间的成绩排名展示
 - **API Key 保护**：AI API Key 仅存储在服务端 `.env.local`，前端永不可见
 - **数据不入库**：`.env.local` 和 `prisma/dev.db` 已加入 `.gitignore`
@@ -435,10 +476,10 @@ TeacherReview       — 教师审核（id, reportId, reportType, reviewerName, s
 2. **组件五层分层**：ui → layout → forms → charts → features
 3. **移动端优先**：先写 375px，再写 md/lg 断点，触控目标 ≥ 44px
 4. **CSS Variables 主题**：禁止硬编码颜色值，全部使用语义 Token
-5. **演示模式架构**：登录页 → 角色选择 → localStorage 存储登录态 → AuthGuard 路由保护
+5. **演示模式架构**：登录页 → 角色选择 → localStorage（登录态）+ cookie（学生 ID）→ AuthGuard 路由保护 → Server Component 从 cookie 读取当前学生 → SQLite 查询数据
 6. **AI 分析策略**：单项目=专项分析，多项目=综合分析，超时自动回退 Mock
 7. **数据流**：Prisma → data-service → Server Component → Client Component props
-8. **演示模式存储**：localStorage（demo_login, demo_records, onboardingData）+ SQLite（权威数据源）
+8. **演示模式存储**：SQLite 为唯一权威数据源（页面读写）；localStorage 仅存登录态（demo_login）、引导草稿（onboardingData）、AI 缓存（ai_analysis_cache）
 9. **路由分组**：学生端使用 `(student)` route group（URL 不带前缀），教师端使用 `teacher/` 路径段
 
 ---

@@ -22,6 +22,7 @@ import {
   EyeOff,
   LogIn,
 } from "lucide-react";
+import { DemoBanner } from "@/components/features/demo-banner";
 
 type Role = "student" | "teacher";
 
@@ -101,6 +102,9 @@ export function LandingPage({ accounts }: LandingPageProps) {
     };
 
     localStorage.setItem("demo_login", JSON.stringify(payload.data));
+    // 同步写 cookie，供 Server Component 读取当前学生 ID
+    const studentId = payload.data.studentId ?? payload.data.username;
+    document.cookie = `demo_student_id=${studentId};path=/;max-age=86400;SameSite=Lax`;
     router.push(role === "student" ? "/dashboard" : "/teacher");
   };
 
@@ -149,6 +153,11 @@ export function LandingPage({ accounts }: LandingPageProps) {
           </div>
         </div>
       </header>
+
+      {/* 演示模式提示条 */}
+      <div className="mx-auto max-w-5xl px-4 pt-3">
+        <DemoBanner />
+      </div>
 
       {/* 主体 */}
       <main className="flex flex-1 items-center justify-center px-4 py-12">

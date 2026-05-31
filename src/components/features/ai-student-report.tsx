@@ -34,7 +34,7 @@ interface AIStudentReportProps {
 }
 
 export function AIStudentReportView({
-  studentId = "S001",
+  studentId,
   student,
   records,
   reportHistory,
@@ -245,19 +245,54 @@ function ReportContent({
 
   const ReviewIcon = reviewIcon;
 
+  const topGoal = report.trainingPlan[0]?.exercises[0];
+  const topWeakness = report.weaknessAnalysis[0];
+
   return (
     <>
-      {/* 体质画像 */}
+      {/* ===== 首屏摘要 ===== */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary/5 via-primary/3 to-transparent border border-primary/10 p-5 sm:p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <ReviewIcon className={`h-5 w-5 ${
+            reviewStatus === "approved" ? "text-level-excellent" : "text-muted-foreground"
+          }`} />
+          <span className="text-sm font-semibold">{reviewLabel}</span>
+          {mode && (
+            <Badge variant={mode === "ai" ? "excellent" : "secondary"} className="text-[10px] ml-auto">
+              {mode === "ai" ? "AI 生成" : "示例数据"}
+            </Badge>
+          )}
+        </div>
+
+        <p className="text-base font-semibold leading-relaxed">{profile.summary}</p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-background/60 p-3 text-center">
+            <p className="text-2xl font-bold tabular-nums">{profile.overallScore}</p>
+            <p className="text-xs text-muted-foreground">综合评分</p>
+          </div>
+          {topGoal && (
+            <div className="rounded-xl bg-background/60 p-3 sm:col-span-2">
+              <p className="text-xs text-muted-foreground">本周优先目标</p>
+              <p className="text-sm font-semibold mt-0.5">{topGoal.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{topGoal.frequency} · {topGoal.duration}</p>
+            </div>
+          )}
+        </div>
+
+        {topWeakness && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            💡 重点提升方向：{topWeakness.item} — {topWeakness.improvementPotential}
+          </p>
+        )}
+      </div>
+
+      {/* ===== 体质画像详情 ===== */}
       <Card className="rounded-xl shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">体质画像</CardTitle>
-            {mode && (
-              <Badge variant={mode === "ai" ? "excellent" : "secondary"} className="text-[10px] ml-auto">
-                {mode === "ai" ? "AI 生成" : mode === "fallback" ? "示例数据" : "示例数据"}
-              </Badge>
-            )}
+            <CardTitle className="text-base">体质画像详情</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -271,16 +306,15 @@ function ReportContent({
               </Badge>
             )}
           </div>
-          <p className="text-sm font-semibold">{profile.summary}</p>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-muted/50 p-3 text-center">
-              <p className="text-2xl font-bold tabular-nums">{profile.overallScore}</p>
-              <p className="text-xs text-muted-foreground">综合评分</p>
-            </div>
-            <div className="rounded-xl bg-muted/50 p-3 text-center">
               <p className="text-sm font-semibold">{profile.bmiStatus}</p>
               <p className="text-xs text-muted-foreground">BMI 状态</p>
+            </div>
+            <div className="rounded-xl bg-muted/50 p-3 text-center">
+              <p className="text-sm font-semibold">{profile.dimensions?.length ?? report.weaknessAnalysis.length + profile.strengths.length}</p>
+              <p className="text-xs text-muted-foreground">评估维度</p>
             </div>
           </div>
 

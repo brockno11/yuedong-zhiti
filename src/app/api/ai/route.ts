@@ -32,8 +32,15 @@ import { mockAIStudentReport, mockAIClassReport } from "@/lib/data/mock-ai-repor
 import { upsertAIReportForReview } from "@/lib/server/data-service";
 import type { AIClassReport, AIStudentReport } from "@/lib/types";
 
+// DeepSeek 真实 API Key 特征：以 sk- 开头，长度 ≥ 32 字符，不含占位关键词
+const API_KEY_PLACEHOLDERS = ["your-deepseek-api-key", "sk-your-api-key-here", "your-api-key", "sk-your-key"];
 function isAIEnabled(): boolean {
-  return !!DEEPSEEK_API_KEY && DEEPSEEK_API_KEY.startsWith("sk-");
+  if (!DEEPSEEK_API_KEY) return false;
+  if (!DEEPSEEK_API_KEY.startsWith("sk-")) return false;
+  if (DEEPSEEK_API_KEY.length < 32) return false;
+  const lower = DEEPSEEK_API_KEY.toLowerCase();
+  if (API_KEY_PLACEHOLDERS.some((p) => lower === p.toLowerCase())) return false;
+  return true;
 }
 
 export async function POST(request: NextRequest) {

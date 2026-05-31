@@ -3,8 +3,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { getStudentById } from "@/lib/data/mock-students";
-import { getRecordsByStudentId } from "@/lib/data/mock-fitness-records";
+import { getFitnessRecords, getStudentProfile } from "@/lib/server/data-service";
 import { SPORT_GOAL_OPTIONS, SPORT_BASE_OPTIONS, DISCOMFORT_OPTIONS } from "@/lib/constants";
 import {
   User,
@@ -21,12 +20,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/features/logout-button";
+import { cookies } from "next/headers";
 
-const DEMO_STUDENT_ID = "S001";
+function getDemoStudentId(): string {
+  try {
+    const store = cookies();
+    return store.get("demo_student_id")?.value || "";
+  } catch {
+    return "";
+  }
+}
 
-export default function ProfilePage() {
-  const student = getStudentById(DEMO_STUDENT_ID);
-  const records = getRecordsByStudentId(DEMO_STUDENT_ID);
+export default async function ProfilePage() {
+  const studentId = getDemoStudentId();
+  const student = studentId ? await getStudentProfile(studentId) : null;
+  const records = studentId ? await getFitnessRecords(studentId) : [];
 
   if (!student) {
     return (

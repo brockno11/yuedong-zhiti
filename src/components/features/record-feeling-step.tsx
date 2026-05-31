@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FeelingSlider } from "@/components/forms/feeling-slider";
 import { FITNESS_ITEMS, RECOVERY_OPTIONS } from "@/lib/constants";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { FitnessItemId, BodyFeeling } from "@/lib/types";
 
 interface RecordFeelingStepProps {
@@ -32,10 +34,22 @@ export function RecordFeelingStep({
   onChangeItem,
   onChangeDiscomfort,
 }: RecordFeelingStepProps) {
+  // 每个项目的"展开更多"折叠状态
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (itemId: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
-        每个项目的运动感受可能不同，请逐一反馈
+        每个项目请至少拖动疲劳程度，恢复与酸痛可展开填写
       </p>
 
       {/* 逐项体感 */}
@@ -43,6 +57,7 @@ export function RecordFeelingStep({
         const item = FITNESS_ITEMS.find((i) => i.id === itemId);
         if (!item) return null;
         const feeling = feelings[itemId] || defaultFeeling();
+        const isExpanded = expandedItems.has(itemId);
 
         return (
           <div key={itemId} className="rounded-xl border p-4 space-y-3">
@@ -53,7 +68,7 @@ export function RecordFeelingStep({
               </p>
             </div>
 
-            {/* 疲劳 */}
+            {/* 疲劳（始终显示） */}
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">
                 疲劳程度（1=轻松，10=很累）
@@ -67,61 +82,85 @@ export function RecordFeelingStep({
               />
             </div>
 
-            {/* 恢复 */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">恢复感觉</Label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {RECOVERY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() =>
-                      onChangeItem(itemId, { ...feeling, recoveryStatus: opt.value })
-                    }
-                    className={cn(
-                      "min-h-11 rounded-lg border px-2 py-2 text-center transition-all",
-                      feeling.recoveryStatus === opt.value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/30 hover:bg-accent"
-                    )}
-                  >
-                    <p className="text-xs font-semibold">{opt.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* 展开更多按钮 */}
+            <button
+              type="button"
+              onClick={() => toggleExpand(itemId)}
+              className="flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  收起详细反馈
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  展开恢复与酸痛反馈（可选）
+                </>
+              )}
+            </button>
 
-            {/* 酸痛 */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">该项目的肌肉酸痛</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={feeling.hasSoreness ? "default" : "outline"}
-                  size="sm"
-                  onClick={() =>
-                    onChangeItem(itemId, { ...feeling, hasSoreness: true })
-                  }
-                >
-                  有酸痛
-                </Button>
-                <Button
-                  type="button"
-                  variant={!feeling.hasSoreness ? "default" : "outline"}
-                  size="sm"
-                  onClick={() =>
-                    onChangeItem(itemId, { ...feeling, hasSoreness: false, sorenessAreas: [] })
-                  }
-                >
-                  无酸痛
-                </Button>
+            {/* 折叠的恢复 + 酸痛 */}
+            {isExpanded && (
+              <div className="space-y-3 pt-1">
+                {/* 恢复 */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">恢复感觉</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {RECOVERY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() =>
+                          onChangeItem(itemId, { ...feeling, recoveryStatus: opt.value })
+                        }
+                        className={cn(
+                          "min-h-11 rounded-lg border px-2 py-2 text-center transition-all",
+                          feeling.recoveryStatus === opt.value
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/30 hover:bg-accent"
+                        )}
+                      >
+                        <p className="text-xs font-semibold">{opt.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 酸痛 */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">该项目的肌肉酸痛</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={feeling.hasSoreness ? "default" : "outline"}
+                      size="sm"
+                      onClick={() =>
+                        onChangeItem(itemId, { ...feeling, hasSoreness: true })
+                      }
+                    >
+                      有酸痛
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={!feeling.hasSoreness ? "default" : "outline"}
+                      size="sm"
+                      onClick={() =>
+                        onChangeItem(itemId, { ...feeling, hasSoreness: false, sorenessAreas: [] })
+                      }
+                    >
+                      无酸痛
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         );
       })}
 
-      {/* 整体不适（共享） */}
+      {/* 整体不适（始终显示） */}
       <div className="rounded-xl border p-4 space-y-3">
         <p className="text-sm font-semibold">整体身体状况</p>
         <div className="flex gap-2">

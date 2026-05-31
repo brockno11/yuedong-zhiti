@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FitnessRadarChart } from "@/components/charts/fitness-radar-chart";
 import { FitnessTrendChart } from "@/components/charts/fitness-trend-chart";
 import { EmptyState } from "@/components/features/empty-state";
+import { DashboardHero } from "@/components/features/dashboard-hero";
 import { getFitnessRecords, getLatestFitnessRecord, getStudentProfile } from "@/lib/server/data-service";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import type { RadarChartDataPoint, TrendChartDataPoint } from "@/lib/types";
@@ -16,13 +17,22 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 
-const DEMO_STUDENT_ID = "S001";
+function getDemoStudentId(): string {
+  try {
+    const store = cookies();
+    return store.get("demo_student_id")?.value || "";
+  } catch {
+    return "";
+  }
+}
 
 export default async function DashboardPage() {
-  const student = await getStudentProfile(DEMO_STUDENT_ID);
-  const latestRecord = await getLatestFitnessRecord(DEMO_STUDENT_ID);
-  const allRecords = await getFitnessRecords(DEMO_STUDENT_ID);
+  const studentId = getDemoStudentId();
+  const student = studentId ? await getStudentProfile(studentId) : null;
+  const latestRecord = studentId ? await getLatestFitnessRecord(studentId) : null;
+  const allRecords = studentId ? await getFitnessRecords(studentId) : [];
 
   if (!student || !latestRecord) {
     return (
@@ -85,6 +95,13 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <PageHeader title="体质画像" description={`${student.name} · ${latestRecord.semester}`} backHref="/" />
+
+      {/* ===== 今日问候 + CTA ===== */}
+      <DashboardHero
+        studentName={student.name}
+        avgScore={avgScore}
+        semester={latestRecord.semester}
+      />
 
       {/* ===== 核心指标 + AI 洞察 ===== */}
       <div className="grid gap-5 lg:grid-cols-3">

@@ -85,7 +85,7 @@ export function RecordWizard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        studentId: login?.studentId ?? login?.username ?? "S001",
+        studentId: login?.studentId ?? login?.username,
         items: selectedItems.map((itemId) => ({
           itemId,
           value: scores[itemId],

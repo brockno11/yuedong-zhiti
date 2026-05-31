@@ -9,6 +9,7 @@ export function LogoutButton() {
 
   const handleLogout = () => {
     localStorage.removeItem("demo_login");
+    document.cookie = "demo_student_id=;path=/;max-age=0";
     router.push("/");
   };
 
