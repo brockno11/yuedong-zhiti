@@ -62,13 +62,17 @@ export async function POST(request: NextRequest) {
       console.log("[AI API] Mock 模式 — 未配置 DEEPSEEK_API_KEY");
 
       if (type === "student-report") {
+        const studentData = body.studentData as Record<string, unknown> | undefined;
+        const reportType = (studentData?.reportType as AIStudentReport["reportType"]) || "record_report";
         const report = {
           ...mockAIStudentReport,
           id: `AI-S-${body.studentId ?? "001"}-mock-${Date.now()}`,
           studentId: body.studentId ?? mockAIStudentReport.studentId,
+          reportType,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
+          sourceBatchId: body.sourceBatchId,
           generatedAt: new Date().toISOString(),
           _mode: "mock" as const,
         };
@@ -131,13 +135,17 @@ export async function POST(request: NextRequest) {
       console.error("[AI API] DeepSeek 调用失败:", response.status, errorText);
 
       // 失败时回退到 mock
+      const studentDataFail = body.studentData as Record<string, unknown> | undefined;
+      const failReportType: AIStudentReport["reportType"] = (studentDataFail?.reportType as AIStudentReport["reportType"]) || "record_report";
       const report = {
         ...(type === "student-report" ? mockAIStudentReport : mockAIClassReport),
-        ...(type === "student-report" ? { studentId: body.studentId ?? mockAIStudentReport.studentId } : {}),
         ...(type === "student-report" ? {
+          studentId: body.studentId ?? mockAIStudentReport.studentId,
+          reportType: failReportType,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
+          sourceBatchId: body.sourceBatchId,
         } : {}),
         generatedAt: new Date().toISOString(),
         _mode: "mock" as const,
@@ -151,15 +159,19 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     const aiContent: string = data.choices?.[0]?.message?.content || "";
     const parsed = tryParseAIResponse(aiContent, type);
+    const realStudentData = body.studentData as Record<string, unknown> | undefined;
+    const realReportType: AIStudentReport["reportType"] = (realStudentData?.reportType as AIStudentReport["reportType"]) || "record_report";
     const report = type === "student-report"
       ? {
           ...mockAIStudentReport,
+          reportType: realReportType, // default, overridden by parsed if AI returns it
           ...parsed,
           id: `AI-S-${body.studentId ?? "001"}-${Date.now()}`,
           studentId: body.studentId ?? mockAIStudentReport.studentId,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
+          sourceBatchId: body.sourceBatchId,
           generatedAt: new Date().toISOString(),
           version: mockAIStudentReport.version + 1,
           status: "pending_review" as const,
@@ -186,13 +198,17 @@ export async function POST(request: NextRequest) {
 
     // 异常时返回 mock
     const fallbackType = body?.type === "class-report" ? "class" : "student";
+    const errorStudentData = body?.studentData as Record<string, unknown> | undefined;
+    const errorReportType: AIStudentReport["reportType"] = (errorStudentData?.reportType as AIStudentReport["reportType"]) || "record_report";
     const report = {
       ...(fallbackType === "class" ? mockAIClassReport : mockAIStudentReport),
-      ...(fallbackType === "student" ? { studentId: body.studentId ?? mockAIStudentReport.studentId } : {}),
       ...(fallbackType === "student" ? {
-        sourceRecordId: body.sourceRecordId,
-        sourceRecordDate: body.sourceRecordDate,
-        sourceSummary: body.sourceSummary,
+        studentId: body?.studentId ?? mockAIStudentReport.studentId,
+        reportType: errorReportType,
+        sourceRecordId: body?.sourceRecordId,
+        sourceRecordDate: body?.sourceRecordDate,
+        sourceSummary: body?.sourceSummary,
+        sourceBatchId: body?.sourceBatchId,
       } : {}),
       generatedAt: new Date().toISOString(),
       _mode: "mock" as const,
