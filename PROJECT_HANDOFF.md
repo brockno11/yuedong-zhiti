@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-05-31 | 版本：MVP 0.4.2 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 20/20
+> 生成日期：2026-05-31 | 版本：MVP 0.5.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 21/21
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
@@ -131,9 +131,46 @@
 
 ---
 
-## 5. 学生端功能详解
+## 5. 体测批次系统（v0.5.0 新增）
 
-### 5.1 登录首页 `/`
+### AssessmentBatch 数据模型
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | String | batch-{uuid8} |
+| name | String | 如 "2025春季学期首测" |
+| academicYear | String | 如 "2024-2025" |
+| semester | String | 春季/秋季 |
+| round | Int | 第1次/第2次/补测 |
+| type | BatchType | official/makeup/daily |
+| classId | String | 关联 ClassGroup |
+| status | BatchStatus | draft/active/completed/archived |
+
+### FitnessRecord 扩展
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| batchId | String? | 关联 AssessmentBatch |
+| recordType | RecordType | official_test/daily_training |
+
+### 数据完整度规则
+
+- `calculateRecordCompleteness(recordedItemIds, gender)` — 按性别计算 6 项标准完整度
+- 画像页：数据不完整时显示 amber 提示条，"综合评分"→"已记录项目平均分"
+- 雷达图：只显示有数据的维度，缺失维度标注"暂无数据"
+- AI 提示词 6 条硬规则：不推测、不补全、不基于缺失数据生成完整评价
+
+### 种子数据
+
+- S018：仅肺活量+坐位体前屈（2/6项，部分记录示例）
+- S019：仅跑步项目（2/6项，部分记录示例）
+- S020：无记录（未录入示例）
+
+---
+
+## 6. 学生端功能详解
+
+### 6.1 登录首页 `/`
 
 **组件**：`src/components/features/landing-page.tsx`（Client Component）
 
