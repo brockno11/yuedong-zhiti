@@ -7,29 +7,49 @@ import { FitnessRadarChart } from "@/components/charts/fitness-radar-chart";
 import { PortraitTrendSection } from "@/components/features/portrait-trend-section";
 import { PortraitBatchSelector } from "@/components/features/portrait-batch-selector";
 import { EmptyState } from "@/components/features/empty-state";
-import { getFitnessRecords, getStudentProfile, getClassAverages } from "@/lib/server/data-service";
+import { getBatchesByClass, getFitnessRecords, getStudentProfile, getClassAverages } from "@/lib/server/data-service";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { calculateRecordCompleteness } from "@/lib/scoring";
 import type { RadarChartDataPoint } from "@/lib/types";
 import { Activity, TrendingUp, Target, PlusCircle, Sparkles, FileText, ShieldCheck, Dumbbell } from "lucide-react";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 function getDemoStudentId(): string { try { const store = cookies(); return store.get("demo_student_id")?.value || ""; } catch { return ""; } }
 function bmiRef(bmi: number): number { if (bmi >= 18.5 && bmi < 24) return 85; if (bmi >= 17 && bmi < 18.5) return 65; if (bmi >= 24 && bmi < 28) return 60; return 50; }
-function getLatestPerItem(records: { items: { itemId: string; score: number; value: number; grade: string }[] }[]) {
+function getLatestPerItem(records: { date: string; items: { itemId: string; score: number; value: number; grade: string }[] }[]) {
   const map = new Map<string, { itemId: string; score: number; value: number; grade: string }>();
-  for (const r of records) for (const i of r.items) { if (!map.has(i.itemId)) map.set(i.itemId, i); }
+  for (const r of [...records].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())) {
+    for (const i of r.items) { if (!map.has(i.itemId)) map.set(i.itemId, i); }
+  }
   return Array.from(map.values());
 }
 function gradeLabel(s: number) { if (s >= 90) return "优秀"; if (s >= 80) return "良好"; if (s >= 60) return "及格"; return "待提升"; }
+function sortBatchOptions<T extends { academicYear: string; semester: string; round: number }>(batches: T[]) {
+  const semesterRank: Record<string, number> = { 春季: 2, 秋季: 1 };
+  return [...batches].sort((a, b) => {
+    const aYear = Number(a.academicYear.split("-")[1] ?? a.academicYear.split("-")[0] ?? 0);
+    const bYear = Number(b.academicYear.split("-")[1] ?? b.academicYear.split("-")[0] ?? 0);
+    if (aYear !== bYear) return bYear - aYear;
+    const semesterDiff = (semesterRank[b.semester] ?? 0) - (semesterRank[a.semester] ?? 0);
+    if (semesterDiff !== 0) return semesterDiff;
+    return b.round - a.round;
+  });
+}
+
+const DEFAULT_CLASS_ID = "class-2025-spring-02-01";
 
 export default async function PortraitPage({ searchParams }: { searchParams?: { batchId?: string } }) {
   const studentId = getDemoStudentId();
   const student = studentId ? await getStudentProfile(studentId) : null;
   const allRecords = studentId ? await getFitnessRecords(studentId) : [];
   const classAvgs = await getClassAverages();
-  const batchId = searchParams?.batchId;
+  let batchId = searchParams?.batchId;
+  if (!batchId) {
+    const defaultBatch = sortBatchOptions((await getBatchesByClass(DEFAULT_CLASS_ID)).filter(b => b.type !== "daily"))[0];
+    if (defaultBatch) redirect(`/portrait?batchId=${defaultBatch.id}`);
+  }
 
   // 按批次过滤
   const filteredRecords = batchId ? allRecords.filter(r => r.batchId === batchId) : allRecords;
@@ -39,8 +59,10 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
     return (<div className="mx-auto max-w-lg px-4"><EmptyState title="暂无体质数据" description="完成首次体测记录后，这里将展示完整的体质画像" action={<Link href="/record"><span className="inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">开始记录</span></Link>} /></div>);
   }
 
-  // 分离正式体测和日常训练
-  const officialRecords = allRecords.filter(r => r.recordType !== "daily_training");
+  // 分离正式体测和日常训练；历史误录到 daily 批次的 official_test 不参与正式体测画像与趋势
+  const selectedRecords = batchId ? filteredRecords : allRecords;
+  const officialRecords = selectedRecords.filter(r => r.recordType === "official_test" && r.batchType !== "daily");
+  const officialTrendRecords = allRecords.filter(r => r.recordType === "official_test" && r.batchType !== "daily");
   const dailyRecords = allRecords.filter(r => r.recordType === "daily_training");
   const hasOfficial = officialRecords.length > 0;
 
@@ -59,19 +81,20 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
 
   // 五维
   const dimDefs = [
-    { dimension: "速度", itemId: "50m_run", desc: "反映短跑和爆发力", sourceName: "50米跑" },
-    { dimension: "力量", itemId: student.gender === "male" ? "pull_up" : "sit_up", desc: student.gender === "male" ? "上肢拉力" : "核心力量", sourceName: student.gender === "male" ? "引体向上" : "仰卧起坐" },
-    { dimension: "耐力", itemId: student.gender === "male" ? "1000m_run" : "800m_run", desc: "心肺有氧能力", sourceName: student.gender === "male" ? "1000米跑" : "800米跑" },
-    { dimension: "柔韧", itemId: "sit_and_reach", desc: "身体柔韧程度", sourceName: "坐位体前屈" },
-    { dimension: "身体形态", itemId: "__body_ref__", desc: "BMI 参考维度", sourceName: "身高体重/BMI" },
+    { dimension: "速度", itemId: "50m_run", itemIds: ["50m_run"], desc: "反映短跑和爆发力", sourceName: "50米跑" },
+    { dimension: "力量", itemId: student.gender === "male" ? "pull_up" : "sit_up", itemIds: ["standing_long_jump", student.gender === "male" ? "pull_up" : "sit_up"], desc: "下肢爆发与上肢/核心力量", sourceName: student.gender === "male" ? "立定跳远/引体向上" : "立定跳远/仰卧起坐" },
+    { dimension: "耐力", itemId: student.gender === "male" ? "1000m_run" : "800m_run", itemIds: ["vital_capacity", student.gender === "male" ? "1000m_run" : "800m_run"], desc: "肺活量与心肺耐力", sourceName: student.gender === "male" ? "肺活量/1000米跑" : "肺活量/800米跑" },
+    { dimension: "柔韧", itemId: "sit_and_reach", itemIds: ["sit_and_reach"], desc: "身体柔韧程度", sourceName: "坐位体前屈" },
+    { dimension: "身体形态", itemId: "__body_ref__", itemIds: ["__body_ref__"], desc: "BMI 参考维度", sourceName: "身高体重/BMI" },
   ];
 
   const allRadarData: RadarChartDataPoint[] = dimDefs.map(d => {
-    const ca = classAvgs[d.itemId];
-    const classAvg = ca?.hasData ? ca.avgScore : null;
+    const classAvgValues = d.itemIds.map(id => classAvgs[id]).filter(ca => ca?.hasData).map(ca => ca.avgScore);
+    const classAvg = classAvgValues.length > 0 ? Math.round(classAvgValues.reduce((sum, value) => sum + value, 0) / classAvgValues.length) : null;
     if (d.itemId === "__body_ref__") return { dimension: d.dimension, score: bodyScore, classAverage: classAvg ?? 74, fullMark: 100 };
-    const item = officialItems.find(i => i.itemId === d.itemId);
-    return { dimension: d.dimension, score: item?.score ?? null, classAverage: classAvg ?? 0, fullMark: 100 };
+    const scores = officialItems.filter(i => d.itemIds.includes(i.itemId)).map(i => i.score);
+    const score = scores.length > 0 ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null;
+    return { dimension: d.dimension, score, classAverage: classAvg ?? 0, fullMark: 100 };
   });
   const radarWithData = allRadarData.filter(d => d.score !== null);
   const sportDimsWithData = allRadarData.filter(d => d.score !== null && d.dimension !== "身体形态");
@@ -79,12 +102,38 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
   // 趋势（真实日期，正式体测按批次聚合，日常训练按日期估算）
   function fmtLabel(d: Date) { return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}`; }
   function fmtFull(d: Date) { return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`; }
+  function fmtLocalDay(d: Date) {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  }
 
-  const trendOptions: { key: string; label: string; data: { date: string; fullDate: string; value: number; grade: string }[]; unit: string }[] = [];
+  type TrendPoint = { timestamp: number; date: string; fullDate: string; value: number; grade: string };
+  type TrendOption = { key: string; label: string; data: TrendPoint[]; dailyData: TrendPoint[]; unit: string };
+  const trendOptions: TrendOption[] = [];
+  const officialAssessmentDays = new Set<string>();
+
+  function buildDailyTrend(itemIds?: string[]): TrendPoint[] {
+    const dailyByDay = new Map<string, { scores: number[]; date: Date }>();
+    for (const r of dailyRecords) {
+      const scores = r.items.filter(i => !itemIds || itemIds.includes(i.itemId)).map(i => i.score);
+      if (scores.length === 0) continue;
+      const day = fmtLocalDay(new Date(r.date));
+      if (officialAssessmentDays.has(day)) continue;
+      const existing = dailyByDay.get(day);
+      if (!existing) dailyByDay.set(day, { scores, date: new Date(r.date) });
+      else existing.scores.push(...scores);
+    }
+    return Array.from(dailyByDay.values()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(d => ({
+      timestamp: d.date.getTime(),
+      date: fmtLabel(d.date),
+      fullDate: fmtFull(d.date),
+      value: Math.round(d.scores.reduce((sum, value) => sum + value, 0) / d.scores.length),
+      grade: "",
+    }));
+  }
 
   // 正式体测：按批次聚合，每批次 = 1个数据点（取该批次全项目录入完成日）
-  const batchGroups = new Map<string, { records: typeof officialRecords; latestDate: Date }>();
-  for (const r of officialRecords) {
+  const batchGroups = new Map<string, { records: typeof officialTrendRecords; latestDate: Date }>();
+  for (const r of officialTrendRecords) {
     const key = r.batchId || r.semester || "__unknown__";
     const existing = batchGroups.get(key);
     if (!existing) batchGroups.set(key, { records: [r], latestDate: new Date(r.date) });
@@ -93,40 +142,44 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
   const batchGroupEntries = Array.from(batchGroups.entries());
   const batchPoints: { date: Date; value: number }[] = [];
   for (const [, g] of batchGroupEntries) {
-    const allItems = new Map<string, { score: number }>();
-    for (const r of g.records) for (const i of r.items) { if (!allItems.has(i.itemId)) allItems.set(i.itemId, i); }
+    const allItems = new Map<string, { score: number; recordDate: Date }>();
+    for (const r of g.records) {
+      const recordDate = new Date(r.date);
+      for (const i of r.items) {
+        const current = allItems.get(i.itemId);
+        if (!current || recordDate > current.recordDate) allItems.set(i.itemId, { score: i.score, recordDate });
+      }
+    }
     const itemValues = Array.from(allItems.values());
     if (itemValues.length > 0) {
       batchPoints.push({ date: g.latestDate, value: Math.round(itemValues.reduce((s: number, i: { score: number }) => s + i.score, 0) / itemValues.length) });
     }
   }
   batchPoints.sort((a, b) => a.date.getTime() - b.date.getTime());
-  const compositeData = batchPoints.map(bp => ({ date: fmtLabel(bp.date), fullDate: fmtFull(bp.date), value: bp.value, grade: "" }));
-  if (compositeData.length >= 1) trendOptions.push({ key: "__comp__", label: "综合", data: compositeData, unit: "分" });
+  for (const point of batchPoints) officialAssessmentDays.add(fmtLocalDay(point.date));
+  const compositeData = batchPoints.map(bp => ({ timestamp: bp.date.getTime(), date: fmtLabel(bp.date), fullDate: fmtFull(bp.date), value: bp.value, grade: "" }));
+  if (compositeData.length >= 1) trendOptions.push({ key: "__comp__", label: "综合", data: compositeData, dailyData: buildDailyTrend(), unit: "分" });
 
-  // 专项维度：按批次取该项目最新得分
+  // 专项维度：按批次取该维度相关项目的最新得分均值
   for (const d of dimDefs.filter(d => d.itemId !== "__body_ref__")) {
-    const pts: { date: string; fullDate: string; value: number; grade: string }[] = [];
+    const pts: TrendPoint[] = [];
     for (const [, g] of batchGroupEntries) {
-      let best: { score: number } | null = null;
-      for (const r of g.records) { const it = r.items.find(i => i.itemId === d.itemId); if (it && (!best || it.score > best.score)) best = it; }
-      if (best) pts.push({ date: fmtLabel(g.latestDate), fullDate: fmtFull(g.latestDate), value: best.score, grade: "" });
+      const latestByItem = new Map<string, { score: number; recordDate: Date }>();
+      for (const r of g.records) {
+        const recordDate = new Date(r.date);
+        for (const it of r.items.filter(i => d.itemIds.includes(i.itemId))) {
+          const current = latestByItem.get(it.itemId);
+          if (!current || recordDate > current.recordDate) latestByItem.set(it.itemId, { score: it.score, recordDate });
+        }
+      }
+      const scores = Array.from(latestByItem.values()).map(i => i.score);
+      if (scores.length > 0) {
+        pts.push({ timestamp: g.latestDate.getTime(), date: fmtLabel(g.latestDate), fullDate: fmtFull(g.latestDate), value: Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length), grade: "" });
+      }
     }
-    pts.sort((a, b) => a.date.localeCompare(b.date));
-    if (pts.length >= 1) trendOptions.push({ key: d.itemId, label: d.dimension, data: pts, unit: "分" });
+    pts.sort((a, b) => a.timestamp - b.timestamp);
+    if (pts.length >= 1) trendOptions.push({ key: d.itemId, label: d.dimension, data: pts, dailyData: buildDailyTrend(d.itemIds), unit: "分" });
   }
-
-  // 日常训练：按天聚合估算（当天所有项目均分）
-  const dailyByDay = new Map<string, { scores: number[]; date: Date }>();
-  for (const r of dailyRecords) {
-    const day = new Date(r.date).toISOString().slice(0, 10);
-    const existing = dailyByDay.get(day);
-    if (!existing) dailyByDay.set(day, { scores: r.items.map(i => i.score), date: new Date(r.date) });
-    else { existing.scores.push(...r.items.map(i => i.score)); }
-  }
-  const dailyTrendData = Array.from(dailyByDay.values()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(d => ({
-    date: fmtLabel(d.date), fullDate: fmtFull(d.date), value: Math.round(d.scores.reduce((s: number, v: number) => s + v, 0) / d.scores.length), grade: "",
-  }));
 
   // 优势/待提升
   const strengths = officialItems.filter(i => i.grade === "excellent" || i.grade === "good").sort((a, b) => b.score - a.score).slice(0, 3);
@@ -204,7 +257,8 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
             {dimDefs.map(d => {
               const scoreVal = allRadarData.find(r => r.dimension === d.dimension)?.score ?? null;
-              const ca = classAvgs[d.itemId]; const clsAvg = ca?.hasData ? ca.avgScore : null;
+              const avgValues = d.itemIds.map(id => classAvgs[id]).filter(ca => ca?.hasData).map(ca => ca.avgScore);
+              const clsAvg = avgValues.length > 0 ? Math.round(avgValues.reduce((sum, value) => sum + value, 0) / avgValues.length) : null;
               const diff = scoreVal !== null && clsAvg !== null ? scoreVal - clsAvg : null;
               return (
                 <div key={d.dimension} className="rounded-lg border p-2.5 space-y-1">
@@ -218,10 +272,10 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
             })}
           </div>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">来源：正式体测项目映射 · 实线=个人 · 虚线=班级均值</p>
-        </CardContent></Card>
+      </CardContent></Card>
 
       {/* 趋势图（正式体测 + 日常训练） */}
-      <PortraitTrendSection options={trendOptions} dailyData={dailyTrendData} />
+      <PortraitTrendSection options={trendOptions} />
 
       {/* 优势/待提升 */}
       <div className="grid gap-4 sm:grid-cols-2">

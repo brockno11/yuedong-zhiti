@@ -452,7 +452,7 @@ npm run dev           # 启动 → http://localhost:3000
 ClassGroup          — 班级（id, name, grade, semester, teacherId）
 UserAccount         — 登录账号（id, role, username, displayName, passwordHash, studentId, classId）
 Student             — 学生信息（id, name, gender, grade, age, height, weight, bmi, sportGoal, sportBase, discomfortsJson, classId）
-FitnessRecord       — 体测记录（id, studentId, date, semester, fatigueLevel, recoveryStatus, hasSoreness, sorenessAreasJson, hasDiscomfort, discomfortNotes）
+FitnessRecord       — 体测记录（id, studentId, date, semester, batchId, recordType, fatigueLevel, recoveryStatus, hasSoreness, sorenessAreasJson, hasDiscomfort, discomfortNotes）
 FitnessRecordItem   — 单项成绩（id, recordId, itemId, value, score, grade）
 AIReport            — AI 报告（id, reportKind, studentId, classId, contentJson, mode, status, version, sourceRecordId, sourceRecordDate, sourceSummary, generatedAt）
 TeacherReview       — 教师审核（id, reportId, reportType, reviewerName, status, teacherNotes, reviewedAt, modificationsJson）

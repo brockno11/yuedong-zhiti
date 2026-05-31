@@ -7,6 +7,18 @@ import { ChevronDown } from "lucide-react";
 
 interface BatchInfo { id: string; name: string; type: string; status: string; academicYear: string; semester: string; round: number; }
 
+function sortBatches(batches: BatchInfo[]) {
+  const semesterRank: Record<string, number> = { 春季: 2, 秋季: 1 };
+  return [...batches].sort((a, b) => {
+    const aYear = Number(a.academicYear.split("-")[1] ?? a.academicYear.split("-")[0] ?? 0);
+    const bYear = Number(b.academicYear.split("-")[1] ?? b.academicYear.split("-")[0] ?? 0);
+    if (aYear !== bYear) return bYear - aYear;
+    const semesterDiff = (semesterRank[b.semester] ?? 0) - (semesterRank[a.semester] ?? 0);
+    if (semesterDiff !== 0) return semesterDiff;
+    return b.round - a.round;
+  });
+}
+
 export function PortraitBatchSelector({ currentBatchId }: { currentBatchId?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -17,11 +29,10 @@ export function PortraitBatchSelector({ currentBatchId }: { currentBatchId?: str
 
   useEffect(() => {
     fetch("/api/batches").then(r => r.json()).then((data: BatchInfo[]) => {
-      const filtered = data.filter(b => b.type !== "daily");
+      const filtered = sortBatches(data.filter(b => b.type !== "daily"));
       setBatches(filtered);
-      // 默认选中最新批次
       if (!activeId && filtered.length > 0) {
-        const latest = filtered[0]; // batches are sorted by createdAt desc
+        const latest = filtered[0];
         select(latest.id);
       }
     }).catch(() => {});

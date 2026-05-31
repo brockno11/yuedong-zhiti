@@ -94,6 +94,7 @@ export interface FitnessRecord {
   semester: string;
   batchId?: string;
   batchName?: string;
+  batchType?: BatchType;
   recordType: RecordType;
   items: FitnessRecordItem[];
   bodyFeeling: BodyFeeling;

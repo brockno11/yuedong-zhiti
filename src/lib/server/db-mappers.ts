@@ -49,6 +49,7 @@ export function mapFitnessRecord(row: FitnessRecordRow): FitnessRecord {
     semester: row.semester,
     batchId: row.batchId ?? undefined,
     batchName: (row.batch as { name?: string } | null)?.name ?? undefined,
+    batchType: (row.batch as { type?: "official" | "makeup" | "daily" } | null)?.type ?? undefined,
     recordType: (row.recordType as "official_test" | "daily_training") ?? "official_test",
     items: row.items.map(mapFitnessRecordItem),
     bodyFeeling: {

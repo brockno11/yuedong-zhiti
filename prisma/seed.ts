@@ -270,7 +270,7 @@ async function main() {
     { id: "R-DT17", date: "2026-05-09T07:30:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT17-pull_up", itemId: "pull_up", value: 7, score: 78, grade: "good" },{ id: "R-DT17-1000m_run", itemId: "1000m_run", value: 248, score: 76, grade: "good" }] },
     { id: "R-DT18", date: "2026-05-16T08:00:00Z", fatigue: 3, recovery: "quick", soreness: false, items: [{ id: "R-DT18-50m_run", itemId: "50m_run", value: 7.4, score: 88, grade: "excellent" },{ id: "R-DT18-standing_long_jump", itemId: "standing_long_jump", value: 198, score: 80, grade: "good" }] },
     { id: "R-DT19", date: "2026-05-23T07:00:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT19-sit_and_reach", itemId: "sit_and_reach", value: 13, score: 76, grade: "good" }] },
-    { id: "R-DT20", date: "2026-06-01T07:30:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT20-50m_run", itemId: "50m_run", value: 7.3, score: 90, grade: "excellent" },{ id: "R-DT20-pull_up", itemId: "pull_up", value: 8, score: 82, grade: "good" },{ id: "R-DT20-1000m_run", itemId: "1000m_run", value: 244, score: 78, grade: "good" }] },
+    { id: "R-DT20", date: "2026-06-03T07:30:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT20-50m_run", itemId: "50m_run", value: 7.3, score: 90, grade: "excellent" },{ id: "R-DT20-pull_up", itemId: "pull_up", value: 8, score: 82, grade: "good" },{ id: "R-DT20-1000m_run", itemId: "1000m_run", value: 244, score: 78, grade: "good" }] },
   ]) {
     await prisma.fitnessRecord.upsert({
       where: { id: dr.id },

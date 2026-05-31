@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-06-01 | 版本：MVP 0.8.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23
+> 生成日期：2026-06-01 | 版本：MVP 0.9.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
@@ -152,6 +152,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | batchId | String? | 关联 AssessmentBatch |
+| batchType | BatchType? | 前端映射字段，来自关联批次 type，用于区分 official/makeup/daily |
 | recordType | RecordType | official_test/daily_training |
 
 ### 数据完整度规则
@@ -594,7 +595,7 @@ getStudentReportHistory(studentId) → StudentReportHistoryItem[]
 
 核心实体：
   StudentProfile    — {id, name, gender, grade, age, height, weight, bmi, sportGoal, sportBase, discomforts[], createdAt, updatedAt}
-  FitnessRecord     — {id, studentId, date, semester, items[], bodyFeeling}
+  FitnessRecord     — {id, studentId, date, semester, batchId?, batchName?, batchType?, recordType, items[], bodyFeeling}
   FitnessRecordItem — {itemId, value, score, grade}
   BodyFeeling       — {fatigueLevel(1-10), recoveryStatus, hasSoreness, sorenessAreas[], hasDiscomfort, discomfortNotes}
   AIStudentReport   — {id, studentId, generatedAt, version, status, fitnessProfile, weaknessAnalysis[], trainingPlan[], safetyReminders[]}
