@@ -1,8 +1,6 @@
 // ===== 跃动智体 — 学生首页 =====
 import { EmptyState } from "@/components/features/empty-state";
 import { RecentRecordCard } from "@/components/features/recent-record-card";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getFitnessRecords, getLatestFitnessRecord, getStudentProfile } from "@/lib/server/data-service";
 import { FITNESS_ITEMS } from "@/lib/constants";
@@ -53,60 +51,53 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 px-4">
-      {/* ===== 1. 今日行动 Hero ===== */}
-      <div className="rounded-2xl bg-primary p-6 sm:p-8 text-primary-foreground shadow-sm">
-        {/* 问候 + 状态胶囊 */}
-        <div className="flex items-center justify-between">
-          <p className="text-base sm:text-lg font-medium opacity-90">{greeting}</p>
-          <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium">
-            {completeness.isComplete ? `正式体测 ${completeness.recordedCount}/${completeness.expectedCount}` : `已录 ${completeness.recordedCount}/${completeness.expectedCount}`}
+      {/* ===== 1. 状态 Hero ===== */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium opacity-85">{greeting}，{student.name}</p>
+          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium ml-auto">
+            {completeness.isComplete ? `完整 ${completeness.recordedCount}/${completeness.expectedCount}` : `已录 ${completeness.recordedCount}/${completeness.expectedCount}`}
           </span>
         </div>
-
-        <h1 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight">{student.name}</h1>
-
-        <p className="mt-2 text-sm sm:text-base opacity-90 leading-relaxed">{statusLine}</p>
-
+        <p className="mt-2 text-sm opacity-80 leading-relaxed">{statusLine}</p>
         {completeness.isPartial && missingNames.length > 0 && (
-          <p className="mt-1.5 text-sm opacity-70">
-            待补充：{missingNames.join("、")}{completeness.missingItems.length > 3 ? ` 等${completeness.missingItems.length}项` : ""}
-          </p>
+          <p className="mt-1 text-xs opacity-65">待补充：{missingNames.join("、")}{completeness.missingItems.length > 3 ? ` 等${completeness.missingItems.length}项` : ""}</p>
         )}
 
-        {/* 今日建议动作 */}
-        <p className="mt-4 text-xs opacity-60">
-          {completeness.isPartial
-            ? "📋 今日建议：完成正式体测项目的补录"
-            : completeness.isComplete
-              ? "⭐ 今日建议：保持训练节奏，记录日常训练"
-              : "📋 今日建议：完成首次体测记录"}
-        </p>
-
-        {/* 主 CTA */}
-        <Link href="/record" className="block mt-3">
-          <Button className="w-full gap-2 h-14 text-base font-semibold bg-white text-primary hover:bg-white/95 shadow-md">
-            <PlusCircle className="h-5 w-5" />
-            {completeness.isPartial ? "继续补录正式体测" : completeness.isComplete ? "记录日常训练" : "开始首次记录"}
+        <Link href="/record" className="block mt-4">
+          <Button className="w-full gap-2 h-14 text-[15px] font-semibold bg-white text-primary hover:bg-white/95 shadow-md">
+            <PlusCircle className="h-5 w-5" />开始记录
           </Button>
         </Link>
-
-        {/* 次级操作 */}
-        <div className="mt-4 flex gap-4 text-sm opacity-75">
-          <Link href="/ai-guide" className="flex items-center gap-1.5 hover:opacity-100 transition-opacity">
-            <Sparkles className="h-4 w-4" />AI 指导
-          </Link>
-          <Link href="/records" className="flex items-center gap-1.5 hover:opacity-100 transition-opacity">
-            <FileText className="h-4 w-4" />历史记录
-          </Link>
-        </div>
-
-        {/* 底部轻量说明 */}
-        <p className="mt-3 text-xs opacity-50 border-t border-white/15 pt-3">
-          {latestRecord.recordType === "official_test"
-            ? "正式体测数据已提交，如需更正请联系体育教师"
-            : "练习数据可随时更新，正式体测需教师更正"}
-        </p>
+        <p className="mt-2 text-center text-[11px] opacity-50">支持正式体测、补录项目与日常训练</p>
       </div>
+
+      {/* ===== 1b. 快捷入口行 ===== */}
+      <div className="flex gap-2">
+        <Link href="/ai-guide" className="flex-1 rounded-xl border bg-card p-3 text-center hover:bg-accent transition-colors">
+          <Sparkles className="mx-auto h-4 w-4 text-primary" />
+          <p className="mt-1 text-xs font-medium">AI 指导</p>
+        </Link>
+        <Link href="/portrait" className="flex-1 rounded-xl border bg-card p-3 text-center hover:bg-accent transition-colors">
+          <BarChart3 className="mx-auto h-4 w-4 text-primary" />
+          <p className="mt-1 text-xs font-medium">体质画像</p>
+        </Link>
+        <Link href="/records" className="flex-1 rounded-xl border bg-card p-3 text-center hover:bg-accent transition-colors">
+          <FileText className="mx-auto h-4 w-4 text-primary" />
+          <p className="mt-1 text-xs font-medium">历史记录</p>
+        </Link>
+      </div>
+
+      {/* ===== 1c. 今日建议（轻量提示）===== */}
+      {!completeness.isComplete && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700 flex items-center gap-2">
+          <Target className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <span>建议补充 {completeness.missingItems.length} 个未录项目，完成全部体测后可获取完整综合体质画像</span>
+        </div>
+      )}
+      {latestRecord.recordType === "official_test" && (
+        <p className="text-[11px] text-muted-foreground text-center">正式体测数据已提交，如需更正请联系体育教师</p>
+      )}
 
       {/* ===== 2. 数据摘要条 ===== */}
       <div className="grid grid-cols-4 gap-2">
@@ -137,55 +128,6 @@ export default async function DashboardPage() {
         <RecentRecordCard record={latestRecord} gender={student.gender} />
       </div>
 
-      {/* ===== 4. 下一步建议 ===== */}
-      {completeness.isPartial && (
-        <Card className="rounded-xl border-amber-200 bg-amber-50 shadow-sm">
-          <CardContent className="flex items-start gap-3 p-4">
-            <Target className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">建议补充项目</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                完成全部 {completeness.expectedCount} 项正式体测后，可获取完整综合体质画像和AI训练方案
-              </p>
-              <Link href="/record"><Button variant="outline" size="sm" className="gap-1 mt-2 h-7 text-xs">补充体测项目</Button></Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {completeness.isComplete && (
-        <Card className="rounded-xl border-primary/20 bg-primary/5 shadow-sm">
-          <CardContent className="flex items-start gap-3 p-4">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div>
-              <p className="text-sm font-medium">全部项目已录入</p>
-              <p className="text-xs text-muted-foreground mt-0.5">可查看体质画像或生成AI指导报告</p>
-              <div className="flex gap-2 mt-2">
-                <Link href="/portrait"><Button variant="outline" size="sm" className="h-7 text-xs gap-1"><BarChart3 className="h-3 w-3" />查看画像</Button></Link>
-                <Link href="/ai-guide"><Button variant="outline" size="sm" className="h-7 text-xs gap-1"><Sparkles className="h-3 w-3" />AI 指导</Button></Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ===== 5. 快捷入口 ===== */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link href="/portrait"><Card className="cursor-pointer rounded-xl shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="flex items-center gap-3 p-3.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10"><BarChart3 className="h-4 w-4 text-primary" /></div>
-            <div className="min-w-0"><p className="text-sm font-semibold">体质画像</p><p className="text-[11px] text-muted-foreground">雷达图与趋势</p></div>
-            <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-          </CardContent></Card>
-        </Link>
-        <Link href="/ai-guide"><Card className="cursor-pointer rounded-xl shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="flex items-center gap-3 p-3.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Sparkles className="h-4 w-4 text-primary" /></div>
-            <div className="min-w-0"><p className="text-sm font-semibold">AI 指导</p><p className="text-[11px] text-muted-foreground">专项训练方案</p></div>
-            <Badge variant="secondary" className="text-[9px] ml-auto">AI</Badge>
-          </CardContent></Card>
-        </Link>
-      </div>
     </div>
   );
 }
