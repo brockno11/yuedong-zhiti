@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { FitnessTrendChart } from "@/components/charts/fitness-trend-chart";
-import { PlusCircle } from "lucide-react";
-import Link from "next/link";
 
 interface TrendOption {
   key: string;
@@ -14,7 +11,10 @@ interface TrendOption {
   unit: string;
 }
 
-export function PortraitTrendSection({ options }: { options: TrendOption[] }) {
+export function PortraitTrendSection({ options, dailyData }: {
+  options: TrendOption[];
+  dailyData?: { date: string; value: number; grade: string }[];
+}) {
   const [active, setActive] = useState(options[0]?.key ?? "");
   const current = options.find(o => o.key === active) ?? options[0];
   if (!current || current.data.length < 2) return null;
@@ -24,7 +24,10 @@ export function PortraitTrendSection({ options }: { options: TrendOption[] }) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">体质变化趋势</CardTitle>
-          <span className="text-[11px] text-muted-foreground">{current.label}</span>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary" />正式体测</span>
+            {dailyData && dailyData.length > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-400" />日常训练</span>}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -37,12 +40,6 @@ export function PortraitTrendSection({ options }: { options: TrendOption[] }) {
             </button>
           ))}
         </div>
-        {current.data.length < 2 && (
-          <div className="py-6 text-center">
-            <p className="text-xs text-muted-foreground">该维度历史数据不足，继续记录后可生成趋势</p>
-            <Link href="/record"><Button variant="outline" size="sm" className="gap-1 mt-2 h-7 text-xs"><PlusCircle className="h-3 w-3" />补充记录</Button></Link>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

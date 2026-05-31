@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FitnessRadarChart } from "@/components/charts/fitness-radar-chart";
 import { PortraitTrendSection } from "@/components/features/portrait-trend-section";
+import { PortraitBatchSelector } from "@/components/features/portrait-batch-selector";
 import { EmptyState } from "@/components/features/empty-state";
-import { getFitnessRecords, getLatestFitnessRecord, getStudentProfile, getClassAverages } from "@/lib/server/data-service";
+import { getFitnessRecords, getStudentProfile, getClassAverages } from "@/lib/server/data-service";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { calculateRecordCompleteness } from "@/lib/scoring";
 import type { RadarChartDataPoint } from "@/lib/types";
@@ -23,12 +24,16 @@ function getLatestPerItem(records: { items: { itemId: string; score: number; val
 }
 function gradeLabel(s: number) { if (s >= 90) return "优秀"; if (s >= 80) return "良好"; if (s >= 60) return "及格"; return "待提升"; }
 
-export default async function PortraitPage() {
+export default async function PortraitPage({ searchParams }: { searchParams?: { batchId?: string } }) {
   const studentId = getDemoStudentId();
   const student = studentId ? await getStudentProfile(studentId) : null;
-  const latestRecord = studentId ? await getLatestFitnessRecord(studentId) : null;
   const allRecords = studentId ? await getFitnessRecords(studentId) : [];
   const classAvgs = await getClassAverages();
+  const batchId = searchParams?.batchId;
+
+  // 按批次过滤
+  const filteredRecords = batchId ? allRecords.filter(r => r.batchId === batchId) : allRecords;
+  const latestRecord = filteredRecords[0] ?? allRecords[0] ?? null;
 
   if (!student || !latestRecord) {
     return (<div className="mx-auto max-w-lg px-4"><EmptyState title="暂无体质数据" description="完成首次体测记录后，这里将展示完整的体质画像" action={<Link href="/record"><span className="inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">开始记录</span></Link>} /></div>);
@@ -100,13 +105,16 @@ export default async function PortraitPage() {
     <div className="mx-auto max-w-lg space-y-4 px-4">
       <PageHeader title="体质画像" description={`${student.name} · ${student.grade}`} />
 
-      {/* 顶部：正式体测状态 */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {latestRecord.batchName && <Badge variant="secondary" className="text-[10px]">{latestRecord.batchName} · 正式体测</Badge>}
+      {/* 批次选择器 */}
+      <div className="flex items-center gap-2">
+        <PortraitBatchSelector currentBatchId={batchId} />
         <Badge variant="outline" className="text-[10px]">体质画像</Badge>
         <Badge variant={completeness.isComplete ? "excellent" : "pass"} className="text-[10px]">
-          正式体测完整度 {completeness.recordedCount}/{completeness.expectedCount} 项
+          完整度 {completeness.recordedCount}/{completeness.expectedCount} 项
         </Badge>
+        {batchId && (
+          <span className="text-[10px] text-muted-foreground ml-auto">已筛选</span>
+        )}
       </div>
 
       {!hasOfficial && (
@@ -169,8 +177,8 @@ export default async function PortraitPage() {
           <p className="mt-2 text-center text-[11px] text-muted-foreground">来源：正式体测项目映射 · 实线=个人 · 虚线=班级均值</p>
         </CardContent></Card>
 
-      {/* 趋势图（正式体测） */}
-      {trendOptions.length > 0 && <PortraitTrendSection options={trendOptions} />}
+      {/* 趋势图（正式体测 + 日常训练） */}
+      <PortraitTrendSection options={trendOptions} dailyData={dailyRecords.slice(0, 12).reverse().map(r => ({ date: r.semester || new Date(r.date).toISOString().slice(0, 7), value: Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length), grade: "good" }))} />
 
       {/* 优势/待提升 */}
       <div className="grid gap-4 sm:grid-cols-2">
