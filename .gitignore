@@ -36,6 +36,8 @@ next-env.d.ts
 # temp files
 tmp/
 .agents/
+test-artifacts/
+*.bundle
 
 # local SQLite database
 prisma/dev.db
