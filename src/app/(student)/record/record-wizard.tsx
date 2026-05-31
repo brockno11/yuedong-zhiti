@@ -40,6 +40,8 @@ export function RecordWizard() {
   const [studentGender, setStudentGender] = useState<"male" | "female">("male");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+  const [batchItemCounts, setBatchItemCounts] = useState<Record<string, number>>({});
+  const EXPECTED_COUNT = 6;
   const savedRef = useRef(false);
 
   // 读取当前学生性别
@@ -53,8 +55,28 @@ export function RecordWizard() {
     }
   }, []);
 
-  // 加载批次列表
+  // 加载批次列表 + 已有记录项目数（判断批次是否已完成）
   useEffect(() => {
+    const login = JSON.parse(localStorage.getItem("demo_login") || "{}") as { studentId?: string; username?: string };
+    const sid = login.studentId ?? login.username;
+    if (sid) {
+      fetch(`/api/fitness-records?studentId=${sid}`)
+        .then(r => r.ok ? r.json() : null)
+        .then((data: { data?: { batchId?: string; items?: { itemId: string }[] }[] } | null) => {
+          if (data?.data) {
+            const counts: Record<string, Set<string>> = {};
+            for (const r of data.data) {
+              if (r.batchId && r.items) {
+                if (!counts[r.batchId]) counts[r.batchId] = new Set();
+                for (const i of r.items) counts[r.batchId].add(i.itemId);
+              }
+            }
+            const result: Record<string, number> = {};
+            for (const [k, v] of Object.entries(counts)) result[k] = v.size;
+            setBatchItemCounts(result);
+          }
+        }).catch(() => {});
+    }
     fetch("/api/batches")
       .then(r => r.json())
       .then((data: BatchOption[]) => {
@@ -123,7 +145,7 @@ export function RecordWizard() {
 
   const canProceed = () => {
     switch (step) {
-      case 0: return selectedBatchId !== "" || recordType === "daily_training";
+      case 0: return recordType === "daily_training" || (selectedBatchId !== "" && (batchItemCounts[selectedBatchId] ?? 0) < EXPECTED_COUNT);
       case 1: return selectedItems.length > 0;
       case 2: return selectedItems.every((id) => scores[id] && scores[id] > 0);
       default: return true;
@@ -254,24 +276,37 @@ export function RecordWizard() {
                   </div>
                 </button>
 
+                {/* 已选批次完成提示 */}
+                {recordType === "official_test" && selectedBatchId && (batchItemCounts[selectedBatchId] ?? 0) >= EXPECTED_COUNT && (
+                  <div className="rounded-xl border border-level-excellent/30 bg-level-excellent/5 p-3 text-sm text-level-excellent">
+                    该批次已完整记录 {batchItemCounts[selectedBatchId]}/{EXPECTED_COUNT} 项。
+                    如需修改数据，请联系体育教师在教师端操作。
+                  </div>
+                )}
+
                 {/* 正式批次选择 */}
                 {recordType === "official_test" && (
                   <div className="ml-2 pl-4 border-l-2 border-primary/20 space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground">选择体测批次</p>
-                    {batches.filter(b => b.type !== "daily").length > 0 ? (
-                      batches.filter(b => b.type !== "daily").map((batch) => (
-                        <button key={batch.id} type="button" onClick={() => setSelectedBatchId(batch.id)}
-                          className={cn("w-full rounded-lg border p-2.5 text-left text-xs transition-colors",
-                            selectedBatchId === batch.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent")}>
-                          <span className="font-medium">{batch.name}</span>
-                          <Badge variant={batch.status === "active" ? "excellent" : "secondary"} className="text-[9px] ml-2">
-                            {batch.status === "active" ? "进行中" : "已归档"}
-                          </Badge>
-                        </button>
-                      ))
-                    ) : (
+                    {batches.filter(b => b.type !== "daily").length === 0 && (
                       <p className="text-xs text-muted-foreground py-2">暂无可录入的正式体测批次</p>
                     )}
+                    {batches.filter(b => b.type !== "daily").map((batch) => {
+                      const complete = (batchItemCounts[batch.id] ?? 0) >= EXPECTED_COUNT;
+                      return (
+                        <button key={batch.id} type="button"
+                          onClick={() => !complete && setSelectedBatchId(batch.id)}
+                          disabled={complete}
+                          className={cn("w-full rounded-lg border p-2.5 text-left text-xs transition-colors",
+                            complete ? "border-muted bg-muted/30 opacity-60 cursor-not-allowed" :
+                            selectedBatchId === batch.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent")}>
+                          <span className="font-medium">{batch.name}</span>
+                          <Badge variant={complete ? "excellent" : batch.status === "active" ? "excellent" : "secondary"} className="text-[9px] ml-2">
+                            {complete ? "已完成" : batch.status === "active" ? "进行中" : "已归档"}
+                          </Badge>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
