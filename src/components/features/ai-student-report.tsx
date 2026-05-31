@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { mockAIStudentReport } from "@/lib/data/mock-ai-reports";
-import { calculateRecordCompleteness, computeDimensionsFromItems, type DimensionInput } from "@/lib/scoring";
+import { calculateRecordCompleteness } from "@/lib/scoring";
 import type { StudentReportHistoryItem } from "@/lib/server/db-mappers";
 import type { AIStudentReport, FitnessItemId, FitnessRecord, FitnessRecordItem, StudentProfile } from "@/lib/types";
 import { AIFormalAnalysis } from "./ai-formal-analysis";
@@ -259,18 +259,6 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
     [allBatchReports, formalBatches, officialRecords]
   );
 
-  // Records grouped by batch for data preview
-  const recordsByBatch = useMemo(() => {
-    const map = new Map<string, FitnessRecord[]>();
-    for (const r of officialRecords) {
-      if (r.batchId) {
-        const existing = map.get(r.batchId) ?? [];
-        existing.push(r);
-        map.set(r.batchId, existing);
-      }
-    }
-    return map;
-  }, [officialRecords]);
   const latestOfficialRecord = officialRecords[0] ?? null;
 
   const batchFreshness: FreshnessState = useMemo(() => {
@@ -451,94 +439,6 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
     setStatus("complete");
   }, []);
 
-  // Build a computed "preview" report from actual batch records (when no AI report exists)
-  const buildBatchPreview = useCallback((batchId: string): AIStudentReport => {
-    const batchRecords = recordsByBatch.get(batchId) ?? [];
-    const allItems = batchRecords.flatMap(r => r.items);
-    // Deduplicate by itemId, keeping the latest score
-    const itemMap = new Map<string, FitnessRecordItem>();
-    for (const item of allItems) {
-      if (!itemMap.has(item.itemId)) itemMap.set(item.itemId, item);
-    }
-    const uniqueItems = Array.from(itemMap.values());
-    const overallScore = uniqueItems.length > 0
-      ? Math.round(uniqueItems.reduce((s, i) => s + i.score, 0) / uniqueItems.length)
-      : 0;
-
-    const dimInputs: DimensionInput[] = uniqueItems.map(i => ({
-      itemId: i.itemId,
-      itemName: itemName(i.itemId),
-      score: i.score,
-      grade: i.grade,
-    }));
-    const computedDims = computeDimensionsFromItems(dimInputs, student?.bmi ?? null, student?.gender ?? "male");
-    const dimsForProfile = computedDims.map(d => ({
-      key: d.key,
-      label: d.label,
-      score: d.score ?? 0,
-      grade: (d.grade ?? "pass") as "excellent" | "good" | "pass" | "improve",
-      classAverage: 70,
-      relatedItems: d.relatedItems,
-      analysis: d.analysis,
-      suggestion: d.suggestion,
-    }));
-
-    return {
-      id: `preview-${batchId}`,
-      studentId: studentId ?? "",
-      generatedAt: new Date().toISOString(),
-      version: 0,
-      status: "draft",
-      reportType: "batch_report",
-      fitnessProfile: {
-        summary: `基于该批次 ${uniqueItems.length} 个已测项目计算的体质预览。此为数据预览，非 AI 分析报告。`,
-        bmiStatus: student?.bmi ? `${student.bmi}，BMI 数据` : "暂无 BMI 数据",
-        overallScore,
-        overallGrade: overallScore >= 90 ? "excellent" : overallScore >= 80 ? "good" : overallScore >= 60 ? "pass" : "improve",
-        dimensions: dimsForProfile,
-        strengths: uniqueItems.filter(i => i.grade === "excellent" || i.grade === "good").map(i => itemName(i.itemId)),
-        improvements: uniqueItems.filter(i => i.grade === "pass" || i.grade === "improve").map(i => itemName(i.itemId)),
-      },
-      itemScores: uniqueItems.map(i => ({
-        itemId: i.itemId as FitnessItemId,
-        itemName: itemName(i.itemId),
-        valueText: `${i.value}`,
-        score: i.score,
-        grade: i.grade,
-        statusLabel: i.grade === "excellent" || i.grade === "good" ? "优势项" : i.grade === "pass" ? "稳定项" : "需关注项",
-        analysis: "",
-        suggestion: "",
-      })),
-      weaknessAnalysis: uniqueItems.filter(i => i.grade === "pass" || i.grade === "improve").map(i => ({
-        item: itemName(i.itemId),
-        currentLevel: i.grade === "pass" ? "及格" : "有提升空间",
-        possibleCauses: [],
-        improvementPotential: "建议生成 AI 分析获取详细建议",
-      })),
-      trainingPlan: [],
-      safetyReminders: ["请生成 AI 分析获取完整的恢复与安全提醒"],
-    };
-  }, [recordsByBatch, studentId, student]);
-
-  // View report for specific batch
-  const handleViewBatch = useCallback((batchId: string) => {
-    const reportItem = batchReportMap.get(batchId);
-    if (reportItem) {
-      setViewingReport(reportItem.report);
-      setViewingItemId(null);
-      setSelectedBatchId(batchId);
-      setMode(reportItem.mode === "ai" ? "ai" : "mock");
-      setStatus("complete");
-    } else {
-      // No report for this batch — show computed data preview
-      setViewingReport(buildBatchPreview(batchId));
-      setViewingItemId(null);
-      setSelectedBatchId(batchId);
-      setMode(undefined);
-      setStatus("complete");
-    }
-  }, [batchReportMap, buildBatchPreview]);
-
   // ---- Empty state ----
   if (!latestRecord || !student) {
     return (
@@ -581,16 +481,20 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
         formalBatches={formalBatches}
         selectedBatchId={selectedBatchId}
         batchReportMap={batchReportMap}
+        allBatchReports={allBatchReports}
         onBack={() => {
           setViewingReport(null);
           setViewingItemId(null);
           setSelectedBatchId(null);
           router.refresh();
         }}
-        onBatchChange={handleViewBatch}
         onGenerateForBatch={(batchId) => {
           setSelectedBatchId(batchId);
           generateReport({ reportType: "batch_report" });
+        }}
+        onView={(report) => openReport(report)}
+        onDeleteReport={(reportId) => {
+          fetch(`/api/reports/${reportId}`, { method: "DELETE" }).then(() => router.refresh());
         }}
       />
     );
@@ -607,11 +511,8 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
         batchReport={batchReport}
         batchFreshness={batchFreshness}
         missingItems={completeness.missingItems}
-        batches={batches}
-        batchReportMap={batchReportMap}
         onGenerate={() => generateReport({ reportType: "batch_report" })}
         onView={(report) => openReport(report)}
-        onViewBatch={handleViewBatch}
       />
 
       {/* 2. Item Analysis */}

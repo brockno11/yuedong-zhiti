@@ -8,9 +8,11 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  History,
   ShieldCheck,
   Sparkles,
   Target,
+  Trash2,
   TrendingUp,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -30,9 +32,11 @@ interface ReportDetailProps {
   formalBatches: Array<{ id: string; name: string }>;
   selectedBatchId: string | null;
   batchReportMap?: Map<string, StudentReportHistoryItem | null>;
+  allBatchReports?: StudentReportHistoryItem[];
   onBack: () => void;
-  onBatchChange: (_batchId: string) => void;
   onGenerateForBatch?: (_batchId: string) => void;
+  onView?: (_report: StudentReportHistoryItem) => void;
+  onDeleteReport?: (_reportId: string) => void;
 }
 
 function itemName(id: string): string {
@@ -88,8 +92,10 @@ export function AIReportDetail({
   selectedBatchId,
   batchReportMap,
   onBack,
-  onBatchChange,
   onGenerateForBatch,
+  allBatchReports,
+  onView: onViewHistory,
+  onDeleteReport,
 }: ReportDetailProps) {
   const status = report.status || "pending_review";
   const StatusIcon = status === "approved" ? CheckCircle2 : status === "rejected" ? AlertTriangle : Clock;
@@ -125,32 +131,6 @@ export function AIReportDetail({
             )}
             <Badge variant={review.variant} className="text-[10px]">{review.label}</Badge>
           </div>
-
-          {/* Batch switcher */}
-          {formalBatches.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              {formalBatches.map((b) => {
-                const hasReport = batchReportMap
-                  ? batchReportMap.get(b.id)
-                  : false;
-                const isSelected = selectedBatchId === b.id;
-                return (
-                  <Button
-                    key={b.id}
-                    variant={isSelected ? "default" : "outline"}
-                    size="sm"
-                    className="h-9 gap-1 text-xs"
-                    onClick={() => onBatchChange(b.id)}
-                  >
-                    {b.name}
-                    {!hasReport && (
-                      <Badge variant="secondary" className="text-[8px] h-4">待生成</Badge>
-                    )}
-                  </Button>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* Empty state for batch without report */}
@@ -446,7 +426,19 @@ export function AIReportDetail({
               </Card>
             )}
 
-            {/* 11. Review status & Disclaimer */}
+            {/* 11. Historical batch reports */}
+            {allBatchReports && allBatchReports.length > 1 && (
+              <BatchHistorySection
+                allBatchReports={allBatchReports}
+                currentReportId={report.id}
+                onView={onViewHistory}
+                onDelete={onDeleteReport}
+                batchReportMap={batchReportMap}
+                formalBatches={formalBatches}
+              />
+            )}
+
+            {/* 12. Review status & Disclaimer */}
             <Card className="rounded-xl shadow-sm">
               <CardContent className="flex items-center gap-3 p-4">
                 <StatusIcon className="h-5 w-5 shrink-0 text-primary" />
@@ -789,5 +781,126 @@ function FallbackItemScores({ report }: { report: AIStudentReport }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// ===== Batch History Section =====
+
+function BatchHistorySection({
+  allBatchReports,
+  currentReportId,
+  onView,
+  onDelete,
+  formalBatches,
+}: {
+  allBatchReports: StudentReportHistoryItem[];
+  currentReportId: string;
+  onView?: (_report: StudentReportHistoryItem) => void;
+  onDelete?: (_reportId: string) => void;
+  batchReportMap?: Map<string, StudentReportHistoryItem | null>;
+  formalBatches: Array<{ id: string; name: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const olderReports = allBatchReports.filter((r) => r.id !== currentReportId);
+  if (olderReports.length === 0) return null;
+
+  const batchNameForReport = (report: StudentReportHistoryItem): string => {
+    if (report.sourceBatchId) {
+      const batch = formalBatches.find((b) => b.id === report.sourceBatchId);
+      if (batch) return batch.name;
+    }
+    return report.sourceSummary ?? "未知批次";
+  };
+
+  const reviewBadge = (status: string) => {
+    if (status === "approved") return { label: "已审核", variant: "excellent" as const };
+    if (status === "rejected") return { label: "已退回", variant: "improve" as const };
+    return { label: "待审核", variant: "pass" as const };
+  };
+
+  const handleDelete = async (reportId: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/reports/${reportId}`, { method: "DELETE" });
+      if (res.ok) {
+        setConfirmDeleteId(null);
+        onDelete?.(reportId);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="rounded-xl border">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="flex w-full items-center justify-between p-3 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">历史正式体测报告</span>
+            <Badge variant="secondary" className="text-[10px]">{olderReports.length} 份</Badge>
+          </div>
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {open && (
+          <div className="space-y-2 border-t px-3 pb-3 pt-2">
+            {olderReports.map((item) => {
+              const rv = reviewBadge(item.status);
+              return (
+                <div key={item.id} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onView?.(item)}
+                    className="flex-1 rounded-lg bg-muted/20 p-2.5 text-left transition-colors hover:bg-muted/40"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-medium">{batchNameForReport(item)}</p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">
+                          {new Date(item.generatedAt).toLocaleDateString("zh-CN")}
+                        </p>
+                      </div>
+                      <Badge variant={rv.variant} className="shrink-0 text-[9px]">{rv.label}</Badge>
+                    </div>
+                  </button>
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id); }}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="删除报告"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmDeleteId(null)}>
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-semibold">确认删除</p>
+            <p className="mt-2 text-sm text-muted-foreground">删除后将无法恢复。对应审核记录也会同步删除。</p>
+            <div className="mt-5 flex gap-3">
+              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmDeleteId(null)} disabled={deleting}>取消</Button>
+              <Button variant="destructive" className="h-11 flex-1" onClick={() => handleDelete(confirmDeleteId)} disabled={deleting}>
+                {deleting ? "删除中..." : "确认删除"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

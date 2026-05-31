@@ -14,11 +14,8 @@ interface FormalAnalysisProps {
   batchReport: StudentReportHistoryItem | null;
   batchFreshness: "current" | "suggest_update";
   missingItems: string[];
-  batches: Array<{ id: string; name: string; type: string; status: string }>;
-  batchReportMap?: Map<string, StudentReportHistoryItem | null>;
   onGenerate: () => void;
   onView: (_report: StudentReportHistoryItem) => void;
-  onViewBatch?: (_batchId: string) => void;
 }
 
 function itemName(id: string): string {
@@ -38,27 +35,24 @@ export function AIFormalAnalysis({
   batchReport,
   batchFreshness,
   missingItems,
-  batches,
   onGenerate,
   onView,
-  onViewBatch,
-  batchReportMap,
 }: FormalAnalysisProps) {
-  const badge = batchFreshness === "suggest_update"
+  const statusBadge = batchFreshness === "suggest_update"
     ? { label: "建议更新", variant: "pass" as const }
     : batchReport
       ? { label: "已生成", variant: "excellent" as const }
-      : null;
+      : { label: "待生成", variant: "secondary" as const };
 
   const review = batchReport ? reviewBadge(batchReport.status) : null;
-  const canAnalyze = completionRate > 0 || batches.length > 0;
+  const canAnalyze = completionRate > 0;
 
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2 px-1">
         <GraduationCap className="h-5 w-5 text-primary" />
         <h2 className="text-base font-semibold">正式体测分析</h2>
-        {badge && <Badge variant={badge.variant} className="text-[10px]">{badge.label}</Badge>}
+        <Badge variant={statusBadge.variant} className="text-[10px]">{statusBadge.label}</Badge>
       </div>
 
       <Card className="rounded-xl shadow-sm">
@@ -81,37 +75,6 @@ export function AIFormalAnalysis({
             </div>
           </div>
 
-          {/* 正式批次列表 */}
-          {batches.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-[11px] text-muted-foreground">正式体测批次</p>
-              {batches.filter(b => b.type === "official").map((batch) => {
-                const hasReport = batchReportMap?.get(batch.id);
-                return (
-                  <button
-                    key={batch.id}
-                    type="button"
-                    onClick={() => onViewBatch?.(batch.id)}
-                    className="flex w-full items-center gap-2 rounded-lg bg-muted/20 px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                    <span className="font-medium">{batch.name}</span>
-                    <div className="ml-auto flex items-center gap-1">
-                      {hasReport ? (
-                        <Badge variant="excellent" className="text-[9px]">已有分析</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[9px]">待生成</Badge>
-                      )}
-                      <Badge variant="outline" className="text-[9px]">
-                        {batch.status === "active" ? "进行中" : batch.status === "completed" ? "已完成" : "已归档"}
-                      </Badge>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {/* 缺失项目提示 */}
           {missingItems.length > 0 && (
             <div className="flex items-start gap-2 rounded-lg bg-muted/40 p-3">
@@ -126,11 +89,11 @@ export function AIFormalAnalysis({
 
           {/* 数据来源说明 */}
           <p className="text-[11px] leading-5 text-muted-foreground">
-            正式体测用于阶段性基线评价。日常训练数据不参与正式体测评分，也不能补全缺失项目。
+            正式体测分析只基于正式体测数据。日常训练不参与正式体测评分，也不能补全缺失项目。
           </p>
 
           {/* 操作按钮 */}
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2">
             {batchReport && batchFreshness === "current" ? (
               <Button
                 className="h-11 gap-1.5"
