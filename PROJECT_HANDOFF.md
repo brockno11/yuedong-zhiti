@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-06-01 | 版本：MVP 0.9.2 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 22/22
+> 生成日期：2026-06-01 | 版本：MVP 0.9.2 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 22/22 | 提交：960da26
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
@@ -208,11 +208,16 @@ noRecord → hasRecordNoReport → [用户点击生成] → hasCurrentReport
    11. 审核状态说明
 
 ### 新增特性（v0.9.2）
-- **批次切换生效**：建立批次-报告映射，点击不同批次切换对应报告，无报告批次显示空状态
+- **批次切换生效**：建立批次-报告映射(sourceRecordId→record→batchId)，点击不同批次切换对应报告
+- **数据预览兜底**：批次无AI报告时基于实际记录自动计算预览(computeDimensionsFromItems)，含黄色提示横幅+生成AI分析按钮
+- **完整度按批次绑定**：正式体测完整度只统计最新批次内项目，不跨批次聚合(避免多批次混合显示6/6)
+- **recordType严格筛选**：`officialRecords` 改为正向匹配 `recordType === "official_test"`(不再用排除法)
+- **analysisScope解析**：API 读取前端传入的 `analysisScope`(formal_overall/item_assessment/record_report)注入提示词
 - **底部导航返回**：Tab re-click 自定义事件重置报告详情回到报告中心
 - **维度兜底**：AI 未返回完整 dimensions 时基于正式体测项目自动计算 6 维度
 - **无截断**：所有 slice() 截断已移除，长内容用折叠/展开替代
 - **新类型字段**：`itemScores[]`、`relationshipAnalysis[]`、`strengthsAnalysis[]`、`stageTrainingPlan[]`、`teachingSuggestions[]`
+- **返回按钮升级**：outline + ArrowLeft 图标，两行布局
 
 ## 6. 学生端功能详解
 
