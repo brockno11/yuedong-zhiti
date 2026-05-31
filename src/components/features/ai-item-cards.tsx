@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Target, TrendingUp, Sparkles, PlusCircle } from "lucide-react";
+import { FileText, Target, TrendingUp, Sparkles, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import type { StudentReportHistoryItem } from "@/lib/server/db-mappers";
 import type { FitnessItemDef, FitnessItemId, FitnessRecordItem, GradeTier } from "@/lib/types";
@@ -104,26 +104,50 @@ function ItemCard({ item, onGenerate, onView }: { item: ItemCardData; onGenerate
           <p className="text-[10px] text-muted-foreground">最近训练：{formatDate(item.latestDailyDate)}</p>
         )}
 
-        {/* Action button */}
+        {/* Action buttons — two separate actions: view vs update/generate */}
         {item.officialItem ? (
-          <Button
-            size="sm"
-            className="h-11 w-full gap-1.5"
-            onClick={() => {
-              if (item.report && item.freshness === "current") {
-                onView(item.report, item.itemId);
-              } else {
-                onGenerate(item.itemId);
-              }
-            }}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            {item.report && item.freshness === "current"
-              ? "查看专项分析"
-              : item.report
-                ? "更新专项分析"
-                : "生成专项分析"}
-          </Button>
+          <div className="space-y-2">
+            {item.report ? (
+              <>
+                {/* View — always enabled when there's a report */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-11 w-full gap-1.5"
+                  onClick={() => onView(item.report!, item.itemId)}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  查看专项分析
+                </Button>
+                {/* Update — enabled only with new data */}
+                <div className="relative">
+                  <Button
+                    size="sm"
+                    className="h-11 w-full gap-1.5"
+                    disabled={item.newDataCount === 0}
+                    onClick={() => onGenerate(item.itemId)}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    更新专项分析
+                  </Button>
+                  {item.newDataCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-level-improve px-1 text-[10px] font-bold text-white">
+                      +{item.newDataCount}
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                className="h-11 w-full gap-1.5"
+                onClick={() => onGenerate(item.itemId)}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                生成专项分析
+              </Button>
+            )}
+          </div>
         ) : (
           <Link href="/record">
             <Button size="sm" variant="outline" className="h-11 w-full gap-1.5">
