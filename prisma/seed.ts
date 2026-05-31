@@ -249,17 +249,17 @@ async function main() {
 
   // S001 日常训练记录（2025秋季→2026春季，稳步上升趋势）
   for (const dr of [
-    // 2025秋季 — 刚开始训练，成绩偏低
-    { id: "R-DT01", date: "2025-09-12T07:30:00Z", fatigue: 8, recovery: "slow", soreness: true, items: [{ id: "R-DT01-50m_run", itemId: "50m_run", value: 8.4, score: 68, grade: "pass" }] },
-    { id: "R-DT02", date: "2025-09-19T07:00:00Z", fatigue: 7, recovery: "normal", soreness: true, items: [{ id: "R-DT02-pull_up", itemId: "pull_up", value: 3, score: 55, grade: "improve" },{ id: "R-DT02-sit_and_reach", itemId: "sit_and_reach", value: 6, score: 55, grade: "improve" }] },
-    { id: "R-DT03", date: "2025-09-26T08:00:00Z", fatigue: 6, recovery: "normal", soreness: true, items: [{ id: "R-DT03-1000m_run", itemId: "1000m_run", value: 278, score: 60, grade: "pass" }] },
-    { id: "R-DT04", date: "2025-10-10T07:30:00Z", fatigue: 6, recovery: "normal", soreness: false, items: [{ id: "R-DT04-50m_run", itemId: "50m_run", value: 8.2, score: 72, grade: "pass" },{ id: "R-DT04-standing_long_jump", itemId: "standing_long_jump", value: 180, score: 65, grade: "pass" }] },
-    { id: "R-DT05", date: "2025-10-17T08:00:00Z", fatigue: 5, recovery: "quick", soreness: false, items: [{ id: "R-DT05-pull_up", itemId: "pull_up", value: 4, score: 62, grade: "pass" }] },
-    { id: "R-DT06", date: "2025-10-24T07:00:00Z", fatigue: 5, recovery: "quick", soreness: true, items: [{ id: "R-DT06-1000m_run", itemId: "1000m_run", value: 270, score: 65, grade: "pass" },{ id: "R-DT06-sit_and_reach", itemId: "sit_and_reach", value: 8, score: 62, grade: "pass" }] },
-    { id: "R-DT07", date: "2025-11-07T07:30:00Z", fatigue: 4, recovery: "quick", soreness: false, items: [{ id: "R-DT07-50m_run", itemId: "50m_run", value: 8.0, score: 76, grade: "good" },{ id: "R-DT07-standing_long_jump", itemId: "standing_long_jump", value: 185, score: 70, grade: "pass" }] },
-    { id: "R-DT08", date: "2025-11-14T08:00:00Z", fatigue: 5, recovery: "normal", soreness: false, items: [{ id: "R-DT08-pull_up", itemId: "pull_up", value: 5, score: 68, grade: "pass" }] },
-    { id: "R-DT09", date: "2025-11-21T07:00:00Z", fatigue: 3, recovery: "quick", soreness: false, items: [{ id: "R-DT09-1000m_run", itemId: "1000m_run", value: 262, score: 68, grade: "pass" }] },
-    { id: "R-DT10", date: "2025-12-05T07:30:00Z", fatigue: 4, recovery: "quick", soreness: false, items: [{ id: "R-DT10-50m_run", itemId: "50m_run", value: 7.8, score: 80, grade: "good" },{ id: "R-DT10-sit_and_reach", itemId: "sit_and_reach", value: 10, score: 68, grade: "pass" }] },
+    // 2025秋季 — 9-12月日常训练，成绩偏低（正式体测10/20，前后不重叠）
+    { id: "R-DT01", date: "2025-09-15T07:30:00Z", fatigue: 8, recovery: "slow", soreness: true, items: [{ id: "R-DT01-50m_run", itemId: "50m_run", value: 8.4, score: 68, grade: "pass" }] },
+    { id: "R-DT02", date: "2025-09-22T07:00:00Z", fatigue: 7, recovery: "normal", soreness: true, items: [{ id: "R-DT02-pull_up", itemId: "pull_up", value: 3, score: 55, grade: "improve" },{ id: "R-DT02-sit_and_reach", itemId: "sit_and_reach", value: 6, score: 55, grade: "improve" }] },
+    { id: "R-DT03", date: "2025-09-29T08:00:00Z", fatigue: 6, recovery: "normal", soreness: true, items: [{ id: "R-DT03-1000m_run", itemId: "1000m_run", value: 278, score: 60, grade: "pass" }] },
+    { id: "R-DT04", date: "2025-10-08T07:30:00Z", fatigue: 6, recovery: "normal", soreness: false, items: [{ id: "R-DT04-50m_run", itemId: "50m_run", value: 8.2, score: 72, grade: "pass" },{ id: "R-DT04-standing_long_jump", itemId: "standing_long_jump", value: 180, score: 65, grade: "pass" }] },
+    { id: "R-DT05", date: "2025-11-03T08:00:00Z", fatigue: 5, recovery: "quick", soreness: false, items: [{ id: "R-DT05-pull_up", itemId: "pull_up", value: 4, score: 62, grade: "pass" }] },
+    { id: "R-DT06", date: "2025-11-10T07:00:00Z", fatigue: 5, recovery: "quick", soreness: true, items: [{ id: "R-DT06-1000m_run", itemId: "1000m_run", value: 270, score: 65, grade: "pass" },{ id: "R-DT06-sit_and_reach", itemId: "sit_and_reach", value: 8, score: 62, grade: "pass" }] },
+    { id: "R-DT07", date: "2025-11-17T07:30:00Z", fatigue: 4, recovery: "quick", soreness: false, items: [{ id: "R-DT07-50m_run", itemId: "50m_run", value: 8.0, score: 76, grade: "good" },{ id: "R-DT07-standing_long_jump", itemId: "standing_long_jump", value: 185, score: 70, grade: "pass" }] },
+    { id: "R-DT08", date: "2025-11-24T08:00:00Z", fatigue: 5, recovery: "normal", soreness: false, items: [{ id: "R-DT08-pull_up", itemId: "pull_up", value: 5, score: 68, grade: "pass" }] },
+    { id: "R-DT09", date: "2025-12-02T07:00:00Z", fatigue: 3, recovery: "quick", soreness: false, items: [{ id: "R-DT09-1000m_run", itemId: "1000m_run", value: 262, score: 68, grade: "pass" }] },
+    { id: "R-DT10", date: "2025-12-15T07:30:00Z", fatigue: 4, recovery: "quick", soreness: false, items: [{ id: "R-DT10-50m_run", itemId: "50m_run", value: 7.8, score: 80, grade: "good" },{ id: "R-DT10-sit_and_reach", itemId: "sit_and_reach", value: 10, score: 68, grade: "pass" }] },
     // 2026春季 — 持续进步，成绩稳步上升
     { id: "R-DT11", date: "2026-03-07T07:30:00Z", fatigue: 5, recovery: "quick", soreness: false, items: [{ id: "R-DT11-50m_run", itemId: "50m_run", value: 7.8, score: 80, grade: "good" },{ id: "R-DT11-pull_up", itemId: "pull_up", value: 5, score: 68, grade: "pass" }] },
     { id: "R-DT12", date: "2026-03-14T08:00:00Z", fatigue: 4, recovery: "quick", soreness: true, items: [{ id: "R-DT12-1000m_run", itemId: "1000m_run", value: 258, score: 70, grade: "pass" }] },
@@ -279,11 +279,11 @@ async function main() {
     });
   }
 
-  // S001 2025秋季正式体测（上期成绩偏低，与2026春季形成上升趋势）
+  // S001 2025秋季正式体测（上期成绩偏低，与2026春季形成上升趋势）- 10月体测
   const S001_FALL_RECORD_ID = "R-S001-fall";
   await prisma.fitnessRecord.upsert({
     where: { id: S001_FALL_RECORD_ID },
-    update: { studentId: "S001", date: new Date("2025-11-01T09:00:00Z"), semester: "高二上 · 2025秋季", batchId: PREV_BATCH_ID, recordType: "official_test", fatigueLevel: 6, recoveryStatus: "normal", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部","肩部"]), hasDiscomfort: false, discomfortNotes: "", items: { deleteMany: {}, create: [
+    update: { studentId: "S001", date: new Date("2025-10-20T09:00:00Z"), semester: "高二上 · 2025秋季", batchId: PREV_BATCH_ID, recordType: "official_test", fatigueLevel: 6, recoveryStatus: "normal", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部","肩部"]), hasDiscomfort: false, discomfortNotes: "", items: { deleteMany: {}, create: [
       { id: "S001-fall-50m", itemId: "50m_run", value: 8.5, score: 65, grade: "pass" },
       { id: "S001-fall-jump", itemId: "standing_long_jump", value: 175, score: 62, grade: "pass" },
       { id: "S001-fall-pull", itemId: "pull_up", value: 3, score: 55, grade: "improve" },
@@ -291,7 +291,7 @@ async function main() {
       { id: "S001-fall-reach", itemId: "sit_and_reach", value: 7, score: 58, grade: "improve" },
       { id: "S001-fall-vc", itemId: "vital_capacity", value: 2600, score: 62, grade: "pass" },
     ] } },
-    create: { id: S001_FALL_RECORD_ID, studentId: "S001", date: new Date("2025-11-01T09:00:00Z"), semester: "高二上 · 2025秋季", batchId: PREV_BATCH_ID, recordType: "official_test", fatigueLevel: 6, recoveryStatus: "normal", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部","肩部"]), hasDiscomfort: false, discomfortNotes: "", items: { create: [
+    create: { id: S001_FALL_RECORD_ID, studentId: "S001", date: new Date("2025-10-20T09:00:00Z"), semester: "高二上 · 2025秋季", batchId: PREV_BATCH_ID, recordType: "official_test", fatigueLevel: 6, recoveryStatus: "normal", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部","肩部"]), hasDiscomfort: false, discomfortNotes: "", items: { create: [
       { id: "S001-fall-50m", itemId: "50m_run", value: 8.5, score: 65, grade: "pass" },
       { id: "S001-fall-jump", itemId: "standing_long_jump", value: 175, score: 62, grade: "pass" },
       { id: "S001-fall-pull", itemId: "pull_up", value: 3, score: 55, grade: "improve" },

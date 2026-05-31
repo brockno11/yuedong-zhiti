@@ -76,19 +76,57 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
   const radarWithData = allRadarData.filter(d => d.score !== null);
   const sportDimsWithData = allRadarData.filter(d => d.score !== null && d.dimension !== "身体形态");
 
-  // 趋势（使用实际记录日期，非学期标签）
-  function fmtDate(d: string) { const dt = new Date(d); return `${dt.getMonth()+1}/${dt.getDate()}`; }
-  const trendOptions: { key: string; label: string; data: { date: string; value: number; grade: string }[]; unit: string }[] = [];
-  // 综合趋势：每条正式体测记录 = 一个数据点
-  const compositeData = [...officialRecords].reverse().map(r => ({ date: fmtDate(r.date), value: Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length), grade: "" }));
+  // 趋势（真实日期，正式体测按批次聚合，日常训练按日期估算）
+  function fmtLabel(d: Date) { return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}`; }
+  function fmtFull(d: Date) { return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`; }
+
+  const trendOptions: { key: string; label: string; data: { date: string; fullDate: string; value: number; grade: string }[]; unit: string }[] = [];
+
+  // 正式体测：按批次聚合，每批次 = 1个数据点（取该批次全项目录入完成日）
+  const batchGroups = new Map<string, { records: typeof officialRecords; latestDate: Date }>();
+  for (const r of officialRecords) {
+    const key = r.batchId || r.semester || "__unknown__";
+    const existing = batchGroups.get(key);
+    if (!existing) batchGroups.set(key, { records: [r], latestDate: new Date(r.date) });
+    else { existing.records.push(r); if (new Date(r.date) > existing.latestDate) existing.latestDate = new Date(r.date); }
+  }
+  const batchGroupEntries = Array.from(batchGroups.entries());
+  const batchPoints: { date: Date; value: number }[] = [];
+  for (const [, g] of batchGroupEntries) {
+    const allItems = new Map<string, { score: number }>();
+    for (const r of g.records) for (const i of r.items) { if (!allItems.has(i.itemId)) allItems.set(i.itemId, i); }
+    const itemValues = Array.from(allItems.values());
+    if (itemValues.length > 0) {
+      batchPoints.push({ date: g.latestDate, value: Math.round(itemValues.reduce((s: number, i: { score: number }) => s + i.score, 0) / itemValues.length) });
+    }
+  }
+  batchPoints.sort((a, b) => a.date.getTime() - b.date.getTime());
+  const compositeData = batchPoints.map(bp => ({ date: fmtLabel(bp.date), fullDate: fmtFull(bp.date), value: bp.value, grade: "" }));
   if (compositeData.length >= 1) trendOptions.push({ key: "__comp__", label: "综合", data: compositeData, unit: "分" });
+
+  // 专项维度：按批次取该项目最新得分
   for (const d of dimDefs.filter(d => d.itemId !== "__body_ref__")) {
-    const itemRecs = [...officialRecords].reverse().filter(r => r.items.some(i => i.itemId === d.itemId));
-    if (itemRecs.length >= 1) trendOptions.push({ key: d.itemId, label: d.dimension, data: itemRecs.map(r => { const it = r.items.find(i => i.itemId === d.itemId)!; return { date: fmtDate(r.date), value: it.score, grade: it.grade }; }), unit: "分" });
+    const pts: { date: string; fullDate: string; value: number; grade: string }[] = [];
+    for (const [, g] of batchGroupEntries) {
+      let best: { score: number } | null = null;
+      for (const r of g.records) { const it = r.items.find(i => i.itemId === d.itemId); if (it && (!best || it.score > best.score)) best = it; }
+      if (best) pts.push({ date: fmtLabel(g.latestDate), fullDate: fmtFull(g.latestDate), value: best.score, grade: "" });
+    }
+    pts.sort((a, b) => a.date.localeCompare(b.date));
+    if (pts.length >= 1) trendOptions.push({ key: d.itemId, label: d.dimension, data: pts, unit: "分" });
   }
 
-  // 日常训练数据点（每条日常训练 = 一个数据点）
-  const dailyTrendData = [...dailyRecords].reverse().map(r => ({ date: fmtDate(r.date), value: r.items.length > 0 ? Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length) : 0, grade: "" }));
+  // 日常训练：按天聚合估算（当天所有项目均分）
+  const dailyByDay = new Map<string, { scores: number[]; date: Date }>();
+  for (const r of dailyRecords) {
+    const day = new Date(r.date).toISOString().slice(0, 10);
+    const existing = dailyByDay.get(day);
+    if (!existing) dailyByDay.set(day, { scores: r.items.map(i => i.score), date: new Date(r.date) });
+    else { existing.scores.push(...r.items.map(i => i.score)); }
+  }
+  const dailyTrendData = Array.from(dailyByDay.values()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(d => ({
+    date: fmtLabel(d.date), fullDate: fmtFull(d.date), value: Math.round(d.scores.reduce((s: number, v: number) => s + v, 0) / d.scores.length), grade: "",
+  }));
 
   // 优势/待提升
   const strengths = officialItems.filter(i => i.grade === "excellent" || i.grade === "good").sort((a, b) => b.score - a.score).slice(0, 3);

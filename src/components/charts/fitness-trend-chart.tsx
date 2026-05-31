@@ -33,6 +33,7 @@ export function FitnessTrendChart({ data, dailyData, height = 280, unit = "", cl
           <XAxis dataKey="date" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={45} />
           <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "13px" }}
+            labelFormatter={(label: string, payload: unknown[]) => { const p = (payload as { payload?: { fullDate?: string } }[])[0]?.payload; return p?.fullDate || label; }}
             formatter={(value: number, name: string) => [`${value}${unit ? " " + unit : ""}`, name === "value" ? "成绩" : name]} />
           {hasDual && <Legend />}
           {hasDual ? (
