@@ -24,6 +24,7 @@ const createRecordSchema = z.object({
         "sit_and_reach", "pull_up", "sit_up", "800m_run", "1000m_run",
       ]),
       value: z.number(),
+      feedbackJson: z.string().optional(),
     })
   ).min(1),
   bodyFeeling: bodyFeelingSchema,

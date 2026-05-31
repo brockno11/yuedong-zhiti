@@ -168,6 +168,69 @@ export const STUDENT_NAV_ITEMS = [
   { href: "/profile", label: "我的", icon: "User" },
 ] as const;
 
+// ---- 项目级反馈模板 ----
+export interface FeedbackQuestion {
+  key: string;
+  label: string;
+  type: "slider" | "choice" | "boolean";
+  options?: { value: string; label: string }[];
+  min?: number;
+  max?: number;
+}
+
+export const ITEM_FEEDBACK_CONFIG: Record<string, FeedbackQuestion[]> = {
+  // 非运动类：不问疲劳
+  vital_capacity: [
+    { key: "breathTechnique", label: "本次是否连续完成吹气？", type: "choice", options: [{ value: "continuous", label: "连续完成" }, { value: "interrupted", label: "中断过" }, { value: "retry", label: "多次重试" }] },
+    { key: "recentExercise", label: "测试前是否刚进行剧烈运动？", type: "boolean" },
+    { key: "breathDifficulty", label: "吹气过程是否感觉憋气或呼吸不顺？", type: "boolean" },
+  ],
+  sit_and_reach: [
+    { key: "warmedUp", label: "测试前是否进行了热身？", type: "boolean" },
+    { key: "hamstringTight", label: "腿后侧是否感觉紧张？", type: "choice", options: [{ value: "none", label: "没有" }, { value: "slight", label: "轻微" }, { value: "tight", label: "明显紧张" }] },
+    { key: "backDiscomfort", label: "腰背是否有不适？", type: "boolean" },
+  ],
+  // 运动类：问运动体感
+  "50m_run": [
+    { key: "startQuality", label: "起跑是否顺畅？", type: "choice", options: [{ value: "smooth", label: "顺畅" }, { value: "ok", label: "一般" }, { value: "slow", label: "反应偏慢" }] },
+    { key: "fatigueLevel", label: "冲刺后疲劳程度", type: "slider", min: 1, max: 10 },
+    { key: "recoverySpeed", label: "呼吸恢复速度", type: "choice", options: [{ value: "quick", label: "快速恢复" }, { value: "normal", label: "正常" }, { value: "slow", label: "恢复较慢" }] },
+    { key: "legSoreness", label: "腿部是否酸胀？", type: "boolean" },
+  ],
+  standing_long_jump: [
+    { key: "takeoffStable", label: "起跳是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "ok", label: "一般" }, { value: "unstable", label: "不太稳" }] },
+    { key: "armCoordination", label: "摆臂配合是否顺畅？", type: "boolean" },
+    { key: "landingStable", label: "落地是否稳定？", type: "boolean" },
+    { key: "kneeDiscomfort", label: "膝盖或脚踝是否不适？", type: "boolean" },
+  ],
+  pull_up: [
+    { key: "hardestPhase", label: "哪个阶段最吃力？", type: "choice", options: [{ value: "start", label: "启动阶段" }, { value: "middle", label: "中段" }, { value: "lockout", label: "下巴过杠" }] },
+    { key: "formBreakdown", label: "动作后半程是否明显变形？", type: "boolean" },
+    { key: "shoulderDiscomfort", label: "肩部、腰背是否不适？", type: "boolean" },
+    { key: "fatigueLevel", label: "训练后酸痛程度", type: "slider", min: 1, max: 10 },
+  ],
+  sit_up: [
+    { key: "hardestPhase", label: "哪个阶段最吃力？", type: "choice", options: [{ value: "start", label: "前期" }, { value: "middle", label: "中段" }, { value: "end", label: "后期力竭" }] },
+    { key: "coreStrength", label: "是否感觉核心力量不足？", type: "boolean" },
+    { key: "backDiscomfort", label: "腰背是否不适？", type: "boolean" },
+    { key: "fatigueLevel", label: "训练后酸痛程度", type: "slider", min: 1, max: 10 },
+  ],
+  "1000m_run": [
+    { key: "fatigueLevel", label: "跑后疲劳程度", type: "slider", min: 1, max: 10 },
+    { key: "recoverySpeed", label: "呼吸恢复速度", type: "choice", options: [{ value: "quick", label: "快速恢复" }, { value: "normal", label: "正常" }, { value: "slow", label: "恢复较慢" }] },
+    { key: "paceStable", label: "配速是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "someDrop", label: "后半程略慢" }, { value: "bigDrop", label: "明显降速" }] },
+    { key: "legSoreness", label: "腿部酸痛情况", type: "choice", options: [{ value: "none", label: "无" }, { value: "slight", label: "轻微" }, { value: "moderate", label: "明显" }] },
+    { key: "discomfort", label: "是否有胸闷或严重不适？", type: "boolean" },
+  ],
+  "800m_run": [
+    { key: "fatigueLevel", label: "跑后疲劳程度", type: "slider", min: 1, max: 10 },
+    { key: "recoverySpeed", label: "呼吸恢复速度", type: "choice", options: [{ value: "quick", label: "快速恢复" }, { value: "normal", label: "正常" }, { value: "slow", label: "恢复较慢" }] },
+    { key: "paceStable", label: "配速是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "someDrop", label: "后半程略慢" }, { value: "bigDrop", label: "明显降速" }] },
+    { key: "legSoreness", label: "腿部酸痛情况", type: "choice", options: [{ value: "none", label: "无" }, { value: "slight", label: "轻微" }, { value: "moderate", label: "明显" }] },
+    { key: "discomfort", label: "是否有胸闷或严重不适？", type: "boolean" },
+  ],
+};
+
 export const TEACHER_NAV_ITEMS = [
   { href: "/teacher", label: "总览", icon: "LayoutDashboard" },
   { href: "/teacher/class", label: "班级", icon: "Users" },

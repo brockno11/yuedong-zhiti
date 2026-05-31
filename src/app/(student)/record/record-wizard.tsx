@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { RecordProjectSelect } from "@/components/features/record-project-select";
 import { RecordScoreInput } from "@/components/features/record-score-input";
-import { RecordFeelingStep } from "@/components/features/record-feeling-step";
+import { RecordFeelingStep, type ItemFeedbackAnswer } from "@/components/features/record-feeling-step";
 import { RecordComplete } from "@/components/features/record-complete";
 import { ChevronRight, ChevronLeft, GraduationCap, Dumbbell } from "lucide-react";
-import type { FitnessItemId, BodyFeeling } from "@/lib/types";
+import type { FitnessItemId } from "@/lib/types";
 
 const PHYSICAL_CATEGORIES = ["speed", "strength", "endurance"];
 
@@ -32,7 +32,7 @@ export function RecordWizard() {
   // 项目选择
   const [selectedItems, setSelectedItems] = useState<FitnessItemId[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
-  const [feelings, setFeelings] = useState<Partial<Record<FitnessItemId, BodyFeeling>>>({});
+  const [itemFeedbacks, setItemFeedbacks] = useState<ItemFeedbackAnswer[]>([]);
   const [overallDiscomfort, setOverallDiscomfort] = useState({
     hasDiscomfort: false,
     discomfortNotes: "",
@@ -85,8 +85,16 @@ export function RecordWizard() {
     setScores((prev) => ({ ...prev, [itemId]: value }));
   }, []);
 
-  const handleFeelingChange = useCallback((itemId: FitnessItemId, feeling: BodyFeeling) => {
-    setFeelings((prev) => ({ ...prev, [itemId]: feeling }));
+  const handleFeelingChange = useCallback((itemId: FitnessItemId, answers: Record<string, string | number | boolean>) => {
+    setItemFeedbacks((prev) => {
+      const existing = prev.findIndex(f => f.itemId === itemId);
+      if (existing >= 0) {
+        const next = [...prev];
+        next[existing] = { itemId, answers };
+        return next;
+      }
+      return [...prev, { itemId, answers }];
+    });
   }, []);
 
   const canProceed = () => {
@@ -117,7 +125,6 @@ export function RecordWizard() {
     setIsSaving(true);
     const rawLogin = localStorage.getItem("demo_login");
     const login = rawLogin ? JSON.parse(rawLogin) as { studentId?: string; username?: string } : null;
-    const firstFeeling = Object.values(feelings)[0];
 
     const response = await fetch("/api/fitness-records", {
       method: "POST",
@@ -129,14 +136,15 @@ export function RecordWizard() {
         items: selectedItems.map((itemId) => ({
           itemId,
           value: scores[itemId],
+          feedbackJson: JSON.stringify(itemFeedbacks.find(f => f.itemId === itemId)?.answers ?? {}),
         })),
         bodyFeeling: {
-          fatigueLevel: firstFeeling?.fatigueLevel ?? 3,
-          recoveryStatus: firstFeeling?.recoveryStatus ?? "normal",
-          hasSoreness: firstFeeling?.hasSoreness ?? false,
-          sorenessAreas: firstFeeling?.sorenessAreas ?? [],
-          hasDiscomfort: overallDiscomfort.hasDiscomfort || (firstFeeling?.hasDiscomfort ?? false),
-          discomfortNotes: overallDiscomfort.discomfortNotes || firstFeeling?.discomfortNotes || "",
+          fatigueLevel: 3,
+          recoveryStatus: "normal" as const,
+          hasSoreness: false,
+          sorenessAreas: [] as string[],
+          hasDiscomfort: overallDiscomfort.hasDiscomfort,
+          discomfortNotes: overallDiscomfort.discomfortNotes,
         },
       }),
     });
@@ -301,7 +309,7 @@ export function RecordWizard() {
             <CardContent>
               <RecordFeelingStep
                 selectedItems={selectedItems}
-                feelings={feelings}
+                itemFeedbacks={itemFeedbacks}
                 overallDiscomfort={overallDiscomfort}
                 onChangeItem={handleFeelingChange}
                 onChangeDiscomfort={setOverallDiscomfort}

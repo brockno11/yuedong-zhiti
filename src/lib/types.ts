@@ -104,6 +104,13 @@ export interface FitnessRecordItem {
   value: number;
   score: number; // 0-100
   grade: GradeTier;
+  feedbackJson?: string; // JSON: Record<string, string | number | boolean>
+}
+
+// ---- 项目级反馈 ----
+export interface ItemFeedback {
+  itemId: string;
+  answers: Record<string, string | number | boolean>;
 }
 
 // ---- 运动后体感 ----

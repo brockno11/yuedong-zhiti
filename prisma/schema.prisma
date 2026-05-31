@@ -149,6 +149,7 @@ model FitnessRecordItem {
   value     Float
   score     Int
   grade     String
+  feedbackJson String?
 
   record FitnessRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
 

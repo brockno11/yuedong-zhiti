@@ -52,6 +52,7 @@ type CreateFitnessRecordInput = {
   items: {
     itemId: FitnessItemId;
     value: number;
+    feedbackJson?: string;
   }[];
   bodyFeeling: BodyFeeling;
 };
@@ -72,7 +73,7 @@ export async function loginWithDemoAccount(input: LoginInput) {
     name: account.displayName,
     class: account.class?.name,
     grade: account.student?.grade ?? account.class?.grade,
-    gender: account.student?.gender === "male" ? "男" : account.student?.gender === "female" ? "女" : undefined,
+    gender: account.student?.gender ?? undefined, // "male" | "female" (UI展示层自行转中文)
     studentId: account.studentId,
     classId: account.classId,
     timestamp: Date.now(),
@@ -175,6 +176,7 @@ export async function createFitnessRecord(input: CreateFitnessRecordInput): Prom
       value: item.value,
       score,
       grade: getGradeTier(score),
+      feedbackJson: item.feedbackJson ?? null,
     };
   });
 

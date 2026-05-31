@@ -110,6 +110,7 @@ export function mapFitnessRecordItem(
     value: row.value,
     score: row.score,
     grade: row.grade as GradeTier,
+    feedbackJson: (row as Record<string, unknown>).feedbackJson as string ?? undefined,
   };
 }
 
