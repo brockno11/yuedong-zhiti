@@ -17,8 +17,15 @@ export function PortraitBatchSelector({ currentBatchId }: { currentBatchId?: str
 
   useEffect(() => {
     fetch("/api/batches").then(r => r.json()).then((data: BatchInfo[]) => {
-      setBatches(data.filter(b => b.type !== "daily"));
+      const filtered = data.filter(b => b.type !== "daily");
+      setBatches(filtered);
+      // 默认选中最新批次
+      if (!activeId && filtered.length > 0) {
+        const latest = filtered[0]; // batches are sorted by createdAt desc
+        select(latest.id);
+      }
     }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const select = (id: string) => {

@@ -24,9 +24,9 @@ export function PortraitTrendSection({ options, dailyData }: {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">体质变化趋势</CardTitle>
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary" />正式体测</span>
-            {dailyData && dailyData.length > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-400" />日常训练</span>}
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-primary" />正式体测</span>
+            {dailyData && dailyData.length > 0 && <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />日常训练</span>}
           </div>
         </div>
       </CardHeader>

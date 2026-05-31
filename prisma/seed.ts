@@ -239,11 +239,30 @@ async function main() {
     },
   });
 
-  // S001 日常训练记录（2026年数据）
+  // S001 日常训练记录（2025秋季→2026春季，稳步上升趋势）
   for (const dr of [
-    { id: "R-D01", date: "2026-05-15T08:00:00Z", fatigue: 7, recovery: "normal" as const, soreness: true, items: [{ id: "R-D01-50m_run", itemId: "50m_run" as const, value: 7.6, score: 88, grade: "good" as const }, { id: "R-D01-1000m_run", itemId: "1000m_run" as const, value: 242, score: 78, grade: "good" as const }] },
-    { id: "R-D02", date: "2026-05-22T07:30:00Z", fatigue: 5, recovery: "quick" as const, soreness: false, items: [{ id: "R-D02-50m_run", itemId: "50m_run" as const, value: 7.4, score: 90, grade: "excellent" as const }] },
-    { id: "R-D03", date: "2026-06-01T08:15:00Z", fatigue: 4, recovery: "quick" as const, soreness: false, items: [{ id: "R-D03-pull_up", itemId: "pull_up" as const, value: 8, score: 82, grade: "good" as const }, { id: "R-D03-sit_and_reach", itemId: "sit_and_reach" as const, value: 14, score: 78, grade: "good" as const }] },
+    // 2025秋季 — 刚开始训练，成绩偏低
+    { id: "R-DT01", date: "2025-09-12T07:30:00Z", fatigue: 8, recovery: "slow", soreness: true, items: [{ id: "R-DT01-50m_run", itemId: "50m_run", value: 8.4, score: 68, grade: "pass" }] },
+    { id: "R-DT02", date: "2025-09-19T07:00:00Z", fatigue: 7, recovery: "normal", soreness: true, items: [{ id: "R-DT02-pull_up", itemId: "pull_up", value: 3, score: 55, grade: "improve" },{ id: "R-DT02-sit_and_reach", itemId: "sit_and_reach", value: 6, score: 55, grade: "improve" }] },
+    { id: "R-DT03", date: "2025-09-26T08:00:00Z", fatigue: 6, recovery: "normal", soreness: true, items: [{ id: "R-DT03-1000m_run", itemId: "1000m_run", value: 278, score: 60, grade: "pass" }] },
+    { id: "R-DT04", date: "2025-10-10T07:30:00Z", fatigue: 6, recovery: "normal", soreness: false, items: [{ id: "R-DT04-50m_run", itemId: "50m_run", value: 8.2, score: 72, grade: "pass" },{ id: "R-DT04-standing_long_jump", itemId: "standing_long_jump", value: 180, score: 65, grade: "pass" }] },
+    { id: "R-DT05", date: "2025-10-17T08:00:00Z", fatigue: 5, recovery: "quick", soreness: false, items: [{ id: "R-DT05-pull_up", itemId: "pull_up", value: 4, score: 62, grade: "pass" }] },
+    { id: "R-DT06", date: "2025-10-24T07:00:00Z", fatigue: 5, recovery: "quick", soreness: true, items: [{ id: "R-DT06-1000m_run", itemId: "1000m_run", value: 270, score: 65, grade: "pass" },{ id: "R-DT06-sit_and_reach", itemId: "sit_and_reach", value: 8, score: 62, grade: "pass" }] },
+    { id: "R-DT07", date: "2025-11-07T07:30:00Z", fatigue: 4, recovery: "quick", soreness: false, items: [{ id: "R-DT07-50m_run", itemId: "50m_run", value: 8.0, score: 76, grade: "good" },{ id: "R-DT07-standing_long_jump", itemId: "standing_long_jump", value: 185, score: 70, grade: "pass" }] },
+    { id: "R-DT08", date: "2025-11-14T08:00:00Z", fatigue: 5, recovery: "normal", soreness: false, items: [{ id: "R-DT08-pull_up", itemId: "pull_up", value: 5, score: 68, grade: "pass" }] },
+    { id: "R-DT09", date: "2025-11-21T07:00:00Z", fatigue: 3, recovery: "quick", soreness: false, items: [{ id: "R-DT09-1000m_run", itemId: "1000m_run", value: 262, score: 68, grade: "pass" }] },
+    { id: "R-DT10", date: "2025-12-05T07:30:00Z", fatigue: 4, recovery: "quick", soreness: false, items: [{ id: "R-DT10-50m_run", itemId: "50m_run", value: 7.8, score: 80, grade: "good" },{ id: "R-DT10-sit_and_reach", itemId: "sit_and_reach", value: 10, score: 68, grade: "pass" }] },
+    // 2026春季 — 持续进步，成绩稳步上升
+    { id: "R-DT11", date: "2026-03-07T07:30:00Z", fatigue: 5, recovery: "quick", soreness: false, items: [{ id: "R-DT11-50m_run", itemId: "50m_run", value: 7.8, score: 80, grade: "good" },{ id: "R-DT11-pull_up", itemId: "pull_up", value: 5, score: 68, grade: "pass" }] },
+    { id: "R-DT12", date: "2026-03-14T08:00:00Z", fatigue: 4, recovery: "quick", soreness: true, items: [{ id: "R-DT12-1000m_run", itemId: "1000m_run", value: 258, score: 70, grade: "pass" }] },
+    { id: "R-DT13", date: "2026-03-21T07:00:00Z", fatigue: 4, recovery: "quick", soreness: false, items: [{ id: "R-DT13-50m_run", itemId: "50m_run", value: 7.7, score: 82, grade: "good" },{ id: "R-DT13-standing_long_jump", itemId: "standing_long_jump", value: 190, score: 74, grade: "good" }] },
+    { id: "R-DT14", date: "2026-04-04T07:30:00Z", fatigue: 3, recovery: "quick", soreness: false, items: [{ id: "R-DT14-pull_up", itemId: "pull_up", value: 6, score: 74, grade: "good" },{ id: "R-DT14-sit_and_reach", itemId: "sit_and_reach", value: 11, score: 72, grade: "good" }] },
+    { id: "R-DT15", date: "2026-04-11T08:00:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT15-1000m_run", itemId: "1000m_run", value: 252, score: 74, grade: "good" }] },
+    { id: "R-DT16", date: "2026-04-25T07:00:00Z", fatigue: 3, recovery: "quick", soreness: false, items: [{ id: "R-DT16-50m_run", itemId: "50m_run", value: 7.5, score: 85, grade: "good" }] },
+    { id: "R-DT17", date: "2026-05-09T07:30:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT17-pull_up", itemId: "pull_up", value: 7, score: 78, grade: "good" },{ id: "R-DT17-1000m_run", itemId: "1000m_run", value: 248, score: 76, grade: "good" }] },
+    { id: "R-DT18", date: "2026-05-16T08:00:00Z", fatigue: 3, recovery: "quick", soreness: false, items: [{ id: "R-DT18-50m_run", itemId: "50m_run", value: 7.4, score: 88, grade: "excellent" },{ id: "R-DT18-standing_long_jump", itemId: "standing_long_jump", value: 198, score: 80, grade: "good" }] },
+    { id: "R-DT19", date: "2026-05-23T07:00:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT19-sit_and_reach", itemId: "sit_and_reach", value: 13, score: 76, grade: "good" }] },
+    { id: "R-DT20", date: "2026-06-01T07:30:00Z", fatigue: 2, recovery: "quick", soreness: false, items: [{ id: "R-DT20-50m_run", itemId: "50m_run", value: 7.3, score: 90, grade: "excellent" },{ id: "R-DT20-pull_up", itemId: "pull_up", value: 8, score: 82, grade: "good" },{ id: "R-DT20-1000m_run", itemId: "1000m_run", value: 244, score: 78, grade: "good" }] },
   ]) {
     await prisma.fitnessRecord.upsert({
       where: { id: dr.id },
