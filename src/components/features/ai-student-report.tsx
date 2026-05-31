@@ -118,7 +118,19 @@ export function AIStudentReportView({
         signal: controller.signal,
         body: JSON.stringify({
           type: "student-report", studentId,
-          studentData: { student, currentRecord: latestRecord, previousRecords: records.slice(1, 4), analysisMode: "single_record_with_history_context" },
+          studentData: {
+            student, currentRecord: latestRecord, previousRecords: records.slice(1, 4),
+            analysisMode: "single_record_with_history_context",
+            reportType: latestRecord.items.length <= 1 ? "item_report"
+              : (completeness?.completionRate ?? 0) >= 70 ? "batch_report"
+              : "record_report",
+            completeness: completeness ? {
+              recordedCount: completeness.recordedCount,
+              expectedCount: completeness.expectedCount,
+              completionRate: completeness.completionRate,
+              missingItems: completeness.missingItems,
+            } : undefined,
+          },
           sourceRecordId: latestRecord.id, sourceRecordDate: latestRecord.date, sourceSummary: sourceSummaryText,
         }),
       }).finally(() => window.clearTimeout(timeoutId));
@@ -290,6 +302,11 @@ export function AIStudentReportView({
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-level-excellent" />
             <p className="text-sm font-semibold">当前AI报告</p>
+            {report.reportType && (
+              <Badge variant="excellent" className="text-[10px]">
+                {report.reportType === "item_report" ? "单项专项" : report.reportType === "record_report" ? "本次记录分析" : "综合体质画像"}
+              </Badge>
+            )}
             <Badge variant={mode === "ai" ? "excellent" : "secondary"} className="text-[10px] ml-auto">
               {mode === "ai" ? "AI 生成" : "示例数据"}
             </Badge>

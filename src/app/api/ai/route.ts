@@ -229,33 +229,58 @@ function buildStudentSystemPrompt(): string {
 }
 
 function buildStudentUserPrompt(data: Record<string, unknown>): string {
-  const currentRecord = data.currentRecord as { items?: { itemId: string; value: number }[]; recordType?: string };
+  const currentRecord = data.currentRecord as { items?: { itemId: string; value: number; feedbackJson?: string }[]; recordType?: string };
   const itemCount = currentRecord?.items?.length ?? 0;
   const recordType = currentRecord?.recordType ?? "official_test";
-  const totalExpectedItems = 6; // 标准体测项目数（不含身高体重）
+  const reportType = (data.reportType as string) || (itemCount <= 1 ? "item_report" : "record_report");
+  const completeness = data.completeness as { recordedCount: number; expectedCount: number; completionRate: number; missingItems: string[] } | undefined;
+  const totalExpectedItems = completeness?.expectedCount ?? 6;
+
+  // 反馈摘要
+  const feedbackLines = currentRecord?.items
+    ?.filter(i => i.feedbackJson)
+    .map(i => `- ${i.itemId}: ${i.feedbackJson}`) ?? [];
 
   const completenessNote = itemCount < totalExpectedItems
-    ? `\n⚠️ 数据完整性提醒：该记录仅包含 ${itemCount}/${totalExpectedItems} 项体测数据，存在数据缺失。分析时必须标注缺失项，不得推断未录入项目。未录入项目维度标注"暂无数据"。`
+    ? `\n⚠️ 数据完整性提醒：该记录仅包含 ${itemCount}/${totalExpectedItems} 项体测数据。分析时只分析已录入项目，不得推断未录入项目。`
     : "";
 
   const recordTypeNote = recordType === "daily_training"
-    ? `\n【记录类型：日常训练】本次为日常训练记录，请以鼓励进步为主，关注训练感受和过程追踪，不需严格对比国家标准。`
-    : `\n【记录类型：正式体测】本次为正式体测，请参考国家学生体质健康标准给出等级评价。`;
+    ? `\n【记录类型：日常训练】关注训练感受和过程追踪，不需严格对比国家标准。`
+    : `\n【记录类型：正式体测】参考国家学生体质健康标准。`;
 
-  const modeInstruction = itemCount <= 1
-    ? `\n\n【专项分析模式】学生本次仅录入了一个项目，请针对该项目进行深入分析：
-- 重点分析该项目成绩水平、技术要领、针对性训练方法
-- weaknessAnalysis 中详细分析该项目的可能原因和改进潜力
-- trainingPlan 中的训练动作应围绕该项目展开
-- 仍然需要输出完整的 safetyReminders`
-    : `\n\n【综合分析模式】学生录入了 ${itemCount} 个项目，请进行全面的体质画像分析。`;
+  const reportTypeInstructions: Record<string, string> = {
+    item_report: `\n【报告类型：单项专项报告】
+仅分析 ${currentRecord?.items?.[0]?.itemId ?? "该项目"} 这一个项目：
+- 深入分析该项目成绩、技术要领、影响因素
+- 结合项目级反馈（如下）生成针对性建议
+- trainingPlan 聚焦该项目，输出2-3个专项训练动作
+- weaknessAnalysis 只分析该项目
+- 不评价其他未录入项目`,
+    record_report: `\n【报告类型：本次记录分析报告】
+分析本次录入的 ${itemCount} 个项目：
+- 每个项目逐一分析，不要生成完整体质综合评价
+- 结合项目级反馈给出个性化建议
+- 明确标注未录入项目为"待补充"
+- trainingPlan 围绕已录项目生成`,
+    batch_report: `\n【报告类型：综合体质报告】
+该生数据完整度 ${completeness?.completionRate ?? 0}%，已基本覆盖全身素质：
+- 可生成速度/力量/耐力/柔韧/身体形态五维综合评价
+- 每个维度结合项目数据和反馈分析
+- trainingPlan 可覆盖多个维度`,
+  };
 
-  return `请分析以下学生体测数据并生成个人体质报告：
+  const feedbackNote = feedbackLines.length > 0
+    ? `\n【项目级反馈】\n${feedbackLines.join("\n")}\n训练建议请结合上述反馈。`
+    : "";
+
+  return `请分析以下学生体测数据：
 ${JSON.stringify(data, null, 2)}
-${completenessNote}${recordTypeNote}${modeInstruction}
+${completenessNote}${recordTypeNote}${reportTypeInstructions[reportType] ?? reportTypeInstructions.record_report}${feedbackNote}
 
-请以JSON格式返回（严格按此结构）：
+请以JSON格式返回：
 {
+  "reportType": "${reportType}",
   "fitnessProfile": { "summary": "", "bmiStatus": "", "overallScore": 0, "overallGrade": "", "dimensions": [], "strengths": [], "improvements": [] },
   "weaknessAnalysis": [{ "item": "", "currentLevel": "", "possibleCauses": [], "improvementPotential": "" }],
   "trainingPlan": [{ "weekNumber": 1, "focus": "", "exercises": [{ "name": "", "description": "", "sets": "", "frequency": "", "duration": "", "notes": "" }], "recoveryAdvice": "" }],

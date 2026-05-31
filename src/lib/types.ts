@@ -139,6 +139,7 @@ export interface AIStudentReport {
   generatedAt: string;
   version: number;
   status: "draft" | "pending_review" | "approved" | "rejected";
+  reportType?: "item_report" | "record_report" | "batch_report";
 
   fitnessProfile: {
     summary: string;
