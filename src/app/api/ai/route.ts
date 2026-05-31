@@ -246,6 +246,7 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
   const itemCount = currentRecord?.items?.length ?? 0;
   const recordType = currentRecord?.recordType ?? "official_test";
   const reportType = (data.reportType as string) || (itemCount <= 1 ? "item_report" : "record_report");
+  const analysisScope = (data.analysisScope as string) || "";
   const relatedDailyRecords = Array.isArray(data.relatedDailyRecords) ? data.relatedDailyRecords : [];
   const completeness = data.completeness as { recordedCount: number; expectedCount: number; completionRate: number; missingItems: string[] } | undefined;
   const totalExpectedItems = completeness?.expectedCount ?? 6;
@@ -302,9 +303,13 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
     ? `\n【同项目日常训练记录】共 ${relatedDailyRecords.length} 条。若为空，请只基于正式体测和项目反馈分析；若不为空，请作为训练过程观察依据。`
     : "";
 
+  const scopeNote = analysisScope
+    ? `\n【分析范围】${analysisScope === "formal_overall" ? "正式体测全维度分析 — 仅使用正式体测数据" : analysisScope === "item_assessment" ? "单项评估 — 正式体测为基线，日常训练为过程观察" : analysisScope === "record_report" ? "本次记录反馈 — 针对当前记录局部分析" : ""}`
+    : "";
+
   return `请分析以下学生体测数据：
 ${JSON.stringify(data, null, 2)}
-${completenessNote}${recordTypeNote}${reportTypeInstructions[reportType] ?? reportTypeInstructions.record_report}${feedbackNote}${dailyNote}
+${scopeNote}${completenessNote}${recordTypeNote}${reportTypeInstructions[reportType] ?? reportTypeInstructions.record_report}${feedbackNote}${dailyNote}
 
 请以JSON格式返回（严格按照此结构，所有字段必须填写）：
 

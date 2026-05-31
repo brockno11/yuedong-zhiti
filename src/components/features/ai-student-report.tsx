@@ -203,30 +203,48 @@ function buildItemAnalysisRecord(record: FitnessRecord, itemId: FitnessItemId): 
 export function AIStudentReportView({ studentId, student, records, reportHistory, batches }: AIStudentReportProps) {
   const latestRecord = records[0] ?? null;
   const genderItems = student?.gender === "female" ? FEMALE_ITEMS : MALE_ITEMS;
-  const officialRecords = useMemo(() => records.filter((r) => r.recordType !== "daily_training"), [records]);
+  const officialRecords = useMemo(() => records.filter((r) => r.recordType === "official_test"), [records]);
   const dailyRecords = useMemo(() => records.filter((r) => r.recordType === "daily_training"), [records]);
   const daily7d = useMemo(() => dailyRecords.filter((r) => daysSince(r.date) < 7).length, [dailyRecords]);
   const daily30d = useMemo(() => dailyRecords.filter((r) => daysSince(r.date) < 30).length, [dailyRecords]);
-
-  // Batch items for completeness
-  const batchItemIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const r of officialRecords) {
-      for (const item of r.items) ids.add(item.itemId);
-    }
-    return Array.from(ids);
-  }, [officialRecords]);
-
-  const completeness = useMemo(
-    () => calculateRecordCompleteness(batchItemIds, student?.gender ?? "male"),
-    [batchItemIds, student?.gender]
-  );
 
   // Formal test batches (only official type)
   const formalBatches = useMemo(
     () => batches.filter(b => b.type === "official"),
     [batches]
   );
+
+  // Find the latest official batch (has most recent official_test records)
+  const latestOfficialBatchId = useMemo(() => {
+    let latestBatchId: string | null = null;
+    let latestDate = 0;
+    for (const r of officialRecords) {
+      if (r.batchId) {
+        const d = new Date(r.date).getTime();
+        if (d > latestDate) {
+          latestDate = d;
+          latestBatchId = r.batchId;
+        }
+      }
+    }
+    // Fallback to first official batch
+    if (!latestBatchId) {
+      latestBatchId = formalBatches[0]?.id ?? null;
+    }
+    return latestBatchId;
+  }, [officialRecords, formalBatches]);
+
+  // Completeness calculated for the LATEST official batch (not all records)
+  const completeness = useMemo(() => {
+    const batchRecords = latestOfficialBatchId
+      ? officialRecords.filter((r) => r.batchId === latestOfficialBatchId)
+      : officialRecords;
+    const itemIds = new Set<string>();
+    for (const r of batchRecords) {
+      for (const item of r.items) itemIds.add(item.itemId);
+    }
+    return calculateRecordCompleteness(Array.from(itemIds), student?.gender ?? "male");
+  }, [officialRecords, latestOfficialBatchId, student?.gender]);
 
   // All batch reports (for multi-batch switching)
   const allBatchReports = useMemo(() => findAllBatchReports(reportHistory), [reportHistory]);
