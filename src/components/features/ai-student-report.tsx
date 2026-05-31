@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Brain,
@@ -9,6 +10,7 @@ import {
   History,
   PlusCircle,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { AIGenerationStatus, type AIStatus } from "@/components/features/ai-generation-status";
 import { Badge } from "@/components/ui/badge";
@@ -108,23 +110,26 @@ function itemTrendLabel(scores: number[], higherIsBetter: boolean): ItemTrend | 
 
 function computeFreshness(report: StudentReportHistoryItem | null, officialRecord: FitnessRecord | null, dailyRecords: FitnessRecord[]): FreshnessState {
   if (!report) return "current";
-  const sourceTime = report.sourceRecordDate ? new Date(report.sourceRecordDate).getTime() : 0;
+  // Use generatedAt as baseline: "new" means data appeared AFTER the report was generated
+  const reportTime = new Date(report.generatedAt).getTime();
   const officialTime = officialRecord ? new Date(officialRecord.date).getTime() : 0;
-  const newDailyCount = dailyRecords.filter((record) => new Date(record.date).getTime() > sourceTime).length;
+  const newDailyCount = dailyRecords.filter((record) => new Date(record.date).getTime() > reportTime).length;
 
-  if (officialTime > sourceTime || newDailyCount >= 2) return "suggest_update";
+  if (officialTime > reportTime || newDailyCount >= 2) return "suggest_update";
   if (newDailyCount > 0) return "new_data";
   return "current";
 }
 
 function computeNewDataCount(report: StudentReportHistoryItem | null, officialRecords: FitnessRecord[], dailyRecords: FitnessRecord[], itemId?: FitnessItemId): number {
-  if (!report || !report.sourceRecordDate) return 0;
-  const sourceTime = new Date(report.sourceRecordDate).getTime();
+  if (!report) return 0;
+  // Use generatedAt as baseline: only records AFTER report generation count as "new"
+  const reportTime = new Date(report.generatedAt).getTime();
+  if (Number.isNaN(reportTime)) return 0;
   let count = 0;
 
   // Count new official records for this item (or all items for batch)
   for (const record of officialRecords) {
-    if (new Date(record.date).getTime() > sourceTime) {
+    if (new Date(record.date).getTime() > reportTime) {
       if (itemId) {
         if (getRecordItem(record, itemId)) count++;
       } else {
@@ -135,7 +140,7 @@ function computeNewDataCount(report: StudentReportHistoryItem | null, officialRe
 
   // Count new daily training records for this item
   for (const record of dailyRecords) {
-    if (new Date(record.date).getTime() > sourceTime) {
+    if (new Date(record.date).getTime() > reportTime) {
       if (itemId) {
         if (getRecordItem(record, itemId)) count++;
       } else {
@@ -154,25 +159,22 @@ function findAllBatchReports(history: StudentReportHistoryItem[]): StudentReport
 function getBatchReportMap(
   batchReports: StudentReportHistoryItem[],
   batches: Array<{ id: string; name: string }>,
-  officialRecords: FitnessRecord[],
+  _officialRecords: FitnessRecord[], // kept for signature compatibility, unused with sourceBatchId
 ): Map<string, StudentReportHistoryItem | null> {
-  // Build a map: sourceRecordId → batchId from official records
-  const recordBatchMap = new Map<string, string>();
-  for (const record of officialRecords) {
-    if (record.batchId) {
-      recordBatchMap.set(record.id, record.batchId);
-    }
-  }
-
   const map = new Map<string, StudentReportHistoryItem | null>();
   for (const batch of batches) {
-    // Find report whose sourceRecordId maps to this batch
-    const match = batchReports.find((r) => {
-      if (!r.sourceRecordId) return false;
-      const reportBatchId = recordBatchMap.get(r.sourceRecordId);
-      return reportBatchId === batch.id;
-    }) ?? null;
-    map.set(batch.id, match);
+    // Direct match by sourceBatchId (v0.9.2+)
+    const match = batchReports.find((r) => r.sourceBatchId === batch.id) ?? null;
+    // Fallback: match by sourceRecordId via official records (legacy reports without sourceBatchId)
+    if (!match) {
+      const legacy = batchReports.find((r) => {
+        if (!r.sourceRecordId || r.sourceBatchId) return false; // skip if already has sourceBatchId
+        return _officialRecords.some((rec) => rec.id === r.sourceRecordId && rec.batchId === batch.id);
+      }) ?? null;
+      map.set(batch.id, legacy);
+    } else {
+      map.set(batch.id, match);
+    }
   }
   return map;
 }
@@ -201,6 +203,7 @@ function buildItemAnalysisRecord(record: FitnessRecord, itemId: FitnessItemId): 
 // ===== Main Component =====
 
 export function AIStudentReportView({ studentId, student, records, reportHistory, batches }: AIStudentReportProps) {
+  const router = useRouter();
   const latestRecord = records[0] ?? null;
   const genderItems = student?.gender === "female" ? FEMALE_ITEMS : MALE_ITEMS;
   const officialRecords = useMemo(() => records.filter((r) => r.recordType === "official_test"), [records]);
@@ -312,7 +315,23 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
   const [mode, setMode] = useState<ReportMode | undefined>();
   const [generatingLabel, setGeneratingLabel] = useState<string>("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const mountedRef = useRef(true);
+
+  // Delete a report
+  const handleDeleteReport = useCallback(async (reportId: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/reports/${reportId}`, { method: "DELETE" });
+      if (res.ok) {
+        setDeleteConfirmId(null);
+        router.refresh();
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }, [router]);
 
   // 监听底部导航 re-click 事件，重置报告详情视图
   useEffect(() => {
@@ -320,10 +339,11 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
       setViewingReport(null);
       setViewingItemId(null);
       setSelectedBatchId(null);
+      router.refresh();
     };
     window.addEventListener("tab-reclick", handler);
     return () => window.removeEventListener("tab-reclick", handler);
-  }, []);
+  }, [router]);
 
   // Generate report
   const generateReport = useCallback(async (opts: { itemId?: FitnessItemId; reportType?: AIStudentReport["reportType"] }) => {
@@ -377,6 +397,7 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
           sourceRecordId: sourceRecord.id,
           sourceRecordDate: sourceRecord.date,
           sourceSummary,
+          sourceBatchId: sourceRecord.batchId,
           studentData: {
             student,
             currentRecord,
@@ -564,6 +585,7 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
           setViewingReport(null);
           setViewingItemId(null);
           setSelectedBatchId(null);
+          router.refresh();
         }}
         onBatchChange={handleViewBatch}
         onGenerateForBatch={(batchId) => {
@@ -636,23 +658,32 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
                     {items.map((item) => {
                       const review = reviewBadge(item.status);
                       return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => openReport(item)}
-                          className="w-full rounded-xl border p-3 text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="truncate text-xs font-semibold">{item.sourceSummary ?? "AI 分析"}</p>
-                              <p className="mt-0.5 text-[11px] text-muted-foreground">{formatTime(item.generatedAt)}</p>
+                        <div key={item.id} className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openReport(item)}
+                            className="flex-1 rounded-xl border p-3 text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-semibold">{item.sourceSummary ?? "AI 分析"}</p>
+                                <p className="mt-0.5 text-[11px] text-muted-foreground">{formatTime(item.generatedAt)}</p>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <Badge variant="outline" className="text-[9px]">{reportTypeLabel(item.report.reportType)}</Badge>
+                                <Badge variant={review.variant} className="text-[9px]">{review.label}</Badge>
+                              </div>
                             </div>
-                            <div className="flex shrink-0 items-center gap-1.5">
-                              <Badge variant="outline" className="text-[9px]">{reportTypeLabel(item.report.reportType)}</Badge>
-                              <Badge variant={review.variant} className="text-[9px]">{review.label}</Badge>
-                            </div>
-                          </div>
-                        </button>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(item.id); }}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive focus:outline-none"
+                            aria-label="删除报告"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -661,6 +692,36 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
             </div>
           )}
         </section>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDeleteConfirmId(null)}>
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-semibold">确认删除</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              删除后将无法恢复。该报告对应的教师审核记录也会同步删除。
+            </p>
+            <div className="mt-5 flex gap-3">
+              <Button
+                variant="outline"
+                className="h-11 flex-1"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleting}
+              >
+                取消
+              </Button>
+              <Button
+                variant="destructive"
+                className="h-11 flex-1"
+                onClick={() => handleDeleteReport(deleteConfirmId)}
+                disabled={deleting}
+              >
+                {deleting ? "删除中..." : "确认删除"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Bottom spacer for floating nav */}

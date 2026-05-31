@@ -143,6 +143,7 @@ export type StudentReportHistoryItem = {
   sourceRecordId: string | null;
   sourceRecordDate: string | null;
   sourceSummary: string | null;
+  sourceBatchId: string | null;
 };
 
 export type ClassSummaryWithLevels = ClassSummary & {

@@ -8,6 +8,7 @@ interface AIRequest {
   sourceRecordId?: string;
   sourceRecordDate?: string;
   sourceSummary?: string;
+  sourceBatchId?: string;
   studentData?: Record<string, unknown>;
   classData?: Record<string, unknown>;
 }
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
+          sourceBatchId: body.sourceBatchId,
         });
         return NextResponse.json(report);
       }
@@ -480,6 +482,7 @@ async function persistAIResult(
         sourceRecordId: typeof report.sourceRecordId === "string" ? report.sourceRecordId : undefined,
         sourceRecordDate: typeof report.sourceRecordDate === "string" ? report.sourceRecordDate : undefined,
         sourceSummary: typeof report.sourceSummary === "string" ? report.sourceSummary : undefined,
+        sourceBatchId: typeof (report as Record<string, unknown>).sourceBatchId === "string" ? (report as Record<string, unknown>).sourceBatchId as string : undefined,
       }
     );
     return;

@@ -370,6 +370,7 @@ export async function getStudentReportHistory(studentId: string): Promise<Studen
     sourceRecordId: row.sourceRecordId,
     sourceRecordDate: row.sourceRecordDate?.toISOString() ?? null,
     sourceSummary: row.sourceSummary,
+    sourceBatchId: row.sourceBatchId,
   }));
 }
 
@@ -377,7 +378,7 @@ export async function upsertAIReportForReview(
   reportKind: "student" | "class",
   report: AIStudentReport | AIClassReport,
   mode: "ai" | "mock",
-  options?: { studentId?: string; classId?: string; sourceRecordId?: string; sourceRecordDate?: string; sourceSummary?: string }
+  options?: { studentId?: string; classId?: string; sourceRecordId?: string; sourceRecordDate?: string; sourceSummary?: string; sourceBatchId?: string }
 ) {
   const reportId = report.id;
   const classId = options?.classId ?? DEFAULT_CLASS_ID;
@@ -398,6 +399,7 @@ export async function upsertAIReportForReview(
       sourceRecordId: options?.sourceRecordId,
       sourceRecordDate: options?.sourceRecordDate ? new Date(options.sourceRecordDate) : undefined,
       sourceSummary: options?.sourceSummary,
+      sourceBatchId: options?.sourceBatchId,
       generatedAt: new Date(report.generatedAt),
     },
     create: {
@@ -412,6 +414,7 @@ export async function upsertAIReportForReview(
       sourceRecordId: options?.sourceRecordId,
       sourceRecordDate: options?.sourceRecordDate ? new Date(options.sourceRecordDate) : undefined,
       sourceSummary: options?.sourceSummary,
+      sourceBatchId: options?.sourceBatchId,
       generatedAt: new Date(report.generatedAt),
     },
   });
@@ -436,6 +439,12 @@ export async function upsertAIReportForReview(
       teacherNotes: "",
     },
   });
+}
+
+export async function deleteAIReport(reportId: string): Promise<{ success: boolean }> {
+  // TeacherReview has onDelete: Cascade, so it auto-deletes
+  await prisma.aIReport.delete({ where: { id: reportId } });
+  return { success: true };
 }
 
 function getGradeTier(score: number): GradeTier {

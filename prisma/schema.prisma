@@ -169,6 +169,7 @@ model AIReport {
   sourceRecordId   String?
   sourceRecordDate DateTime?
   sourceSummary    String?
+  sourceBatchId    String?
   generatedAt DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
