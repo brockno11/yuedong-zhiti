@@ -54,26 +54,58 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-lg space-y-4 px-4">
       {/* ===== 1. 今日行动 Hero ===== */}
-      <div className="rounded-2xl bg-primary p-5 sm:p-6 text-primary-foreground shadow-sm">
-        <p className="text-sm opacity-80">{greeting}</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">{student.name}</h1>
-        <p className="mt-1.5 text-sm opacity-90">{statusLine}</p>
+      <div className="rounded-2xl bg-primary p-6 sm:p-8 text-primary-foreground shadow-sm">
+        {/* 问候 + 状态胶囊 */}
+        <div className="flex items-center justify-between">
+          <p className="text-base sm:text-lg font-medium opacity-90">{greeting}</p>
+          <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium">
+            {completeness.isComplete ? `正式体测 ${completeness.recordedCount}/${completeness.expectedCount}` : `已录 ${completeness.recordedCount}/${completeness.expectedCount}`}
+          </span>
+        </div>
+
+        <h1 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight">{student.name}</h1>
+
+        <p className="mt-2 text-sm sm:text-base opacity-90 leading-relaxed">{statusLine}</p>
 
         {completeness.isPartial && missingNames.length > 0 && (
-          <p className="mt-1.5 text-xs opacity-70">待补充：{missingNames.join("、")}{completeness.missingItems.length > 3 ? ` 等${completeness.missingItems.length}项` : ""}</p>
+          <p className="mt-1.5 text-sm opacity-70">
+            待补充：{missingNames.join("、")}{completeness.missingItems.length > 3 ? ` 等${completeness.missingItems.length}项` : ""}
+          </p>
         )}
 
-        <Link href="/record">
-          <Button size="lg" className="mt-4 w-full gap-2 h-12 text-base bg-white text-primary hover:bg-white/90 shadow-sm">
+        {/* 今日建议动作 */}
+        <p className="mt-4 text-xs opacity-60">
+          {completeness.isPartial
+            ? "📋 今日建议：完成正式体测项目的补录"
+            : completeness.isComplete
+              ? "⭐ 今日建议：保持训练节奏，记录日常训练"
+              : "📋 今日建议：完成首次体测记录"}
+        </p>
+
+        {/* 主 CTA */}
+        <Link href="/record" className="block mt-3">
+          <Button className="w-full gap-2 h-14 text-base font-semibold bg-white text-primary hover:bg-white/95 shadow-md">
             <PlusCircle className="h-5 w-5" />
-            {completeness.isPartial ? "继续补录" : completeness.isComplete ? "记录日常训练" : "开始记录"}
+            {completeness.isPartial ? "继续补录正式体测" : completeness.isComplete ? "记录日常训练" : "开始首次记录"}
           </Button>
         </Link>
 
-        <div className="mt-3 flex gap-3 text-xs opacity-80">
-          <Link href="/ai-guide" className="flex items-center gap-1 hover:opacity-100"><Sparkles className="h-3.5 w-3.5" />AI 指导</Link>
-          <Link href="/records" className="flex items-center gap-1 hover:opacity-100"><FileText className="h-3.5 w-3.5" />历史记录</Link>
+        {/* 次级操作 */}
+        <div className="mt-4 flex gap-4 text-sm opacity-75">
+          <Link href="/ai-guide" className="flex items-center gap-1.5 hover:opacity-100 transition-opacity">
+            <Sparkles className="h-4 w-4" />AI 指导
+          </Link>
+          <Link href="/records" className="flex items-center gap-1.5 hover:opacity-100 transition-opacity">
+            <FileText className="h-4 w-4" />历史记录
+          </Link>
         </div>
+
+        {/* 底部轻量说明 */}
+        <p className="mt-3 text-xs opacity-50 border-t border-white/15 pt-3">
+          {latestRecord.recordType === "official_test"
+            ? "正式体测数据已提交，如需更正请联系体育教师"
+            : "练习数据可随时更新，正式体测需教师更正"}
+        </p>
       </div>
 
       {/* ===== 2. 数据摘要条 ===== */}
