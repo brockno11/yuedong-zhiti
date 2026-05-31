@@ -15,6 +15,7 @@ interface FormalAnalysisProps {
   batchFreshness: "current" | "suggest_update";
   missingItems: string[];
   batches: Array<{ id: string; name: string; type: string; status: string }>;
+  batchReportMap?: Map<string, StudentReportHistoryItem | null>;
   onGenerate: () => void;
   onView: (_report: StudentReportHistoryItem) => void;
   onViewBatch?: (_batchId: string) => void;
@@ -41,6 +42,7 @@ export function AIFormalAnalysis({
   onGenerate,
   onView,
   onViewBatch,
+  batchReportMap,
 }: FormalAnalysisProps) {
   const badge = batchFreshness === "suggest_update"
     ? { label: "建议更新", variant: "pass" as const }
@@ -83,20 +85,30 @@ export function AIFormalAnalysis({
           {batches.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-[11px] text-muted-foreground">正式体测批次</p>
-              {batches.filter(b => b.type === "official").map((batch) => (
-                <button
-                  key={batch.id}
-                  type="button"
-                  onClick={() => onViewBatch?.(batch.id)}
-                  className="flex w-full items-center gap-2 rounded-lg bg-muted/20 px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <span className="h-2 w-2 rounded-full bg-primary" />
-                  <span className="font-medium">{batch.name}</span>
-                  <Badge variant="outline" className="ml-auto text-[9px]">
-                    {batch.status === "active" ? "进行中" : batch.status === "completed" ? "已完成" : "已归档"}
-                  </Badge>
-                </button>
-              ))}
+              {batches.filter(b => b.type === "official").map((batch) => {
+                const hasReport = batchReportMap?.get(batch.id);
+                return (
+                  <button
+                    key={batch.id}
+                    type="button"
+                    onClick={() => onViewBatch?.(batch.id)}
+                    className="flex w-full items-center gap-2 rounded-lg bg-muted/20 px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    <span className="font-medium">{batch.name}</span>
+                    <div className="ml-auto flex items-center gap-1">
+                      {hasReport ? (
+                        <Badge variant="excellent" className="text-[9px]">已有分析</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[9px]">待生成</Badge>
+                      )}
+                      <Badge variant="outline" className="text-[9px]">
+                        {batch.status === "active" ? "进行中" : batch.status === "completed" ? "已完成" : "已归档"}
+                      </Badge>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
 

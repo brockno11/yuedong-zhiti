@@ -32,6 +32,7 @@ interface ReportDetailProps {
   batchReportMap?: Map<string, StudentReportHistoryItem | null>;
   onBack: () => void;
   onBatchChange: (_batchId: string) => void;
+  onGenerateForBatch?: (_batchId: string) => void;
 }
 
 function itemName(id: string): string {
@@ -88,6 +89,7 @@ export function AIReportDetail({
   batchReportMap,
   onBack,
   onBatchChange,
+  onGenerateForBatch,
 }: ReportDetailProps) {
   const status = report.status || "pending_review";
   const StatusIcon = status === "approved" ? CheckCircle2 : status === "rejected" ? AlertTriangle : Clock;
@@ -96,9 +98,10 @@ export function AIReportDetail({
 
   // ===== BATCH REPORT — 全维度正式体测分析 =====
   if (report.reportType === "batch_report") {
-    // Check if this is a "no report" placeholder
-    const isExistingReport = report.id && !report.id.startsWith("empty-");
-    const batchHasReport = isExistingReport;
+    // Check report type: AI-generated (has real ID), preview (computed from records), or empty
+    const isPreviewReport = report.id.startsWith("preview-");
+    const isAIReport = !isPreviewReport && report.fitnessProfile.dimensions.length > 0;
+    const batchHasReport = isAIReport || isPreviewReport;
 
     return (
       <div className="space-y-5 pb-28">
@@ -170,6 +173,30 @@ export function AIReportDetail({
 
         {batchHasReport && (
           <>
+            {/* Preview notice */}
+            {isPreviewReport && (
+              <Card className="rounded-xl border border-amber-200 bg-amber-50/50 shadow-sm">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800">数据预览</p>
+                      <p className="mt-1 text-xs text-amber-700">
+                        以下内容基于该批次的正式体测记录自动计算，非 AI 分析报告。各维度表现和成绩表可直接查看。
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-600">
+                    建议点击下方按钮生成完整的 AI 全维度分析报告，获取项目关系分析、阶段训练方案和教学参考。
+                  </p>
+                  <Button size="sm" className="h-9 gap-1.5" onClick={() => onGenerateForBatch?.(selectedBatchId ?? "")}>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    生成 AI 正式体测分析
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* 2. Overview Card */}
             <Card className="rounded-xl shadow-sm">
               <CardContent className="space-y-3 p-4">

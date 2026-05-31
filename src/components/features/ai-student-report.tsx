@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { mockAIStudentReport } from "@/lib/data/mock-ai-reports";
-import { calculateRecordCompleteness } from "@/lib/scoring";
+import { calculateRecordCompleteness, computeDimensionsFromItems, type DimensionInput } from "@/lib/scoring";
 import type { StudentReportHistoryItem } from "@/lib/server/db-mappers";
 import type { AIStudentReport, FitnessItemId, FitnessRecord, FitnessRecordItem, StudentProfile } from "@/lib/types";
 import { AIFormalAnalysis } from "./ai-formal-analysis";
@@ -154,13 +154,24 @@ function findAllBatchReports(history: StudentReportHistoryItem[]): StudentReport
 function getBatchReportMap(
   batchReports: StudentReportHistoryItem[],
   batches: Array<{ id: string; name: string }>,
+  officialRecords: FitnessRecord[],
 ): Map<string, StudentReportHistoryItem | null> {
+  // Build a map: sourceRecordId → batchId from official records
+  const recordBatchMap = new Map<string, string>();
+  for (const record of officialRecords) {
+    if (record.batchId) {
+      recordBatchMap.set(record.id, record.batchId);
+    }
+  }
+
   const map = new Map<string, StudentReportHistoryItem | null>();
   for (const batch of batches) {
-    // Match by sourceSummary containing batch name or by sourceRecordDate closest to batch
-    const match = batchReports.find((r) =>
-      (r.sourceSummary ?? "").includes(batch.name)
-    ) ?? null;
+    // Find report whose sourceRecordId maps to this batch
+    const match = batchReports.find((r) => {
+      if (!r.sourceRecordId) return false;
+      const reportBatchId = recordBatchMap.get(r.sourceRecordId);
+      return reportBatchId === batch.id;
+    }) ?? null;
     map.set(batch.id, match);
   }
   return map;
@@ -223,9 +234,22 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
   const batchReport = allBatchReports[0] ?? null;
   // Map batch IDs to their reports
   const batchReportMap = useMemo(
-    () => getBatchReportMap(allBatchReports, formalBatches),
-    [allBatchReports, formalBatches]
+    () => getBatchReportMap(allBatchReports, formalBatches, officialRecords),
+    [allBatchReports, formalBatches, officialRecords]
   );
+
+  // Records grouped by batch for data preview
+  const recordsByBatch = useMemo(() => {
+    const map = new Map<string, FitnessRecord[]>();
+    for (const r of officialRecords) {
+      if (r.batchId) {
+        const existing = map.get(r.batchId) ?? [];
+        existing.push(r);
+        map.set(r.batchId, existing);
+      }
+    }
+    return map;
+  }, [officialRecords]);
   const latestOfficialRecord = officialRecords[0] ?? null;
 
   const batchFreshness: FreshnessState = useMemo(() => {
@@ -388,6 +412,75 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
     setStatus("complete");
   }, []);
 
+  // Build a computed "preview" report from actual batch records (when no AI report exists)
+  const buildBatchPreview = useCallback((batchId: string): AIStudentReport => {
+    const batchRecords = recordsByBatch.get(batchId) ?? [];
+    const allItems = batchRecords.flatMap(r => r.items);
+    // Deduplicate by itemId, keeping the latest score
+    const itemMap = new Map<string, FitnessRecordItem>();
+    for (const item of allItems) {
+      if (!itemMap.has(item.itemId)) itemMap.set(item.itemId, item);
+    }
+    const uniqueItems = Array.from(itemMap.values());
+    const overallScore = uniqueItems.length > 0
+      ? Math.round(uniqueItems.reduce((s, i) => s + i.score, 0) / uniqueItems.length)
+      : 0;
+
+    const dimInputs: DimensionInput[] = uniqueItems.map(i => ({
+      itemId: i.itemId,
+      itemName: itemName(i.itemId),
+      score: i.score,
+      grade: i.grade,
+    }));
+    const computedDims = computeDimensionsFromItems(dimInputs, student?.bmi ?? null, student?.gender ?? "male");
+    const dimsForProfile = computedDims.map(d => ({
+      key: d.key,
+      label: d.label,
+      score: d.score ?? 0,
+      grade: (d.grade ?? "pass") as "excellent" | "good" | "pass" | "improve",
+      classAverage: 70,
+      relatedItems: d.relatedItems,
+      analysis: d.analysis,
+      suggestion: d.suggestion,
+    }));
+
+    return {
+      id: `preview-${batchId}`,
+      studentId: studentId ?? "",
+      generatedAt: new Date().toISOString(),
+      version: 0,
+      status: "draft",
+      reportType: "batch_report",
+      fitnessProfile: {
+        summary: `基于该批次 ${uniqueItems.length} 个已测项目计算的体质预览。此为数据预览，非 AI 分析报告。`,
+        bmiStatus: student?.bmi ? `${student.bmi}，BMI 数据` : "暂无 BMI 数据",
+        overallScore,
+        overallGrade: overallScore >= 90 ? "excellent" : overallScore >= 80 ? "good" : overallScore >= 60 ? "pass" : "improve",
+        dimensions: dimsForProfile,
+        strengths: uniqueItems.filter(i => i.grade === "excellent" || i.grade === "good").map(i => itemName(i.itemId)),
+        improvements: uniqueItems.filter(i => i.grade === "pass" || i.grade === "improve").map(i => itemName(i.itemId)),
+      },
+      itemScores: uniqueItems.map(i => ({
+        itemId: i.itemId as FitnessItemId,
+        itemName: itemName(i.itemId),
+        valueText: `${i.value}`,
+        score: i.score,
+        grade: i.grade,
+        statusLabel: i.grade === "excellent" || i.grade === "good" ? "优势项" : i.grade === "pass" ? "稳定项" : "需关注项",
+        analysis: "",
+        suggestion: "",
+      })),
+      weaknessAnalysis: uniqueItems.filter(i => i.grade === "pass" || i.grade === "improve").map(i => ({
+        item: itemName(i.itemId),
+        currentLevel: i.grade === "pass" ? "及格" : "有提升空间",
+        possibleCauses: [],
+        improvementPotential: "建议生成 AI 分析获取详细建议",
+      })),
+      trainingPlan: [],
+      safetyReminders: ["请生成 AI 分析获取完整的恢复与安全提醒"],
+    };
+  }, [recordsByBatch, studentId, student]);
+
   // View report for specific batch
   const handleViewBatch = useCallback((batchId: string) => {
     const reportItem = batchReportMap.get(batchId);
@@ -398,11 +491,14 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
       setMode(reportItem.mode === "ai" ? "ai" : "mock");
       setStatus("complete");
     } else {
-      // No report for this batch — still set selected so detail view shows empty state
+      // No report for this batch — show computed data preview
+      setViewingReport(buildBatchPreview(batchId));
+      setViewingItemId(null);
       setSelectedBatchId(batchId);
-      setViewingReport(null); // Will be picked up by detail view as "no report"
+      setMode(undefined);
+      setStatus("complete");
     }
-  }, [batchReportMap]);
+  }, [batchReportMap, buildBatchPreview]);
 
   // ---- Empty state ----
   if (!latestRecord || !student) {
@@ -451,55 +547,13 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
           setViewingItemId(null);
           setSelectedBatchId(null);
         }}
-        onBatchChange={(batchId) => {
-          const reportItem = batchReportMap.get(batchId);
-          if (reportItem) {
-            setViewingReport(reportItem.report);
-            setSelectedBatchId(batchId);
-            setMode(reportItem.mode === "ai" ? "ai" : "mock");
-          } else {
-            setSelectedBatchId(batchId);
-            // Keep viewingReport null — detail view shows "no report" state
-          }
+        onBatchChange={handleViewBatch}
+        onGenerateForBatch={(batchId) => {
+          setSelectedBatchId(batchId);
+          generateReport({ reportType: "batch_report" });
         }}
       />
     );
-  }
-
-  // For the case where selectedBatchId is set but no viewingReport (shouldn't normally happen)
-  if (selectedBatchId && !viewingReport) {
-    const emptyBatchReport = batchReportMap.get(selectedBatchId);
-    if (!emptyBatchReport) {
-      // Show empty batch state via detail view
-      const emptyReport: AIStudentReport = {
-        id: `empty-${selectedBatchId}`,
-        studentId: studentId ?? "",
-        generatedAt: new Date().toISOString(),
-        version: 0,
-        status: "draft",
-        reportType: "batch_report",
-        fitnessProfile: { summary: "该批次暂无分析报告。", bmiStatus: "", overallScore: 0, overallGrade: "improve", dimensions: [], strengths: [], improvements: [] },
-        weaknessAnalysis: [],
-        trainingPlan: [],
-        safetyReminders: [],
-      };
-      return (
-        <AIReportDetail
-          report={emptyReport}
-          mode={undefined}
-          viewingItemId={null}
-          formalBatches={formalBatches}
-          selectedBatchId={selectedBatchId}
-          batchReportMap={batchReportMap}
-          onBack={() => { setViewingReport(null); setSelectedBatchId(null); }}
-          onBatchChange={(batchId) => {
-            const item = batchReportMap.get(batchId);
-            if (item) { setViewingReport(item.report); setSelectedBatchId(batchId); setMode(item.mode === "ai" ? "ai" : "mock"); }
-            else { setSelectedBatchId(batchId); }
-          }}
-        />
-      );
-    }
   }
 
   // ---- Main listing view ----
@@ -514,6 +568,7 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
         batchFreshness={batchFreshness}
         missingItems={completeness.missingItems}
         batches={batches}
+        batchReportMap={batchReportMap}
         onGenerate={() => generateReport({ reportType: "batch_report" })}
         onView={(report) => openReport(report)}
         onViewBatch={handleViewBatch}
