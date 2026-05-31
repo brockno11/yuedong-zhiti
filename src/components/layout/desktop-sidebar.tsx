@@ -80,7 +80,7 @@ export function DesktopSidebar({ items }: DesktopSidebarProps) {
 
       {/* 底部版本信息 */}
       <div className="mt-auto px-3 py-4">
-        <p className="text-xs text-muted-foreground">v0.1.0 MVP</p>
+        <p className="text-xs text-muted-foreground">v0.4.0 MVP</p>
         <p className="text-xs text-muted-foreground">AI 辅助 · 教师主导</p>
       </div>
     </div>

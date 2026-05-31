@@ -232,16 +232,16 @@ export default async function TeacherOverviewPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/teacher/students">
+          <Link href="/teacher/class">
             <Card className="cursor-pointer rounded-xl border shadow-sm transition-shadow hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                   <Users className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">学生列表</p>
+                  <p className="text-sm font-semibold">班级管理</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    查看全部学生体测数据与管理
+                    管理班级信息、添加/编辑学生
                   </p>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />

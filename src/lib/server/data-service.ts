@@ -456,3 +456,134 @@ function buildAttentionReason(student: StudentProfile, record: FitnessRecord | n
   if (!record) reasons.push("暂无体测记录");
   return reasons.length > 0 ? reasons.join("，") : "建议持续观察近期训练反馈";
 }
+
+// ===== 班级管理 =====
+
+export interface CreateClassInput {
+  name: string;
+  grade: string;
+  semester: string;
+  teacherId?: string;
+}
+
+export async function createClass(input: CreateClassInput) {
+  const id = `class-${randomUUID().slice(0, 8)}`;
+  return prisma.classGroup.create({
+    data: {
+      id,
+      name: input.name,
+      grade: input.grade,
+      semester: input.semester,
+      teacherId: input.teacherId ?? "teacher-zhou",
+    },
+  });
+}
+
+export async function getClasses() {
+  return prisma.classGroup.findMany({
+    include: { students: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export interface AddStudentInput {
+  name: string;
+  gender: "male" | "female";
+  grade: string;
+  age: number;
+  height: number;
+  weight: number;
+  sportGoal?: string;
+  sportBase?: string;
+  discomforts?: string[];
+}
+
+export async function addStudentToClass(classId: string, input: AddStudentInput) {
+  // 自动生成学生 ID（S021, S022...）
+  const lastStudent = await prisma.student.findFirst({
+    orderBy: { id: "desc" },
+  });
+  const lastNum = lastStudent ? parseInt(lastStudent.id.replace("S", ""), 10) : 0;
+  const studentId = `S${String(lastNum + 1).padStart(3, "0")}`;
+
+  const bmi = Math.round((input.weight / ((input.height / 100) * (input.height / 100))) * 10) / 10;
+
+  // 创建学生档案
+  await prisma.student.create({
+    data: {
+      id: studentId,
+      name: input.name,
+      gender: input.gender,
+      grade: input.grade,
+      age: input.age,
+      height: input.height,
+      weight: input.weight,
+      bmi,
+      sportGoal: input.sportGoal ?? "overall_health",
+      sportBase: input.sportBase ?? "light",
+      discomfortsJson: JSON.stringify(input.discomforts ?? ["none"]),
+      classId,
+    },
+  });
+
+  // 自动创建登录账号
+  await prisma.userAccount.create({
+    data: {
+      id: `account-${studentId}`,
+      role: "student",
+      username: studentId,
+      displayName: input.name,
+      passwordHash: "demo123",
+      studentId,
+      classId,
+    },
+  });
+
+  return { studentId, username: studentId, password: "demo123" };
+}
+
+export async function getClassWithStudents(classId: string) {
+  return prisma.classGroup.findUnique({
+    where: { id: classId },
+    include: {
+      students: {
+        include: { accounts: { select: { username: true } } },
+        orderBy: { id: "asc" },
+      },
+    },
+  });
+}
+
+export async function updateStudent(studentId: string, input: Partial<AddStudentInput>) {
+  const updateData: Record<string, unknown> = {};
+  if (input.name !== undefined) updateData.name = input.name;
+  if (input.gender !== undefined) updateData.gender = input.gender;
+  if (input.grade !== undefined) updateData.grade = input.grade;
+  if (input.age !== undefined) updateData.age = input.age;
+  if (input.height !== undefined) updateData.height = input.height;
+  if (input.weight !== undefined) updateData.weight = input.weight;
+  if (input.sportGoal !== undefined) updateData.sportGoal = input.sportGoal;
+  if (input.sportBase !== undefined) updateData.sportBase = input.sportBase;
+  if (input.discomforts !== undefined) updateData.discomfortsJson = JSON.stringify(input.discomforts);
+  if (input.height !== undefined && input.weight !== undefined) {
+    updateData.bmi = Math.round((input.weight / ((input.height / 100) * (input.height / 100))) * 10) / 10;
+  }
+
+  await prisma.student.update({ where: { id: studentId }, data: updateData as never });
+  return getStudentProfile(studentId);
+}
+
+export async function deleteStudent(studentId: string) {
+  // 先删关联账号
+  await prisma.userAccount.deleteMany({ where: { studentId } });
+  await prisma.fitnessRecordItem.deleteMany({ where: { record: { studentId } } });
+  await prisma.fitnessRecord.deleteMany({ where: { studentId } });
+  await prisma.aIReport.deleteMany({ where: { studentId } });
+  await prisma.student.delete({ where: { id: studentId } });
+}
+
+export async function getNextStudentId(): Promise<string> {
+  const last = await prisma.student.findFirst({ orderBy: { id: "desc" } });
+  const num = last ? parseInt(last.id.replace("S", ""), 10) + 1 : 1;
+  return `S${String(num).padStart(3, "0")}`;
+}

@@ -171,7 +171,7 @@ export const STUDENT_NAV_ITEMS = [
 
 export const TEACHER_NAV_ITEMS = [
   { href: "/teacher", label: "总览", icon: "LayoutDashboard" },
-  { href: "/teacher/students", label: "学生", icon: "Users" },
+  { href: "/teacher/class", label: "班级", icon: "Users" },
   { href: "/teacher/report", label: "报告", icon: "FileText" },
   { href: "/teacher/review", label: "审核", icon: "CheckSquare" },
   { href: "/teacher/profile", label: "我的", icon: "User" },
