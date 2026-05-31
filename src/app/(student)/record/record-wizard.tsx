@@ -86,25 +86,28 @@ export function RecordWizard() {
   }, []);
 
   // 进入成绩输入步骤时自动初始化默认值
-  useEffect(() => {
-    if (step === 2) {
-      const defaults: Record<string, number> = {};
+  const scoreInitRef = useRef(false);
+  const handleNextWithInit = () => {
+    if (step === 1 && !scoreInitRef.current) {
       const pickerConfigs: Record<string, { min: number; max: number }> = {
         vital_capacity: { min: 2000, max: 5000 }, "50m_run": { min: 7, max: 10 },
         standing_long_jump: { min: 150, max: 250 }, sit_and_reach: { min: 0, max: 20 },
         pull_up: { min: 0, max: 15 }, sit_up: { min: 20, max: 50 },
         "800m_run": { min: 200, max: 300 }, "1000m_run": { min: 200, max: 350 },
       };
-      for (const id of selectedItems) {
-        if (!scores[id] && pickerConfigs[id]) {
-          defaults[id] = Math.round((pickerConfigs[id].min + pickerConfigs[id].max) / 2);
+      setScores(prev => {
+        const defaults: Record<string, number> = {};
+        for (const id of selectedItems) {
+          if (!prev[id] && pickerConfigs[id]) {
+            defaults[id] = Math.round((pickerConfigs[id].min + pickerConfigs[id].max) / 2);
+          }
         }
-      }
-      if (Object.keys(defaults).length > 0) {
-        setScores(prev => ({ ...prev, ...defaults }));
-      }
+        return Object.keys(defaults).length > 0 ? { ...prev, ...defaults } : prev;
+      });
+      scoreInitRef.current = true;
     }
-  }, [step]);
+    handleNext();
+  };
 
   const handleFeelingChange = useCallback((itemId: FitnessItemId, answers: Record<string, string | number | boolean>) => {
     setItemFeedbacks((prev) => {
@@ -137,6 +140,7 @@ export function RecordWizard() {
 
   const handleBack = () => {
     if (step > 0) {
+      if (step === 2) scoreInitRef.current = false;
       if (!hasPhysicalItems && step === 3) setStep(2);
       else setStep((s) => s - 1);
     }
@@ -362,7 +366,7 @@ export function RecordWizard() {
             上一步
           </Button>
           <span className="text-xs text-muted-foreground">{step + 1} / {STEPS.length}</span>
-          <Button onClick={handleNext} disabled={!canProceed()} className="gap-1 h-11">
+          <Button onClick={handleNextWithInit} disabled={!canProceed()} className="gap-1 h-11">
             下一步
             <ChevronRight className="h-4 w-4" />
           </Button>
