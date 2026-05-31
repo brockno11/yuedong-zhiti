@@ -1,19 +1,13 @@
 // ===== 跃动智体 — 学生首页 =====
-import { DashboardHero } from "@/components/features/dashboard-hero";
 import { EmptyState } from "@/components/features/empty-state";
+import { RecentRecordCard } from "@/components/features/recent-record-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getFitnessRecords, getLatestFitnessRecord, getStudentProfile } from "@/lib/server/data-service";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { calculateRecordCompleteness } from "@/lib/scoring";
-import {
-  Target,
-  ChevronRight,
-  Clock,
-  BarChart3,
-  Sparkles,
-  FileText,
-} from "lucide-react";
+import { Target, ChevronRight, BarChart3, Sparkles, FileText, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { cookies } from "next/headers";
 
@@ -22,20 +16,11 @@ function getDemoStudentId(): string {
   catch { return ""; }
 }
 
-function formatRecordTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return dateStr;
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const time = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  if (isToday) return `今天 ${time}`;
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${time}`;
-}
-
-function recordTypeLabel(t: string): string {
-  if (t === "daily_training") return "日常训练";
-  if (t === "official_test") return "正式体测";
-  return t;
+// 批次聚合
+function getBatchLatestItems(records: { items: { itemId: string; score: number; value: number; grade: string }[] }[]) {
+  const map = new Map<string, { itemId: string; score: number; value: number; grade: string }>();
+  for (const r of records) for (const i of r.items) { if (!map.has(i.itemId)) map.set(i.itemId, i); }
+  return Array.from(map.values());
 }
 
 export default async function DashboardPage() {
@@ -47,148 +32,120 @@ export default async function DashboardPage() {
   if (!student || !latestRecord) {
     return (
       <div className="mx-auto max-w-lg px-4">
-        <EmptyState title="欢迎使用跃动智体" description="完成首次体测记录后，这里将展示你的体质概况和 AI 建议"
+        <EmptyState title="欢迎使用跃动智体" description="完成首次体测记录后，这里将展示你的体质概况"
           action={<Link href="/record"><span className="inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">开始首次记录</span></Link>}
         />
       </div>
     );
   }
 
-  const avgScore = Math.round(latestRecord.items.reduce((sum, i) => sum + i.score, 0) / latestRecord.items.length);
-  const completeness = calculateRecordCompleteness(latestRecord.items.map(i => i.itemId), student.gender);
-  const isScoreReliable = completeness.completionRate >= 70;
-
-  const improvements = latestRecord.items.filter(i => i.grade === "improve" || i.grade === "pass")
-    .map(i => FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId);
+  const batchItems = getBatchLatestItems(allRecords);
+  const batchItemIds = batchItems.map(i => i.itemId);
+  const completeness = calculateRecordCompleteness(batchItemIds, student.gender);
+  const avgScore = Math.round(batchItems.reduce((sum, i) => sum + i.score, 0) / batchItems.length);
   const bmiLabel = student.bmi >= 18.5 && student.bmi < 24 ? "正常范围" : "BMI 指标值得关注";
-  const lastRecordItems = latestRecord.items.slice(0, 4).map(i => ({
-    name: FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId,
-    score: i.score,
-    grade: i.grade,
-  }));
-  const worstItem = latestRecord.items.reduce((a, b) => (a.score < b.score ? a : b));
+  const missingNames = completeness.missingItems.map(id => FITNESS_ITEMS.find(f => f.id === id)?.name ?? id).slice(0, 3);
+
+  const greeting = (() => { const h = new Date().getHours(); return h < 11 ? "早上好" : h < 14 ? "中午好" : h < 18 ? "下午好" : "晚上好"; })();
+  const statusLine = completeness.isComplete
+    ? `当前批次已完整记录 ${completeness.recordedCount}/${completeness.expectedCount} 项`
+    : `还有 ${completeness.missingItems.length} 项待补充，建议继续完成记录`;
 
   return (
     <div className="mx-auto max-w-lg space-y-4 px-4">
-      <DashboardHero studentName={student.name} avgScore={avgScore} semester={latestRecord.semester} />
+      {/* ===== 1. 今日行动 Hero ===== */}
+      <div className="rounded-2xl bg-primary p-5 sm:p-6 text-primary-foreground shadow-sm">
+        <p className="text-sm opacity-80">{greeting}</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">{student.name}</h1>
+        <p className="mt-1.5 text-sm opacity-90">{statusLine}</p>
 
-      {/* ==== 状态简卡 ==== */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold tabular-nums">{avgScore}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {isScoreReliable ? "综合评分" : "已录项目均分"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="p-3 text-center">
-            <p className="text-sm font-semibold">{bmiLabel}</p>
-            <p className="text-[11px] text-muted-foreground">BMI</p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold tabular-nums">{completeness.recordedCount}/{completeness.expectedCount}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {completeness.isComplete ? "完整" : completeness.isPartial ? "待补充" : "无数据"}
-            </p>
-          </CardContent>
-        </Card>
+        {completeness.isPartial && missingNames.length > 0 && (
+          <p className="mt-1.5 text-xs opacity-70">待补充：{missingNames.join("、")}{completeness.missingItems.length > 3 ? ` 等${completeness.missingItems.length}项` : ""}</p>
+        )}
+
+        <Link href="/record">
+          <Button size="lg" className="mt-4 w-full gap-2 h-12 text-base bg-white text-primary hover:bg-white/90 shadow-sm">
+            <PlusCircle className="h-5 w-5" />
+            {completeness.isPartial ? "继续补录" : completeness.isComplete ? "记录日常训练" : "开始记录"}
+          </Button>
+        </Link>
+
+        <div className="mt-3 flex gap-3 text-xs opacity-80">
+          <Link href="/ai-guide" className="flex items-center gap-1 hover:opacity-100"><Sparkles className="h-3.5 w-3.5" />AI 指导</Link>
+          <Link href="/records" className="flex items-center gap-1 hover:opacity-100"><FileText className="h-3.5 w-3.5" />历史记录</Link>
+        </div>
       </div>
 
-      {/* ==== 最近记录摘要 ==== */}
-      <Card className="rounded-xl shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-medium text-muted-foreground">最近记录</p>
-          </div>
-          <p className="text-xs text-muted-foreground">{formatRecordTime(latestRecord.date)}</p>
-          {(latestRecord.batchName || latestRecord.semester) && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {latestRecord.batchName ?? latestRecord.semester}
-            </p>
-          )}
-          <div className="mt-2 space-y-1">
-            {lastRecordItems.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-sm">
-                <span>{item.name}</span>
-                <Badge variant={item.grade === "excellent" || item.grade === "good" ? "excellent" : "pass"} className="text-[10px]">
-                  {item.score}分
-                </Badge>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Badge variant="outline" className="text-[10px]">{recordTypeLabel(latestRecord.recordType)}</Badge>
-            <span>已录 {completeness.recordedCount}/{completeness.expectedCount} 项</span>
-            <span>· 完整度 {completeness.completionRate}%</span>
-          </div>
-          {allRecords.length > 1 && (
-            <p className="mt-2 text-[11px] text-muted-foreground">共 {allRecords.length} 次记录</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* ===== 2. 数据摘要条 ===== */}
+      <div className="grid grid-cols-4 gap-2">
+        <div className="rounded-xl bg-muted/50 p-2.5 text-center">
+          <p className="text-lg font-bold tabular-nums">{avgScore}</p>
+          <p className="text-[10px] text-muted-foreground">{completeness.isComplete ? "综合评分" : "均分"}</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-2.5 text-center">
+          <p className="text-lg font-bold tabular-nums">{completeness.recordedCount}/{completeness.expectedCount}</p>
+          <p className="text-[10px] text-muted-foreground">完整度</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-2.5 text-center">
+          <p className="text-xs font-semibold">{bmiLabel}</p>
+          <p className="text-[10px] text-muted-foreground">BMI</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-2.5 text-center">
+          <p className="text-lg font-bold tabular-nums">{allRecords.length}</p>
+          <p className="text-[10px] text-muted-foreground">总记录</p>
+        </div>
+      </div>
 
-      {/* ==== 今日小洞察 ==== */}
-      {improvements.length > 0 && worstItem && (
-        <Card className="rounded-xl border-primary/20 bg-primary/5 shadow-sm">
-          <CardContent className="flex items-start gap-3 p-4">
-            <Target className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div>
-              <p className="text-sm font-medium">本周关注</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {FITNESS_ITEMS.find(d => d.id === worstItem.itemId)?.name ?? ""} 维度有提升空间
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* ===== 3. 最近记录 ===== */}
+      <RecentRecordCard record={latestRecord} gender={student.gender} />
+
+      {/* ===== 4. 下一步建议 ===== */}
       {completeness.isPartial && (
         <Card className="rounded-xl border-amber-200 bg-amber-50 shadow-sm">
           <CardContent className="flex items-start gap-3 p-4">
-            <FileText className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <Target className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div>
-              <p className="text-sm font-medium text-amber-800">数据完整度提醒</p>
+              <p className="text-sm font-medium text-amber-800">建议补充项目</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                当前仅录入 {completeness.recordedCount} 项，建议补充 {completeness.missingItems.map(id => FITNESS_ITEMS.find(f => f.id === id)?.name ?? id).slice(0, 3).join("、")} 等 {completeness.missingItems.length} 项数据以获取完整体质画像
+                完成全部 {completeness.expectedCount} 项正式体测后，可获取完整综合体质画像和AI训练方案
               </p>
+              <Link href="/record"><Button variant="outline" size="sm" className="gap-1 mt-2 h-7 text-xs">补充体测项目</Button></Link>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* ==== 快捷入口 ==== */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Link href="/portrait">
-          <Card className="cursor-pointer rounded-xl shadow-sm transition-shadow hover:shadow-md">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <BarChart3 className="h-5 w-5 text-primary" />
+      {completeness.isComplete && (
+        <Card className="rounded-xl border-primary/20 bg-primary/5 shadow-sm">
+          <CardContent className="flex items-start gap-3 p-4">
+            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-medium">全部项目已录入</p>
+              <p className="text-xs text-muted-foreground mt-0.5">可查看体质画像或生成AI指导报告</p>
+              <div className="flex gap-2 mt-2">
+                <Link href="/portrait"><Button variant="outline" size="sm" className="h-7 text-xs gap-1"><BarChart3 className="h-3 w-3" />查看画像</Button></Link>
+                <Link href="/ai-guide"><Button variant="outline" size="sm" className="h-7 text-xs gap-1"><Sparkles className="h-3 w-3" />AI 指导</Button></Link>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">体质画像</p>
-                <p className="text-xs text-muted-foreground">雷达图、趋势与项目详情</p>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== 5. 快捷入口 ===== */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/portrait"><Card className="cursor-pointer rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="flex items-center gap-3 p-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10"><BarChart3 className="h-4 w-4 text-primary" /></div>
+            <div className="min-w-0"><p className="text-sm font-semibold">体质画像</p><p className="text-[11px] text-muted-foreground">雷达图与趋势</p></div>
+            <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
+          </CardContent></Card>
         </Link>
-        <Link href="/ai-guide">
-          <Card className="cursor-pointer rounded-xl shadow-sm transition-shadow hover:shadow-md">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">AI 指导</p>
-                <p className="text-xs text-muted-foreground">单项专项 · 本次记录 · 综合体质</p>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </CardContent>
-          </Card>
+        <Link href="/ai-guide"><Card className="cursor-pointer rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="flex items-center gap-3 p-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Sparkles className="h-4 w-4 text-primary" /></div>
+            <div className="min-w-0"><p className="text-sm font-semibold">AI 指导</p><p className="text-[11px] text-muted-foreground">专项训练方案</p></div>
+            <Badge variant="secondary" className="text-[9px] ml-auto">AI</Badge>
+          </CardContent></Card>
         </Link>
       </div>
     </div>
