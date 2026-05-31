@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       if (type === "student-report") {
         const report = {
           ...mockAIStudentReport,
+          id: `AI-S-${body.studentId ?? "001"}-mock-${Date.now()}`,
           studentId: body.studentId ?? mockAIStudentReport.studentId,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
