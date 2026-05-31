@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Clock,
   BarChart3,
+  Sparkles,
   FileText,
 } from "lucide-react";
 import Link from "next/link";
@@ -175,15 +176,15 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/records">
+        <Link href="/ai-guide">
           <Card className="cursor-pointer rounded-xl shadow-sm transition-shadow hover:shadow-md">
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
+                <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">历史记录</p>
-                <p className="text-xs text-muted-foreground">共 {allRecords.length} 次</p>
+                <p className="text-sm font-semibold">AI 指导</p>
+                <p className="text-xs text-muted-foreground">单项专项 · 本次记录 · 综合体质</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </CardContent>

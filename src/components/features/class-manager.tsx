@@ -394,6 +394,7 @@ export function ClassManager({ initialClasses }: ClassManagerProps) {
                           variant="ghost"
                           className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                           onClick={() => handleDeleteStudent(activeClass.id, student.id, student.name)}
+                          aria-label={`删除学生 ${student.name}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

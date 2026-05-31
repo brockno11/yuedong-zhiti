@@ -25,7 +25,7 @@ export function RecordFeelingStep({
 }: RecordFeelingStepProps) {
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">每个项目的问题不同，请逐一反馈</p>
+      <p className="text-sm text-muted-foreground">请根据每项运动的实际感受如实反馈</p>
 
       {selectedItems.map((itemId, idx) => {
         const item = FITNESS_ITEMS.find(i => i.id === itemId);

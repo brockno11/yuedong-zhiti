@@ -52,6 +52,19 @@ export function useAuthGuard() {
       return;
     }
 
+    // 角色隔离：student 不能访问 /teacher，teacher 不能访问学生端
+    if (data && pathname !== "/") {
+      const isTeacherRoute = pathname.startsWith("/teacher");
+      if (data.role === "student" && isTeacherRoute) {
+        router.replace("/dashboard");
+        return;
+      }
+      if (data.role === "teacher" && !isTeacherRoute) {
+        router.replace("/teacher");
+        return;
+      }
+    }
+
     setReady(true);
   }, [pathname, router]);
 
