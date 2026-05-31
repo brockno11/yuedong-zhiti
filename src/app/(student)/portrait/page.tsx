@@ -83,9 +83,13 @@ export default async function PortraitPage() {
     .filter(i => i.grade === "improve" || i.grade === "pass")
     .map(i => FITNESS_ITEMS.find(d => d.id === i.itemId)?.name ?? i.itemId);
 
-  const lowestDimension = radarData.reduce((a, b) => a.score < b.score ? a : b);
-  const insightText = lowestDimension.score < 60
-    ? `${lowestDimension.dimension}维度有提升空间，建议从低强度训练开始逐步改善`
+  const radarWithData = radarData.filter(d => d.score !== null);
+  const lowestDimension = radarWithData.length > 0
+    ? radarWithData.reduce((a, b) => (a.score! < b.score!) ? a : b)
+    : null;
+  const scoreForInsight = lowestDimension?.score ?? 0;
+  const insightText = scoreForInsight < 60
+    ? `${lowestDimension!.dimension}维度有提升空间，建议从低强度训练开始逐步改善`
     : "各维度表现较为均衡，继续保持当前训练节奏";
 
   const bmiLabel = student.bmi < 18.5 ? "BMI 指标值得关注"
@@ -149,7 +153,9 @@ export default async function PortraitPage() {
         <CardContent>
           <FitnessRadarChart data={radarData} height={300} showComparison />
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            虚线为班级均值，实线为你的表现。{lowestDimension.dimension}维度的提升空间最大
+            {lowestDimension
+              ? `虚线为班级均值，实线为你的表现。${lowestDimension.dimension}维度的提升空间最大`
+              : "虚线为班级均值，实线为你的表现"}
           </p>
         </CardContent>
       </Card>

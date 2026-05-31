@@ -47,6 +47,8 @@ type CreateFitnessRecordInput = {
   studentId: string;
   date?: string;
   semester?: string;
+  batchId?: string;
+  recordType?: "official_test" | "daily_training";
   items: {
     itemId: FitnessItemId;
     value: number;
@@ -113,19 +115,19 @@ export async function getStudentProfile(studentId: string): Promise<StudentProfi
   return row ? mapStudent(row) : null;
 }
 
-export async function getFitnessRecords(studentId: string): Promise<FitnessRecord[]> {
+export async function getFitnessRecords(studentId: string, batchId?: string): Promise<FitnessRecord[]> {
   const rows = await prisma.fitnessRecord.findMany({
-    where: { studentId },
-    include: { items: true },
+    where: { studentId, ...(batchId ? { batchId } : {}) },
+    include: { items: true, batch: true },
     orderBy: { date: "desc" },
   });
   return rows.map(mapFitnessRecord);
 }
 
-export async function getLatestFitnessRecord(studentId: string): Promise<FitnessRecord | null> {
+export async function getLatestFitnessRecord(studentId: string, batchId?: string): Promise<FitnessRecord | null> {
   const row = await prisma.fitnessRecord.findFirst({
-    where: { studentId },
-    include: { items: true },
+    where: { studentId, ...(batchId ? { batchId } : {}) },
+    include: { items: true, batch: true },
     orderBy: { date: "desc" },
   });
   return row ? mapFitnessRecord(row) : null;
@@ -134,7 +136,7 @@ export async function getLatestFitnessRecord(studentId: string): Promise<Fitness
 export async function getStudentListItems(): Promise<StudentListItem[]> {
   const students = await getStudentProfiles();
   const records = await prisma.fitnessRecord.findMany({
-    include: { items: true },
+    include: { items: true, batch: true },
     orderBy: { date: "desc" },
   });
   const latestByStudent = new Map<string, FitnessRecord>();
@@ -176,12 +178,23 @@ export async function createFitnessRecord(input: CreateFitnessRecordInput): Prom
     };
   });
 
+  // 有 batchId 时从批次派生 semester
+  let semesterValue = input.semester ?? DEFAULT_SEMESTER;
+  if (input.batchId) {
+    const batch = await prisma.assessmentBatch.findUnique({ where: { id: input.batchId } });
+    if (batch) {
+      semesterValue = `${batch.academicYear}${batch.semester} · ${batch.name}`;
+    }
+  }
+
   const row = await prisma.fitnessRecord.create({
     data: {
       id: recordId,
       studentId: input.studentId,
       date: input.date ? new Date(input.date) : new Date(),
-      semester: input.semester ?? DEFAULT_SEMESTER,
+      semester: semesterValue,
+      batchId: input.batchId ?? null,
+      recordType: input.recordType ?? "official_test",
       fatigueLevel: input.bodyFeeling.fatigueLevel,
       recoveryStatus: input.bodyFeeling.recoveryStatus,
       hasSoreness: input.bodyFeeling.hasSoreness,
@@ -192,7 +205,7 @@ export async function createFitnessRecord(input: CreateFitnessRecordInput): Prom
         create: items,
       },
     },
-    include: { items: true },
+    include: { items: true, batch: true },
   });
 
   return mapFitnessRecord(row);
@@ -586,4 +599,151 @@ export async function getNextStudentId(): Promise<string> {
   const last = await prisma.student.findFirst({ orderBy: { id: "desc" } });
   const num = last ? parseInt(last.id.replace("S", ""), 10) + 1 : 1;
   return `S${String(num).padStart(3, "0")}`;
+}
+
+// ===== 体测批次管理 =====
+
+export async function createBatch(input: {
+  name: string;
+  academicYear: string;
+  semester: string;
+  round?: number;
+  type?: "official" | "makeup" | "daily";
+  classId: string;
+  status?: "draft" | "active" | "completed" | "archived";
+}) {
+  const id = `batch-${randomUUID().slice(0, 8)}`;
+  const row = await prisma.assessmentBatch.create({
+    data: {
+      id,
+      name: input.name,
+      academicYear: input.academicYear,
+      semester: input.semester,
+      round: input.round ?? 1,
+      type: input.type ?? "official",
+      classId: input.classId,
+      status: input.status ?? "active",
+    },
+  });
+  return row;
+}
+
+export async function getBatchesByClass(classId: string) {
+  const rows = await prisma.assessmentBatch.findMany({
+    where: { classId },
+    orderBy: { createdAt: "desc" },
+    include: { _count: { select: { records: true } } },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    academicYear: r.academicYear,
+    semester: r.semester,
+    round: r.round,
+    type: r.type as string,
+    classId: r.classId,
+    status: r.status as string,
+    createdAt: r.createdAt.toISOString(),
+    recordCount: r._count.records,
+  }));
+}
+
+export async function getActiveBatch(classId: string) {
+  const row = await prisma.assessmentBatch.findFirst({
+    where: { classId, status: "active" },
+  });
+  if (!row) return null;
+  return { id: row.id, name: row.name, type: row.type as string, status: row.status as string };
+}
+
+export async function updateBatchStatus(batchId: string, status: "active" | "completed" | "archived") {
+  await prisma.assessmentBatch.update({ where: { id: batchId }, data: { status } });
+}
+
+// 更新 getClassSummary 支持 batchId 过滤
+export async function getClassSummaryWithBatch(batchId?: string): Promise<ClassSummaryWithLevels> {
+  const listItems = await getStudentListItems();
+  const reviews = await getTeacherReviews();
+
+  const recordsQuery = batchId
+    ? prisma.fitnessRecord.findMany({ where: { batchId }, include: { items: true, batch: true }, orderBy: { date: "desc" } })
+    : prisma.fitnessRecord.findMany({ include: { items: true, batch: true }, orderBy: { date: "desc" } });
+  const allRecords = (await recordsQuery).map(mapFitnessRecord);
+
+  const latestByStudent = new Map<string, FitnessRecord>();
+  for (const record of allRecords) {
+    if (!latestByStudent.has(record.studentId)) {
+      latestByStudent.set(record.studentId, record);
+    }
+  }
+
+  const totalStudents = listItems.length;
+  const recordedStudents = latestByStudent.size;
+  const latestRecords = Array.from(latestByStudent.values());
+  const averageBmi = roundAverage(listItems.map((item) => item.student.bmi));
+  const overallScores = latestRecords.map(getAverageRecordScore);
+  const passRate = percentage(overallScores.filter((s) => s >= 60).length, totalStudents);
+  const excellentRate = percentage(overallScores.filter((s) => s >= 90).length, totalStudents);
+
+  const levelCounts = {
+    excellent: overallScores.filter((s) => s >= 90).length,
+    good: overallScores.filter((s) => s >= 80 && s < 90).length,
+    pass: overallScores.filter((s) => s >= 60 && s < 80).length,
+    improve: totalStudents - overallScores.filter((s) => s >= 60).length,
+  };
+
+  const levelData = [
+    { grade: "excellent" as const, label: "优秀", count: levelCounts.excellent },
+    { grade: "good" as const, label: "良好", count: levelCounts.good },
+    { grade: "pass" as const, label: "及格", count: levelCounts.pass },
+    { grade: "improve" as const, label: "待提升", count: levelCounts.improve },
+  ].map((item) => ({ ...item, percentage: percentage(item.count, totalStudents) }));
+
+  const weakItemRanking = FITNESS_ITEMS.filter((f) => f.id !== "height_weight")
+    .map((f) => {
+      const itemScores = latestRecords.flatMap((r) =>
+        r.items.filter((ri) => ri.itemId === f.id).map((ri) => ri.score)
+      );
+      return { itemName: f.name, passRate: percentage(itemScores.filter((s) => s >= 60).length, itemScores.length) };
+    })
+    .filter((item) => Number.isFinite(item.passRate))
+    .sort((a, b) => a.passRate - b.passRate)
+    .slice(0, 6);
+
+  const projectAverages = FITNESS_ITEMS.filter((f) => f.id !== "height_weight").map((f) => {
+    const maleValues: number[] = [];
+    const femaleValues: number[] = [];
+    for (const li of listItems) {
+      const v = li.latestRecord?.items.find((ri) => ri.itemId === f.id)?.value;
+      if (v === undefined) continue;
+      if (li.student.gender === "male") maleValues.push(v);
+      else femaleValues.push(v);
+    }
+    return { itemName: f.name, maleAverage: roundAverage(maleValues), femaleAverage: roundAverage(femaleValues), overallAverage: roundAverage([...maleValues, ...femaleValues]) };
+  });
+
+  const attentionStudents = listItems
+    .filter((item) => {
+      const avgScore = item.latestRecord ? getAverageRecordScore(item.latestRecord) : 0;
+      return item.student.discomforts.some((d) => d !== "none") || item.student.bmi >= 24 || avgScore < 60;
+    })
+    .slice(0, 4)
+    .map((item) => ({
+      studentId: item.student.id,
+      name: item.student.name,
+      reason: buildAttentionReason(item.student, item.latestRecord),
+    }));
+
+  return {
+    totalStudents,
+    recordedStudents,
+    averageBmi,
+    passRate,
+    excellentRate,
+    weakItemRanking,
+    projectAverages,
+    attentionStudents,
+    levelData,
+    pendingReviewCount: reviews.filter((r) => r.status === "pending").length,
+  };
 }

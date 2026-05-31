@@ -29,6 +29,24 @@ enum ReportKind {
   class
 }
 
+enum BatchType {
+  official
+  makeup
+  daily
+}
+
+enum BatchStatus {
+  draft
+  active
+  completed
+  archived
+}
+
+enum RecordType {
+  official_test
+  daily_training
+}
+
 model ClassGroup {
   id        String   @id
   name      String
@@ -40,6 +58,26 @@ model ClassGroup {
 
   students Student[]
   accounts UserAccount[]
+  batches  AssessmentBatch[]
+}
+
+model AssessmentBatch {
+  id           String      @id
+  name         String
+  academicYear String
+  semester     String
+  round        Int         @default(1)
+  type         BatchType   @default(official)
+  classId      String
+  status       BatchStatus @default(draft)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  class   ClassGroup      @relation(fields: [classId], references: [id])
+  records FitnessRecord[]
+
+  @@index([classId])
+  @@index([classId, status])
 }
 
 model UserAccount {
@@ -84,6 +122,8 @@ model FitnessRecord {
   studentId         String
   date              DateTime
   semester          String
+  batchId           String?
+  recordType        RecordType @default(official_test)
   fatigueLevel      Int
   recoveryStatus    String
   hasSoreness       Boolean
@@ -93,10 +133,13 @@ model FitnessRecord {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  student Student             @relation(fields: [studentId], references: [id])
+  student Student           @relation(fields: [studentId], references: [id])
+  batch   AssessmentBatch?  @relation(fields: [batchId], references: [id])
   items   FitnessRecordItem[]
 
   @@index([studentId, date])
+  @@index([batchId])
+  @@index([studentId, batchId])
 }
 
 model FitnessRecordItem {

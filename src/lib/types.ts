@@ -67,12 +67,34 @@ export interface FitnessItemDef {
   description: string;
 }
 
+// ---- 体测批次 ----
+export type BatchType = "official" | "makeup" | "daily";
+export type BatchStatus = "draft" | "active" | "completed" | "archived";
+export type RecordType = "official_test" | "daily_training";
+
+export interface AssessmentBatch {
+  id: string;
+  name: string;
+  academicYear: string;
+  semester: string;
+  round: number;
+  type: BatchType;
+  classId: string;
+  status: BatchStatus;
+  createdAt: string;
+  updatedAt: string;
+  recordCount?: number;
+}
+
 // ---- 体测记录 ----
 export interface FitnessRecord {
   id: string;
   studentId: string;
   date: string;
   semester: string;
+  batchId?: string;
+  batchName?: string;
+  recordType: RecordType;
   items: FitnessRecordItem[];
   bodyFeeling: BodyFeeling;
 }
@@ -230,7 +252,7 @@ export interface ClassSummary {
 // ---- 图表数据类型 ----
 export interface RadarChartDataPoint {
   dimension: string;
-  score: number;
+  score: number | null;  // null = 暂无数据
   classAverage: number;
   fullMark: number;
 }

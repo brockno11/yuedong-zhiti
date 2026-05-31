@@ -7,6 +7,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
     studentId: "S001",
     date: "2025-03-15T10:00:00Z",
     semester: "高二下 · 2025春季",
+    batchId: undefined,
+    recordType: "official_test" as const,
     items: [
       { itemId: "vital_capacity", value: 3200, score: 82, grade: "good" },
       { itemId: "50m_run", value: 8.1, score: 78, grade: "pass" },
@@ -29,6 +31,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
     studentId: "S002",
     date: "2025-03-15T10:15:00Z",
     semester: "高二下 · 2025春季",
+    batchId: undefined,
+    recordType: "official_test" as const,
     items: [
       { itemId: "vital_capacity", value: 2600, score: 78, grade: "pass" },
       { itemId: "50m_run", value: 8.7, score: 82, grade: "good" },
@@ -51,6 +55,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
     studentId: "S003",
     date: "2025-03-15T10:30:00Z",
     semester: "高二下 · 2025春季",
+    batchId: undefined,
+    recordType: "official_test" as const,
     items: [
       { itemId: "vital_capacity", value: 3400, score: 85, grade: "good" },
       { itemId: "50m_run", value: 8.8, score: 70, grade: "pass" },
@@ -73,6 +79,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
     studentId: "S004",
     date: "2025-03-15T10:45:00Z",
     semester: "高二下 · 2025春季",
+    batchId: undefined,
+    recordType: "official_test" as const,
     items: [
       { itemId: "vital_capacity", value: 2100, score: 62, grade: "pass" },
       { itemId: "50m_run", value: 9.5, score: 65, grade: "pass" },
@@ -95,6 +103,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
     studentId: "S005",
     date: "2025-03-15T11:00:00Z",
     semester: "高二下 · 2025春季",
+    batchId: undefined,
+    recordType: "official_test" as const,
     items: [
       { itemId: "vital_capacity", value: 4000, score: 95, grade: "excellent" },
       { itemId: "50m_run", value: 7.4, score: 92, grade: "excellent" },
@@ -117,6 +127,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
     studentId: "S001",
     date: "2024-10-10T10:00:00Z",
     semester: "高二上 · 2024秋季",
+    batchId: undefined,
+    recordType: "official_test" as const,
     items: [
       { itemId: "vital_capacity", value: 3000, score: 76, grade: "pass" },
       { itemId: "50m_run", value: 8.5, score: 72, grade: "pass" },
@@ -139,6 +151,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
     studentId: "S002",
     date: "2024-10-10T10:15:00Z",
     semester: "高二上 · 2024秋季",
+    batchId: undefined,
+    recordType: "official_test" as const,
     items: [
       { itemId: "vital_capacity", value: 2500, score: 74, grade: "pass" },
       { itemId: "50m_run", value: 9.0, score: 76, grade: "pass" },

@@ -18,7 +18,7 @@ import type { Prisma } from "@prisma/client";
 
 type StudentRow = Prisma.StudentGetPayload<Record<string, never>>;
 type FitnessRecordRow = Prisma.FitnessRecordGetPayload<{
-  include: { items: true };
+  include: { items: true; batch: true };
 }>;
 type TeacherReviewRow = Prisma.TeacherReviewGetPayload<Record<string, never>>;
 type AIReportRow = Prisma.AIReportGetPayload<Record<string, never>>;
@@ -47,6 +47,9 @@ export function mapFitnessRecord(row: FitnessRecordRow): FitnessRecord {
     studentId: row.studentId,
     date: row.date.toISOString(),
     semester: row.semester,
+    batchId: row.batchId ?? undefined,
+    batchName: (row.batch as { name?: string } | null)?.name ?? undefined,
+    recordType: (row.recordType as "official_test" | "daily_training") ?? "official_test",
     items: row.items.map(mapFitnessRecordItem),
     bodyFeeling: {
       fatigueLevel: row.fatigueLevel,
@@ -56,6 +59,27 @@ export function mapFitnessRecord(row: FitnessRecordRow): FitnessRecord {
       hasDiscomfort: row.hasDiscomfort,
       discomfortNotes: row.discomfortNotes,
     },
+  };
+}
+
+// AssessmentBatch mapper
+type AssessmentBatchRow = Prisma.AssessmentBatchGetPayload<{
+  include: { _count: { select: { records: true } } };
+}>;
+
+export function mapAssessmentBatch(row: AssessmentBatchRow): import("@/lib/types").AssessmentBatch {
+  return {
+    id: row.id,
+    name: row.name,
+    academicYear: row.academicYear,
+    semester: row.semester,
+    round: row.round,
+    type: row.type as import("@/lib/types").BatchType,
+    classId: row.classId,
+    status: row.status as import("@/lib/types").BatchStatus,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    recordCount: row._count?.records,
   };
 }
 

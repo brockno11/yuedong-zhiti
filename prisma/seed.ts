@@ -34,6 +34,22 @@ async function main() {
     },
   });
 
+  // 创建体测批次
+  const OFFICIAL_BATCH_ID = "batch-2025-spring-official";
+  const ACTIVE_BATCH_ID = "batch-2025-spring-active";
+
+  await prisma.assessmentBatch.upsert({
+    where: { id: OFFICIAL_BATCH_ID },
+    update: { name: "2025春季学期首测", academicYear: "2024-2025", semester: "春季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
+    create: { id: OFFICIAL_BATCH_ID, name: "2025春季学期首测", academicYear: "2024-2025", semester: "春季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
+  });
+
+  await prisma.assessmentBatch.upsert({
+    where: { id: ACTIVE_BATCH_ID },
+    update: { name: "2025春季日常训练", academicYear: "2024-2025", semester: "春季", round: 1, type: "daily", classId: CLASS_ID, status: "active" },
+    create: { id: ACTIVE_BATCH_ID, name: "2025春季日常训练", academicYear: "2024-2025", semester: "春季", round: 1, type: "daily", classId: CLASS_ID, status: "active" },
+  });
+
   await prisma.userAccount.deleteMany({
     where: { role: "teacher", username: { not: "zhoulaoshi" } },
   });
@@ -120,6 +136,8 @@ async function main() {
         studentId: record.studentId,
         date: new Date(record.date),
         semester: record.semester,
+        batchId: OFFICIAL_BATCH_ID,
+        recordType: "official_test",
         fatigueLevel: record.bodyFeeling.fatigueLevel,
         recoveryStatus: record.bodyFeeling.recoveryStatus,
         hasSoreness: record.bodyFeeling.hasSoreness,
@@ -142,6 +160,8 @@ async function main() {
         studentId: record.studentId,
         date: new Date(record.date),
         semester: record.semester,
+        batchId: OFFICIAL_BATCH_ID,
+        recordType: "official_test",
         fatigueLevel: record.bodyFeeling.fatigueLevel,
         recoveryStatus: record.bodyFeeling.recoveryStatus,
         hasSoreness: record.bodyFeeling.hasSoreness,
@@ -275,6 +295,8 @@ function createRecordForStudent(
     studentId,
     date: new Date(Date.UTC(2025, 2, 16, 8, index * 6)).toISOString(),
     semester: `${grade}下 · 2025春季`,
+    batchId: undefined,
+    recordType: "official_test" as const,
     items,
     bodyFeeling: {
       fatigueLevel: 3 + (base % 6),
