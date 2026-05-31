@@ -108,6 +108,17 @@ export type ReviewWithReport = {
   report: AIStudentReport | AIClassReport | null;
 };
 
+export type StudentReportHistoryItem = {
+  id: string;
+  report: AIStudentReport;
+  generatedAt: string;
+  mode: string;
+  status: string;
+  sourceRecordId: string | null;
+  sourceRecordDate: string | null;
+  sourceSummary: string | null;
+};
+
 export type ClassSummaryWithLevels = ClassSummary & {
   levelData: {
     grade: GradeTier;

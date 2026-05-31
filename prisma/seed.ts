@@ -6,6 +6,7 @@ import {
   mockAIStudentReport,
   mockTeacherReviews,
 } from "../src/lib/data/mock-ai-reports";
+import type { FitnessRecord, FitnessRecordItem, Gender, GradeLevel } from "../src/lib/types";
 
 if (!process.env.DATABASE_URL) {
   process.env.DATABASE_URL = "file:./dev.db";
@@ -13,24 +14,28 @@ if (!process.env.DATABASE_URL) {
 
 const prisma = new PrismaClient();
 const DEMO_PASSWORD = "demo123";
-const CLASS_ID = "class-2025-spring-02-03";
+const CLASS_ID = "class-2025-spring-02-01";
 
 async function main() {
   await prisma.classGroup.upsert({
     where: { id: CLASS_ID },
     update: {
-      name: "初二(3)班",
-      grade: "初二",
+      name: "高二(1)班",
+      grade: "高二",
       semester: "2025-春季",
-      teacherId: "teacher-wang",
+      teacherId: "teacher-zhou",
     },
     create: {
       id: CLASS_ID,
-      name: "初二(3)班",
-      grade: "初二",
+      name: "高二(1)班",
+      grade: "高二",
       semester: "2025-春季",
-      teacherId: "teacher-wang",
+      teacherId: "teacher-zhou",
     },
+  });
+
+  await prisma.userAccount.deleteMany({
+    where: { role: "teacher", username: { not: "zhoulaoshi" } },
   });
 
   for (const student of mockStudents) {
@@ -88,33 +93,27 @@ async function main() {
     });
   }
 
-  const teachers = [
-    { id: "teacher-zhang", username: "zhanglaoshi", displayName: "张老师", classId: CLASS_ID },
-    { id: "teacher-li", username: "lilaoshi", displayName: "李老师", classId: CLASS_ID },
-    { id: "teacher-wang", username: "wanglaoshi", displayName: "王老师", classId: CLASS_ID },
-  ];
+  await prisma.userAccount.upsert({
+    where: { username: "zhoulaoshi" },
+    update: {
+      role: "teacher",
+      displayName: "周老师",
+      passwordHash: DEMO_PASSWORD,
+      classId: CLASS_ID,
+    },
+    create: {
+      id: "teacher-zhou",
+      role: "teacher",
+      username: "zhoulaoshi",
+      displayName: "周老师",
+      passwordHash: DEMO_PASSWORD,
+      classId: CLASS_ID,
+    },
+  });
 
-  for (const teacher of teachers) {
-    await prisma.userAccount.upsert({
-      where: { username: teacher.username },
-      update: {
-        role: "teacher",
-        displayName: teacher.displayName,
-        passwordHash: DEMO_PASSWORD,
-        classId: teacher.classId,
-      },
-      create: {
-        id: teacher.id,
-        role: "teacher",
-        username: teacher.username,
-        displayName: teacher.displayName,
-        passwordHash: DEMO_PASSWORD,
-        classId: teacher.classId,
-      },
-    });
-  }
+  const seededRecords = buildSeedRecords();
 
-  for (const record of mockFitnessRecords) {
+  for (const record of seededRecords) {
     await prisma.fitnessRecord.upsert({
       where: { id: record.id },
       update: {
@@ -171,6 +170,9 @@ async function main() {
       mode: "mock",
       status: "pending",
       version: mockAIStudentReport.version,
+      sourceRecordId: "R001",
+      sourceRecordDate: new Date("2025-03-15T10:00:00Z"),
+      sourceSummary: "高二下 · 2025春季综合体测记录",
       generatedAt: new Date(mockAIStudentReport.generatedAt),
     },
     create: {
@@ -181,6 +183,9 @@ async function main() {
       mode: "mock",
       status: "pending",
       version: mockAIStudentReport.version,
+      sourceRecordId: "R001",
+      sourceRecordDate: new Date("2025-03-15T10:00:00Z"),
+      sourceSummary: "高二下 · 2025春季综合体测记录",
       generatedAt: new Date(mockAIStudentReport.generatedAt),
     },
   });
@@ -214,7 +219,7 @@ async function main() {
       update: {
         reportId: review.reportId,
         reportType: review.reportType,
-        reviewerName: review.reviewerName,
+      reviewerName: "周老师",
         status: review.status,
         teacherNotes: review.teacherNotes,
         reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : null,
@@ -224,7 +229,7 @@ async function main() {
         id: review.id,
         reportId: review.reportId,
         reportType: review.reportType,
-        reviewerName: review.reviewerName,
+        reviewerName: "周老师",
         status: review.status,
         teacherNotes: review.teacherNotes,
         reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : null,
@@ -232,6 +237,54 @@ async function main() {
       },
     });
   }
+}
+
+function buildSeedRecords(): FitnessRecord[] {
+  const existing = [...mockFitnessRecords];
+  const existingStudentIds = new Set(existing.map((record) => record.studentId));
+  const generated = mockStudents
+    .filter((student) => !existingStudentIds.has(student.id))
+    .map((student, index) => createRecordForStudent(student.id, student.gender, student.grade, index));
+
+  return [...existing, ...generated];
+}
+
+function createRecordForStudent(
+  studentId: string,
+  gender: Gender,
+  grade: GradeLevel,
+  index: number
+): FitnessRecord {
+  const base = index + 1;
+  const isMale = gender === "male";
+  const items: FitnessRecordItem[] = [
+    { itemId: "vital_capacity", value: isMale ? 3050 + base * 75 : 2400 + base * 55, score: 76 + (base % 5) * 3, grade: base % 4 === 0 ? "pass" : "good" },
+    { itemId: "50m_run", value: isMale ? 8.7 - (base % 4) * 0.2 : 9.2 - (base % 4) * 0.18, score: 70 + (base % 5) * 4, grade: base % 5 === 0 ? "pass" : "good" },
+    { itemId: "standing_long_jump", value: isMale ? 182 + base * 4 : 150 + base * 3, score: 68 + (base % 6) * 4, grade: base % 6 === 0 ? "pass" : "good" },
+    { itemId: "sit_and_reach", value: isMale ? 8 + (base % 8) : 12 + (base % 8), score: 72 + (base % 5) * 3, grade: "pass" },
+    isMale
+      ? { itemId: "pull_up", value: 3 + (base % 8), score: 62 + (base % 6) * 5, grade: base % 3 === 0 ? "pass" : "good" }
+      : { itemId: "sit_up", value: 28 + (base % 14), score: 66 + (base % 6) * 4, grade: base % 3 === 0 ? "pass" : "good" },
+    isMale
+      ? { itemId: "1000m_run", value: 286 - (base % 6) * 7, score: 62 + (base % 6) * 5, grade: base % 4 === 0 ? "pass" : "good" }
+      : { itemId: "800m_run", value: 266 - (base % 6) * 6, score: 62 + (base % 6) * 5, grade: base % 4 === 0 ? "pass" : "good" },
+  ];
+
+  return {
+    id: `R${String(100 + index).padStart(3, "0")}`,
+    studentId,
+    date: new Date(Date.UTC(2025, 2, 16, 8, index * 6)).toISOString(),
+    semester: `${grade}下 · 2025春季`,
+    items,
+    bodyFeeling: {
+      fatigueLevel: 3 + (base % 6),
+      recoveryStatus: base % 5 === 0 ? "slow" : base % 2 === 0 ? "normal" : "quick",
+      hasSoreness: base % 3 === 0,
+      sorenessAreas: base % 3 === 0 ? ["腿部"] : [],
+      hasDiscomfort: false,
+      discomfortNotes: "",
+    },
+  };
 }
 
 main()

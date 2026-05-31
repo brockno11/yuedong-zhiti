@@ -27,7 +27,7 @@ export default async function TeacherOverviewPage() {
     <div className="mx-auto max-w-6xl space-y-5 lg:grid lg:grid-cols-12 lg:gap-6 lg:space-y-0">
       {/* ===== 页面标题 — 全宽 ===== */}
       <div className="lg:col-span-12">
-        <PageHeader title="初二(3)班" description="2025年春季学期" />
+        <PageHeader title="高二(1)班" description="2025年春季学期" />
       </div>
 
       {/* ===== 今日教学建议 — 全宽 ===== */}

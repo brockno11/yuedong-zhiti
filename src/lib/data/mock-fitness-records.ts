@@ -1,4 +1,4 @@
-// ===== 跃动智体 — Mock 体测记录 =====
+﻿// ===== 跃动智体 — Mock 体测记录 =====
 import type { FitnessRecord } from "../types";
 
 export const mockFitnessRecords: FitnessRecord[] = [
@@ -6,7 +6,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R001",
     studentId: "S001",
     date: "2025-03-15T10:00:00Z",
-    semester: "2025-春季",
+    semester: "高二下 · 2025春季",
     items: [
       { itemId: "vital_capacity", value: 3200, score: 82, grade: "good" },
       { itemId: "50m_run", value: 8.1, score: 78, grade: "pass" },
@@ -28,7 +28,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R002",
     studentId: "S002",
     date: "2025-03-15T10:15:00Z",
-    semester: "2025-春季",
+    semester: "高二下 · 2025春季",
     items: [
       { itemId: "vital_capacity", value: 2600, score: 78, grade: "pass" },
       { itemId: "50m_run", value: 8.7, score: 82, grade: "good" },
@@ -50,7 +50,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R003",
     studentId: "S003",
     date: "2025-03-15T10:30:00Z",
-    semester: "2025-春季",
+    semester: "高二下 · 2025春季",
     items: [
       { itemId: "vital_capacity", value: 3400, score: 85, grade: "good" },
       { itemId: "50m_run", value: 8.8, score: 70, grade: "pass" },
@@ -72,7 +72,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R004",
     studentId: "S004",
     date: "2025-03-15T10:45:00Z",
-    semester: "2025-春季",
+    semester: "高二下 · 2025春季",
     items: [
       { itemId: "vital_capacity", value: 2100, score: 62, grade: "pass" },
       { itemId: "50m_run", value: 9.5, score: 65, grade: "pass" },
@@ -94,7 +94,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R005",
     studentId: "S005",
     date: "2025-03-15T11:00:00Z",
-    semester: "2025-春季",
+    semester: "高二下 · 2025春季",
     items: [
       { itemId: "vital_capacity", value: 4000, score: 95, grade: "excellent" },
       { itemId: "50m_run", value: 7.4, score: 92, grade: "excellent" },
@@ -116,7 +116,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R006",
     studentId: "S001",
     date: "2024-10-10T10:00:00Z",
-    semester: "2024-秋季",
+    semester: "高二上 · 2024秋季",
     items: [
       { itemId: "vital_capacity", value: 3000, score: 76, grade: "pass" },
       { itemId: "50m_run", value: 8.5, score: 72, grade: "pass" },
@@ -138,7 +138,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R007",
     studentId: "S002",
     date: "2024-10-10T10:15:00Z",
-    semester: "2024-秋季",
+    semester: "高二上 · 2024秋季",
     items: [
       { itemId: "vital_capacity", value: 2500, score: 74, grade: "pass" },
       { itemId: "50m_run", value: 9.0, score: 76, grade: "pass" },
@@ -176,3 +176,4 @@ export function getAllLatestRecords(): FitnessRecord[] {
     .map((id) => getLatestRecord(id))
     .filter((r): r is FitnessRecord => r !== undefined);
 }
+

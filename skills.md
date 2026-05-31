@@ -1,10 +1,12 @@
 # 跃动智体 — 项目 Skills 清单与使用指南
 
 > 本文档说明本项目内所有 Skills 的清单、路径、作用和推荐使用场景。适用于 Claude Code 和 Codex 两个 AI Agent 协作开发。
+>
+> 项目阶段：MVP 0.3.2 | 路由：15 个 | API：7 个 | 数据库表：6 个
 
 ---
 
-## 一、项目内 Skills 总览
+## 一、项目 Skills 总览
 
 本项目在 `.claude/skills/` 目录下安装了 **12 个项目级 Skills**，按优先级分为三层：
 
@@ -13,6 +15,16 @@
 | **P0 核心必装** | 6 个 | 项目架构骨架、移动端适配、数据可视化 |
 | **P1 强烈建议** | 4 个 | UI 设计、数据处理、项目管理 |
 | **P2 辅助优化** | 2 个 | 文档生成、需求梳理 |
+
+此外，本轮开发中使用了以下**全局 Skills**来辅助 SQLite 后端落地、全栈集成和验证：
+
+| 阶段 | 使用的全局 Skill | 产出 |
+|------|-----------------|------|
+| 全栈架构 | Fullstack Dev | Next.js API Routes + Prisma 服务层 + 错误处理边界 |
+| API 设计 | API Designer | 7 个 REST API 端点 + 请求/响应格式 |
+| 质量验证 | Senior QA | typecheck/lint/build 三检 + 浏览器烟测 + API 烟测 |
+| 前端架构 | react-nextjs-development | Server/Client Component 边界 + page.tsx 零 use client |
+| 计划管理 | create-implementation-plan | 数据库迁移→API→前端整合→文档→验证 六阶段推进 |
 
 ---
 

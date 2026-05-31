@@ -1,4 +1,4 @@
-// ===== 跃动智体 — Mock AI 报告数据 =====
+﻿// ===== 跃动智体 — Mock AI 报告数据 =====
 import type { AIStudentReport, AIClassReport, TeacherReview, ClassSummary } from "../types";
 
 export const mockAIStudentReport: AIStudentReport = {
@@ -142,7 +142,7 @@ export const mockAIClassReport: AIClassReport = {
     passRate: 82.5,
     excellentRate: 15,
     summary:
-      "初二班级整体体质水平处于良好偏下水平。大部分同学能够达到及格标准，但优秀率偏低。需要在耐力项目和上肢力量方面加强课堂训练。班级内部存在一定分化，约有15%的同学在多个项目上需要重点关注。",
+      "高二(1)班整体体质水平处于良好偏下水平。大部分同学能够达到及格标准，但优秀率偏低。需要在耐力项目和上肢力量方面加强课堂训练。班级内部存在一定分化，约有15%的同学在多个项目上需要重点关注。",
   },
 
   commonWeaknesses: [
@@ -281,7 +281,7 @@ export const mockTeacherReviews: TeacherReview[] = [
     reportId: "AI-S-001",
     reportType: "student",
     reviewedAt: "",
-    reviewerName: "王老师",
+    reviewerName: "周老师",
     status: "pending",
     teacherNotes: "",
   },
@@ -290,8 +290,9 @@ export const mockTeacherReviews: TeacherReview[] = [
     reportId: "AI-C-001",
     reportType: "class",
     reviewedAt: "",
-    reviewerName: "王老师",
+    reviewerName: "周老师",
     status: "pending",
     teacherNotes: "",
   },
 ];
+

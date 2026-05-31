@@ -122,6 +122,9 @@ model AIReport {
   mode        String
   status      ReviewStatus @default(pending)
   version     Int          @default(1)
+  sourceRecordId   String?
+  sourceRecordDate DateTime?
+  sourceSummary    String?
   generatedAt DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 

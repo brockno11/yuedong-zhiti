@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 interface AIRequest {
   type: "student-report" | "class-report";
   studentId?: string;
+  sourceRecordId?: string;
+  sourceRecordDate?: string;
+  sourceSummary?: string;
   studentData?: Record<string, unknown>;
   classData?: Record<string, unknown>;
 }
@@ -54,10 +57,18 @@ export async function POST(request: NextRequest) {
         const report = {
           ...mockAIStudentReport,
           studentId: body.studentId ?? mockAIStudentReport.studentId,
+          sourceRecordId: body.sourceRecordId,
+          sourceRecordDate: body.sourceRecordDate,
+          sourceSummary: body.sourceSummary,
           generatedAt: new Date().toISOString(),
           _mode: "mock" as const,
-        } satisfies APIResponseMeta & typeof mockAIStudentReport;
-        await upsertAIReportForReview("student", report, "mock", { studentId: report.studentId });
+        };
+        await upsertAIReportForReview("student", report, "mock", {
+          studentId: report.studentId,
+          sourceRecordId: body.sourceRecordId,
+          sourceRecordDate: body.sourceRecordDate,
+          sourceSummary: body.sourceSummary,
+        });
         return NextResponse.json(report);
       }
 
@@ -113,6 +124,11 @@ export async function POST(request: NextRequest) {
       const report = {
         ...(type === "student-report" ? mockAIStudentReport : mockAIClassReport),
         ...(type === "student-report" ? { studentId: body.studentId ?? mockAIStudentReport.studentId } : {}),
+        ...(type === "student-report" ? {
+          sourceRecordId: body.sourceRecordId,
+          sourceRecordDate: body.sourceRecordDate,
+          sourceSummary: body.sourceSummary,
+        } : {}),
         generatedAt: new Date().toISOString(),
         _mode: "mock" as const,
         _fallback: true,
@@ -131,6 +147,9 @@ export async function POST(request: NextRequest) {
           ...parsed,
           id: `AI-S-${body.studentId ?? "001"}`,
           studentId: body.studentId ?? mockAIStudentReport.studentId,
+          sourceRecordId: body.sourceRecordId,
+          sourceRecordDate: body.sourceRecordDate,
+          sourceSummary: body.sourceSummary,
           generatedAt: new Date().toISOString(),
           version: mockAIStudentReport.version + 1,
           status: "pending_review" as const,
@@ -160,6 +179,11 @@ export async function POST(request: NextRequest) {
     const report = {
       ...(fallbackType === "class" ? mockAIClassReport : mockAIStudentReport),
       ...(fallbackType === "student" ? { studentId: body.studentId ?? mockAIStudentReport.studentId } : {}),
+      ...(fallbackType === "student" ? {
+        sourceRecordId: body.sourceRecordId,
+        sourceRecordDate: body.sourceRecordDate,
+        sourceSummary: body.sourceSummary,
+      } : {}),
       generatedAt: new Date().toISOString(),
       _mode: "mock" as const,
       _fallback: true,
@@ -173,11 +197,20 @@ export async function POST(request: NextRequest) {
 // ===== 提示词构建 =====
 
 function buildStudentSystemPrompt(): string {
-  return `你是中学体育教师助手。你只提供体育锻炼建议，不进行任何医学诊断。
+  return `你是中学（高中）体育教师助手。你只提供体育锻炼建议，不进行任何医学诊断。
 语言要积极、鼓励、保护学生自尊。不要使用"诊断""治疗""处方""肥胖""差""不行""排名"等表达。
 使用"有提升空间""待提升""值得关注""锻炼建议""训练参考"等积极表达。
-分析优势项目、待提升项目、可能原因、个性化训练建议、恢复建议。
-训练计划要循序渐进，适合校园体育锻炼场景。
+
+分析模式有两种：
+1. 专项分析模式（单项目）：当学生只录入了一个体能项目时，针对该项目进行深入的技术分析。
+   - 分析该项目成绩在高二年级中的水平
+   - 给出该项目的具体技术要领和改进方法
+   - 提供该项目的针对性训练动作（2-3个）
+   - 评估该项目与其他体能维度的关联
+2. 综合分析模式（多项目）：当学生录入了多个项目时，进行全面的体质画像分析。
+   - 分析优势项目、待提升项目、可能原因、个性化训练建议、恢复建议
+
+训练计划要循序渐进，适合校园体育锻炼场景（高中）。
 如果学生体感疲劳较高（≥7/10），必须在训练建议中明确提醒降低强度，并建议告知体育教师。
 如果学生有身体不适状况，训练计划中必须避免可能加重不适的动作。
 所有训练建议必须标注"需经体育教师审核授权后实施"。
@@ -185,8 +218,19 @@ function buildStudentSystemPrompt(): string {
 }
 
 function buildStudentUserPrompt(data: Record<string, unknown>): string {
+  const itemCount = (data.currentRecord as { items?: unknown[] })?.items?.length ?? 0;
+
+  const modeInstruction = itemCount <= 1
+    ? `\n\n【专项分析模式】学生本次仅录入了一个项目，请针对该项目进行深入分析：
+- 重点分析该项目成绩水平、技术要领、针对性训练方法
+- weaknessAnalysis 中详细分析该项目的可能原因和改进潜力
+- trainingPlan 中的训练动作应围绕该项目展开
+- 仍然需要输出完整的 safetyReminders`
+    : `\n\n【综合分析模式】学生录入了 ${itemCount} 个项目，请进行全面的体质画像分析。`;
+
   return `请分析以下学生体测数据并生成个人体质报告：
 ${JSON.stringify(data, null, 2)}
+${modeInstruction}
 
 请以JSON格式返回（严格按此结构）：
 {
@@ -200,7 +244,7 @@ ${JSON.stringify(data, null, 2)}
 }
 
 function buildClassSystemPrompt(): string {
-  return `你是中学体育教研助手。根据班级体测数据生成班级体质健康分析报告。
+  return `你是高中体育教研助手。根据班级（高中生）体测数据生成班级体质健康分析报告。
 分析整体表现、共性薄弱项目、学生分层指导建议。
 提出课堂训练重点和分层运动指导建议。
 不给任何学生贴负面标签，不点名具体学生。
@@ -245,7 +289,12 @@ async function persistAIResult(
       "student",
       report as unknown as AIStudentReport,
       report._mode,
-      { studentId: typeof report.studentId === "string" ? report.studentId : undefined }
+      {
+        studentId: typeof report.studentId === "string" ? report.studentId : undefined,
+        sourceRecordId: typeof report.sourceRecordId === "string" ? report.sourceRecordId : undefined,
+        sourceRecordDate: typeof report.sourceRecordDate === "string" ? report.sourceRecordDate : undefined,
+        sourceSummary: typeof report.sourceSummary === "string" ? report.sourceSummary : undefined,
+      }
     );
     return;
   }

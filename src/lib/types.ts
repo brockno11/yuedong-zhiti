@@ -3,7 +3,7 @@
 // ---- 基础枚举 ----
 export type Gender = "male" | "female";
 
-export type GradeLevel = "初一" | "初二" | "初三";
+export type GradeLevel = "高一" | "高二" | "高三";
 
 export type FitnessItemId =
   | "height_weight"
@@ -43,7 +43,7 @@ export interface StudentProfile {
   name: string; // "学生A", "学生B"...
   gender: Gender;
   grade: GradeLevel;
-  age: number; // 12-16
+  age: number; // 15-18（高中年龄段）
   height: number; // cm
   weight: number; // kg
   bmi: number; // 计算字段

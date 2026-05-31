@@ -27,9 +27,9 @@ const TOTAL_STEPS = 5;
 const STEP_TITLES = ["基础信息", "身体数据", "运动目标", "运动基础", "健康状况"];
 
 const GRADE_OPTIONS: { value: GradeLevel; label: string }[] = [
-  { value: "初一", label: "初一" },
-  { value: "初二", label: "初二" },
-  { value: "初三", label: "初三" },
+  { value: "高一", label: "高一" },
+  { value: "高二", label: "高二" },
+  { value: "高三", label: "高三" },
 ];
 
 const GENDER_OPTIONS: { value: Gender; label: string; icon: string }[] = [
@@ -192,18 +192,17 @@ export function OnboardingSteps() {
               <div className="space-y-2">
                 <WheelPicker
                   label="年龄"
-                  value={data.age ?? 14}
+                  value={data.age ?? 16}
                   onChange={(v) => updateData("age", v)}
-                  min={12}
-                  max={16}
+                  min={15}
+                  max={18}
                   step={1}
                   unit="岁"
                   quickOptions={[
-                    { label: "12岁", value: 12 },
-                    { label: "13岁", value: 13 },
-                    { label: "14岁", value: 14 },
                     { label: "15岁", value: 15 },
                     { label: "16岁", value: 16 },
+                    { label: "17岁", value: 17 },
+                    { label: "18岁", value: 18 },
                   ]}
                 />
               </div>

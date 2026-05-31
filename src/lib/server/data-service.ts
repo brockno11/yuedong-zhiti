@@ -19,11 +19,12 @@ import {
   mapTeacherReview,
   type ClassSummaryWithLevels,
   type ReviewWithReport,
+  type StudentReportHistoryItem,
   type StudentListItem,
 } from "@/lib/server/db-mappers";
 
-const DEFAULT_CLASS_ID = "class-2025-spring-02-03";
-const DEFAULT_SEMESTER = "2025-春季";
+const DEFAULT_CLASS_ID = "class-2025-spring-02-01";
+const DEFAULT_SEMESTER = "高二下 · 2025春季";
 
 type LoginInput = {
   role: "student" | "teacher";
@@ -339,11 +340,29 @@ export async function getLatestClassReport() {
   return row ? mapAIReport(row) : null;
 }
 
+export async function getStudentReportHistory(studentId: string): Promise<StudentReportHistoryItem[]> {
+  const rows = await prisma.aIReport.findMany({
+    where: { reportKind: "student", studentId },
+    orderBy: { generatedAt: "desc" },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    report: mapAIReport(row) as AIStudentReport,
+    generatedAt: row.generatedAt.toISOString(),
+    mode: row.mode,
+    status: row.status,
+    sourceRecordId: row.sourceRecordId,
+    sourceRecordDate: row.sourceRecordDate?.toISOString() ?? null,
+    sourceSummary: row.sourceSummary,
+  }));
+}
+
 export async function upsertAIReportForReview(
   reportKind: "student" | "class",
   report: AIStudentReport | AIClassReport,
   mode: "ai" | "mock",
-  options?: { studentId?: string; classId?: string }
+  options?: { studentId?: string; classId?: string; sourceRecordId?: string; sourceRecordDate?: string; sourceSummary?: string }
 ) {
   const reportId = report.id;
   const classId = options?.classId ?? DEFAULT_CLASS_ID;
@@ -361,6 +380,9 @@ export async function upsertAIReportForReview(
       mode,
       status: "pending",
       version: report.version,
+      sourceRecordId: options?.sourceRecordId,
+      sourceRecordDate: options?.sourceRecordDate ? new Date(options.sourceRecordDate) : undefined,
+      sourceSummary: options?.sourceSummary,
       generatedAt: new Date(report.generatedAt),
     },
     create: {
@@ -372,6 +394,9 @@ export async function upsertAIReportForReview(
       mode,
       status: "pending",
       version: report.version,
+      sourceRecordId: options?.sourceRecordId,
+      sourceRecordDate: options?.sourceRecordDate ? new Date(options.sourceRecordDate) : undefined,
+      sourceSummary: options?.sourceSummary,
       generatedAt: new Date(report.generatedAt),
     },
   });
@@ -382,7 +407,7 @@ export async function upsertAIReportForReview(
       reportId,
       reportType: reportKind,
       status: "pending",
-      reviewerName: "王老师",
+      reviewerName: "周老师",
       teacherNotes: "",
       reviewedAt: null,
       modificationsJson: null,
@@ -392,7 +417,7 @@ export async function upsertAIReportForReview(
       reportId,
       reportType: reportKind,
       status: "pending",
-      reviewerName: "王老师",
+      reviewerName: "周老师",
       teacherNotes: "",
     },
   });

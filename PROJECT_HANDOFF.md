@@ -1,6 +1,8 @@
-# 跃动智体 — 项目交接文档
+# 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-05-31 | 版本：MVP 0.3.1 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 15/15
+> 生成日期：2026-05-31 | 版本：MVP 0.3.2 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 15/15
+
+本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
 ---
 
@@ -8,19 +10,26 @@
 
 | 属性 | 值 |
 |------|-----|
-| **项目正式名称** | 跃动智体——面向中学生体质健康提升的 AI 智能评价与个性化运动指导系统 |
+| **项目正式名称** | 跃动智体——面向高中生体质健康提升的 AI 智能评价与个性化运动指导系统 |
 | **项目代号** | 跃动智体（曾用代号：体测星图） |
-| **项目定位** | 面向中学生体质健康测试与体育教学改进场景的 AI 智能信息系统 |
-| **申报场景** | 「创AI案例——智能信息系统」 |
-| **目标用户** | 中学体育教师（主要）、中学生 12-16 岁（次要） |
-| **当前阶段** | MVP 核心功能完成，可演示 |
+| **项目定位** | 面向高中体质健康测试与体育教学改进场景的 AI 智能信息系统 |
+| **申报场景** | 2026年教师人工智能应用案例征集活动——「创AI案例——智能信息系统」 |
+| **目标用户** | 高中体育教师（主要）、高中学生 15-18 岁（次要） |
+| **当前阶段** | MVP 核心功能完成，可演示，SQLite 数据持久化 |
+
+### 演示数据口径
+- **班级**：高二(1)班
+- **学生**：20 名匿名学生（S001-S020），男女比例 ≈ 10:10，年龄 16-17 岁
+- **教师**：1 位体育教师（周老师，账号 `zhoulaoshi`，密码 `demo123`）
+- **运行时数据源**：SQLite（本地文件 `prisma/dev.db`，不入库）
+- **演示密码**：统一 `demo123`
 
 ---
 
 ## 2. 项目背景与目标
 
 ### 背景
-中学体质健康测试是教育部规定的常规工作，但当前面临三大痛点：
+高中体质健康测试是教育部规定的常规工作，但当前面临三大痛点：
 1. **数据难理解**：体测数据以表格呈现，学生看不懂自己的体质状况
 2. **指导缺个性**：教师难以针对 40+ 名学生逐一给出个性化运动建议
 3. **反馈不及时**：体测结果到学生手中往往只有分数，没有分析和改进方案
@@ -33,628 +42,968 @@
 
 ---
 
-## 3. 当前技术栈
+## 3. 当前技术栈（完整清单）
 
-| 类别 | 技术 | 版本 | 说明 |
-|------|------|------|------|
-| 框架 | Next.js | 14.2 | App Router + Server Components |
-| 语言 | TypeScript | 5.7 | 严格模式，`tsc --noEmit` 零错误 |
-| UI 组件 | shadcn/ui | latest | 21 个组件（Button, Card, Form, Dialog, Table 等） |
-| 样式 | Tailwind CSS | 3.4 | CSS variables 主题系统 + tailwindcss-animate |
-| 图表 | Recharts | 2.15 | 雷达图、折线图、柱状图、环形图 |
-| 表单 | react-hook-form + zod | 7.54 / 3.24 | 类型安全表单验证 |
-| 图标 | lucide-react | 0.468 | 开源 SVG 图标库 |
-| AI 引擎 | DeepSeek V4 Flash | — | 已接入真实 API，支持 Mock 回退 |
-| 本地数据库 | Prisma ORM + SQLite | 6.19 / SQLite | 运行时权威数据源，Mock 数据仅作为 seed 来源 |
-| 状态管理 | React useState / useForm | — | MVP 阶段本地状态，无全局状态库 |
-| 包管理 | npm | 8+ | package-lock.json 锁定 |
+| 类别 | 技术 | 版本 | 用途与说明 |
+|------|------|------|-----------|
+| **框架** | Next.js | 14.2 | App Router + Server Components + API Routes |
+| **语言** | TypeScript | 5.7 | `strict: true`，零 `any`，零类型错误 |
+| **UI 组件** | shadcn/ui | latest | 21 个组件，基于 Radix UI，源码在 `src/components/ui/` |
+| **样式** | Tailwind CSS | 3.4 | CSS Variables 主题 + `tailwindcss-animate` 动画库 |
+| **图表** | Recharts | 2.15 | 4 种图表：RadarChart、LineChart、BarChart、PieChart（Donut） |
+| **表单** | react-hook-form + zod | 7.54 / 3.24 | 前端表单状态管理 + 类型安全验证 schema |
+| **图标** | lucide-react | 0.468 | 1000+ SVG 图标，tree-shakable |
+| **AI 引擎** | DeepSeek API (V4 Flash) | — | 服务端调用，支持 12s 超时回退 Mock |
+| **ORM** | Prisma | 6.19 | 类型安全数据库访问，6 个数据模型 |
+| **数据库** | SQLite (better-sqlite3) | 11.7 | 本地单文件数据库，零配置 |
+| **认证** | 自定义 localStorage | — | 演示模式简单认证，非生产 JWT |
+| **动画** | CSS @keyframes + framer-motion | 11.x | 页面过渡、骨架屏 shimmer、液态玻璃效果 |
+| **部署** | 未部署 | — | 当前仅本地开发，`next build` 可生成生产包 |
+| **测试** | 无 | — | MVP 阶段，手动浏览器走查 |
+| **包管理** | npm | 8+ | `package-lock.json` 锁定依赖 |
+
+### package.json 核心依赖
+```json
+{
+  "next": "14.2.x",
+  "react": "^18",
+  "react-dom": "^18",
+  "typescript": "5.7.x",
+  "@prisma/client": "6.19.x",
+  "prisma": "6.19.x",
+  "better-sqlite3": "11.7.x",
+  "tailwindcss": "3.4.x",
+  "recharts": "2.15.x",
+  "lucide-react": "0.468.x",
+  "react-hook-form": "7.54.x",
+  "zod": "3.24.x",
+  "clsx": "^2",
+  "tailwind-merge": "^2",
+  "framer-motion": "^11",
+  "class-variance-authority": "^0.7"
+}
+```
 
 ---
 
-## 4. 页面结构与路由
+## 4. 完整路由表（16 个路由 + 7 个 API 端点）
 
-### 完整路由表
+### 前端页面路由
 
-```
-/                          → 登录首页（角色选择 + 账号密码登录）
-/dashboard                 → 学生首页（体质画像仪表盘）
-/onboarding                → 5步引导式信息填写
-/record                    → 体测记录向导（逐项体感）
-/ai-guide                  → AI 智能指导（跨页面持久化）
-/profile                   → 个人中心（含退出登录）
+| # | 路由 | 页面类型 | 功能描述 | 布局组件 |
+|---|------|---------|---------|---------|
+| 1 | `/` | Server | 登录首页：角色切换（学生/教师）+ 账号下拉选择 + 密码输入 + 品牌文案 | 无导航 |
+| 2 | `/dashboard` | Server | 学生首页：体质画像仪表盘（雷达图、趋势图、洞察、优劣项目） | AppShell + IosLiquidNav |
+| 3 | `/onboarding` | Client | 5 步引导式信息填写（基础信息→身体数据→运动目标→运动基础→健康状况） | AppShell + IosLiquidNav |
+| 4 | `/record` | Client | 体测记录向导（项目选择→成绩输入→逐项体感→完成），动态步骤 | AppShell + IosLiquidNav |
+| 5 | `/ai-guide` | Server | AI 智能指导：体质画像+薄弱项分析+训练计划+安全提醒+报告历史 | AppShell + IosLiquidNav |
+| 6 | `/profile` | Server | 学生个人中心：基础信息+身体数据+健康关注+隐私说明+退出登录 | AppShell + IosLiquidNav |
+| 7 | `/teacher` | Server | 教师端班级总览：统计卡+薄弱项排行图+等级环形图+重点关注+教学建议 | AppShell + DesktopSidebar |
+| 8 | `/teacher/students` | Server | 学生画像列表：搜索过滤（编号/姓名/年级/性别/关注）+ 评分等级 | AppShell + DesktopSidebar |
+| 9 | `/teacher/students/[id]` | Server | 学生详情页：基础信息+体测记录表+雷达图+AI 报告审核状态 | AppShell + DesktopSidebar |
+| 10 | `/teacher/report` | Server | AI 班级报告：整体分析+共性薄弱项+分层指导+课堂重点+教学建议 | AppShell + DesktopSidebar |
+| 11 | `/teacher/review` | Server | 审核中心：待审核/已处理 Tab + 通过/修改/退回操作 + 内联反馈 | AppShell + DesktopSidebar |
+| 12 | `/teacher/profile` | Client | 教师个人中心：教师信息+班级统计+快捷入口+AI 说明+退出登录 | AppShell + DesktopSidebar |
 
-/teacher                   → 教师端班级总览仪表盘
-/teacher/students          → 学生画像列表（搜索过滤）
-/teacher/students/[id]     → 学生详情页
-/teacher/report            → AI 班级报告
-/teacher/review            → 审核中心
-/teacher/profile           → 教师个人中心（含退出登录）
+### API 端点
 
-/api/ai                    → AI API 路由（POST）
-/api/auth/login            → 演示账号登录（POST，数据库账号）
-/api/students              → 学生列表（GET，数据库）
-/api/students/[id]         → 学生详情 + 记录（GET，数据库）
-/api/fitness-records       → 体测记录读写（GET/POST，数据库）
-/api/class-summary         → 班级统计汇总（GET，数据库计算）
-/api/reviews               → 审核列表（GET，数据库）
-/api/reviews/[id]          → 审核状态更新（PATCH，数据库）
-```
-
-### 路由架构决策
-- **学生端**使用路由组 `(student)` — URL 不含 `/student` 前缀
-- **教师端**使用路径段 `teacher/` — URL 为 `/teacher/*`
-- 根 `/` 指向学生首页（路由组内的 `page.tsx`）
+| # | 方法 | 路由 | 功能 | 请求体 | 返回 |
+|---|------|------|------|--------|------|
+| 1 | POST | `/api/auth/login` | 演示登录验证 | `{role, username, password}` | `{data: {...}}` 或 401 |
+| 2 | POST | `/api/ai` | AI 分析生成 | `{type, studentId, studentData, ...}` | AI 报告 JSON + `_mode`, `_fallback` |
+| 3 | GET | `/api/students` | 获取所有学生列表 | — | `StudentProfile[]` |
+| 4 | GET | `/api/students/[id]` | 获取单个学生+体测记录 | — | `{student, records}` |
+| 5 | GET | `/api/fitness-records` | 获取体测记录列表 | query: `?studentId=` | `FitnessRecord[]` |
+| 6 | POST | `/api/fitness-records` | 创建新体测记录 | `{studentId, items[], bodyFeeling}` | 创建的 `FitnessRecord` |
+| 7 | GET | `/api/class-summary` | 班级统计摘要 | — | `ClassSummaryWithLevels` |
+| 8 | GET | `/api/reviews` | 获取审核列表 | — | `TeacherReview[]` |
+| 9 | PATCH | `/api/reviews/[id]` | 更新审核状态 | `{status, teacherNotes, modifications}` | 更新的 `TeacherReview` |
 
 ---
 
-## 5. 学生端功能
+## 5. 学生端功能详解
 
-### 5.1 首页 `/`
-- 未引导状态：高级“创建体质画像”入口，展示体质画像预览、AI 辅助与教师审核机制
-- 已引导状态：个性化问候、综合评分、BMI 状态、本周重点、快捷入口
-- 移动端单列优先，桌面端双列增强，充分利用宽屏空间
-- 统一提示：AI 生成内容需经体育教师审核，训练计划须经教师授权后实施
+### 5.1 登录首页 `/`
 
-### 5.2 引导式信息填写 `/onboarding`
-- **5 步卡片式引导**（非传统长表单）：
-  1. 基础信息（年级、性别、年龄）
-  2. 身体数据（身高 cm、体重 kg，iOS 风格滚轮选择器）
-  3. 运动目标（6 个选项卡片）
-  4. 运动基础（4 档选择）
-  5. 健康状况（多选不适类型）
-- 进度指示器 + 步骤验证
-- 数据保存到 localStorage
+**组件**：`src/components/features/landing-page.tsx`（Client Component）
 
-### 5.3 体测记录向导 `/record`
-- **动态步骤流程**：
-  - 体力运动项目 → 6 步完整流程（选择项目→输入成绩→运动体感→恢复情况→身体不适→完成）
-  - 非体力项目 → 3 步简化流程（跳过体感相关步骤）
-- 成绩输入：iOS 滚轮选择器（支持拖动、±微调按钮、快捷选项）
-- 运动体感：1-10 滑杆 + Emoji 表情反馈
-- 恢复状态：3 档选择
-- 不适部位：多选标签
-- 防重复：同项目同日不可重复记录
+**页面布局**：
+- 顶部导航栏：Logo（Activity 图标 + "跃动智体"）+ 右侧角色切换按钮
+- 左侧品牌区（lg 屏幕）：学生端/教师端不同的品牌文案+功能亮点卡片
+- 右侧登录卡片：
+  - 头像图标 + "学生登录"/"教师登录"
+  - **下拉选择账号**：`<select>` 列出所有角色对应的账号（含姓名、年级、性别）
+  - **账号输入框**：手动输入或下拉自动填充
+  - **密码输入框**：type password + 眼睛图标切换显隐
+  - **登录按钮**："进入系统"，loading 态显示"正在进入..."
+  - 底部署名："演示模式 · AI辅助 · 教师主导 · 数据匿名"
 
-### 5.4 体质画像仪表盘 `/dashboard`
-- 统计卡片：综合评分、BMI 状态、优势项目数
-- 5 维体质雷达图（速度/力量/耐力/柔韧/身体形态）：个人 vs 班级均值
-- 本期洞察：优势保持、优先提升、训练建议
-- 单项成绩趋势折线图
-- 优势项目 + 待提升项目列表
-- 响应式布局：移动端单列，桌面端多列数据仪表盘
-- 空状态处理：无数据时显示引导入口
+**交互逻辑**：
+1. 切换角色 → 清空账号密码 + 错误提示
+2. 下拉选择账号 → 自动填充账号（username）+ 密码（demo123）
+3. 点击登录 → 验证账号存在 → 验证密码 → POST `/api/auth/login` → 存 localStorage `demo_login` → 跳转
+4. 登录失败 → 显示红色错误提示
 
-### 5.5 AI 智能指导 `/ai-guide`
-- AI 体质画像（综合描述 + 维度分析）
-- 薄弱项分析（原因 + 提升空间）
-- 2 周个性化训练计划（含具体动作、组数、频率、注意事项）
-- 运动安全提醒
-- 标注「AI 生成，需经体育教师审核后使用」
-- 训练计划提示「须经体育教师审核授权后实施」
-- 不使用医学诊断化表达（"诊断"、"治疗"、"处方"等）
+**登录守卫（AuthGuard）**：
+- `src/components/features/auth-guard.tsx` + `src/hooks/use-auth.ts`
+- 未登录访问受保护页面 → 显示骨架屏 → `router.replace("/")`
+- 已登录访问 `/` → `router.replace("/dashboard" 或 "/teacher")`
+
+### 5.2 体质画像仪表盘 `/dashboard`
+
+**组件**：`src/app/(student)/dashboard/page.tsx`（Server Component）
+**数据源**：Prisma 数据库（通过 `data-service.ts`）
+**展示学生**：当前固定展示 S001（演示模式）
+
+**页面布局（移动端单列 → 桌面端 5 列网格）**：
+- PageHeader：标题"体质画像" + 副标题"学生A · 高二下 · 2025春季"
+- 核心指标区（lg:grid-cols-3）：
+  - 综合评分卡（col-span-1）：4xl 大字 + "分" + BMI 状态
+  - 本期洞察卡（col-span-2）：AI 风格评语 + 优势/待提升标签
+- 图表区（lg:grid-cols-5）：
+  - 体质雷达图（col-span-3）：5 维（速度/力量/耐力/柔韧/身体形态），实线=个人，虚线=班级均值
+  - 趋势图+AI 入口（col-span-2）：50 米跑趋势折线图 + AI 指导入口卡片
+- 优势/待提升双列卡片（sm:grid-cols-2）
+
+**数据计算**：
+- 综合评分 = 所有项目得分的平均值（Math.round）
+- 雷达图数据 = 从 `latestRecord.items` 中提取对应项目的 score
+- 趋势数据 = 从 `allRecords` 中提取 50m_run 的历史值（最多 3 条）
+
+**空状态处理**：
+- 无学生或无记录时显示 EmptyState + 链接到 `/record`
+
+### 5.3 引导式信息填写 `/onboarding`
+
+**组件**：`src/components/features/onboarding-steps.tsx`（Client Component）
+
+**5 步流程**：
+| 步骤 | 内容 | 组件 | 数据字段 |
+|------|------|------|---------|
+| Step 0 | 基础信息 | 年级按钮组 + 性别按钮组 + 年龄滚轮 | grade, gender, age |
+| Step 1 | 身体数据 | 身高滚轮（150-195cm）+ 体重滚轮（40-110kg） | height, weight |
+| Step 2 | 运动目标 | 6 个卡片按钮（含 emoji 图标） | sportGoal |
+| Step 3 | 运动基础 | 4 个卡片按钮（含描述文字） | sportBase |
+| Step 4 | 健康状况 | 7 个多选按钮 | discomforts[] |
+
+**表单组件**：
+- `wheel-picker.tsx`：iOS 风格滚轮，支持拖动、±微调按钮、快捷选项
+- 每个步骤有独立的验证逻辑
+- 进度指示器：底部 5 段进度条 + "第 X/5 步"文字
+- 数据保存到 localStorage `onboardingData`
+
+**年龄范围**：15-18 岁（高中），快捷选项：15/16/17/18 岁
+
+### 5.4 体测记录向导 `/record`
+
+**组件**：`src/app/(student)/record/record-wizard.tsx`（Client Component）
+
+**动态步骤**：
+- 含体力项目（speed/strength/endurance 类别）→ 4 步流程
+- 纯身体指标（仅身高体重）→ 3 步流程（跳过体感）
+
+**Step 1 — 选择项目**：
+- 组件：`record-project-select.tsx`
+- 9 个体测项目卡片网格（3 列）
+- 每张卡片：emoji 图标 + 项目名 + 单位 + 分类标签
+- **性别过滤规则**：
+  - `pull_up`（引体向上）、`1000m_run` → 仅男生可见
+  - `sit_up`（仰卧起坐）、`800m_run` → 仅女生可见
+  - 其他 5 项 → 通用
+- 过滤掉 `height_weight`（身高体重已在引导时收集）和 `body` 类别
+- 多选模式，选中卡片高亮（primary 边框+背景）
+- 验证：至少选 1 项
+
+**Step 2 — 输入成绩**：
+- 组件：`record-score-input.tsx`
+- 每个已选项目一个滚轮输入区
+- `wheel-picker.tsx`：显示单位、当前值、支持快捷选项
+- 验证：所有已选项目必须有值（> 0）
+
+**Step 3 — 逐项体感**（仅体力项目时显示）：
+- 组件：`record-feeling-step.tsx`
+- **每个项目独立卡片**：
+  - 疲劳程度：1-10 滑杆（`feeling-slider.tsx`），1=轻松、10=很累
+  - 恢复感觉：3 档按钮（恢复很快/恢复正常/恢复较慢）
+  - 肌肉酸痛：有/无 切换按钮
+- **整体身体状况**（底部共享卡）：
+  - 有/无不适切换
+  - 不适时显示文本输入框
+
+**Step 4 — 完成**：
+- 组件：`record-complete.tsx`
+- 展示已记录的摘要信息
+- "查看体质画像"按钮 → POST `/api/fitness-records` → 清除 AI 缓存 → 跳转 `/dashboard`
+
+**保存逻辑**：
+1. POST `/api/fitness-records` 将记录写入 SQLite 数据库
+2. 同时保存到 localStorage `demo_records`（演示模式冗余）
+3. 清除 `ai_analysis_cache` 保证下次 AI 分析基于最新数据
+4. 跳转到 `/dashboard`
+
+### 5.5 AI 智能指导 `/ai-guide`（核心功能）
+
+**组件**：`src/app/(student)/ai-guide/page.tsx`（Server Component）+ `src/components/features/ai-student-report.tsx`（Client Component）
+**数据源**：Prisma 数据库（学生信息 + 体测记录 + AI 报告历史）
+**展示学生**：当前固定 S001（演示模式）
+
+#### 分析策略（核心设计决策）
+
+```
+单项目记录（1 项） → 专项分析模式 ⚡
+  ├── 深入分析该项目的技术水平
+  ├── 给出针对性技术要领和改进方法
+  ├── 提供 2-3 个专项训练动作
+  └── 评估该项目与其他体能维度的关联
+
+多项目记录（2+ 项） → 综合分析模式 📈
+  ├── 全面体质画像（5 维度评估）
+  ├── 跨维度训练建议
+  ├── 2 周递进式训练计划
+  └── 历史趋势参考
+```
+
+#### 页面结构
+1. **PageHeader**：标题"AI 智能指导" + 返回按钮
+2. **GuidanceStrategyCard**：蓝色提示卡片，说明当前分析模式
+   - 显示分析类型标签（专项分析/综合分析）
+   - 显示来源记录摘要（时间+项目列表）
+   - 相对时间显示（如"3天前记录"）
+   - "生成分析报告"按钮
+3. **AIGenerationStatus**：步骤进度指示器
+   - 3 步：分析体测数据 → 生成体质画像 → 生成训练建议
+   - 每步有独立图标（Activity/Brain/Target）
+   - 已完成步骤显示 ✓，当前步骤有骨架屏动画
+   - 底部骨架屏预览文本
+4. **ReportHistoryList**：历史分析报告列表
+   - 每项显示：来源记录名、分析类型标签（⚡专项/📈综合）、生成时间（绝对+相对）、审核状态、摘要预览
+   - 点击切换查看不同时期的报告
+   - 最新报告有"最新"标签
+5. **ReportContent**：报告内容（4 个卡片）
+   - 🧠 体质画像卡：综合评分+BMI 状态+优劣标签+生成时间+来源记录
+   - 🎯 待提升项目卡：编号列表，含当前水平、可能原因、提升潜力评估
+   - 💪 训练计划卡：2 周递进式（Week1 建立习惯→Week2 提升强度），每动作含名称/描述/组数/频率/时长/注意事项
+   - 🛡️ 安全提醒卡：3-5 条安全注意事项
+6. **审核状态卡**：显示当前报告的审核状态（待审核/已审核/已退回）
+
+#### AI 调用流程
+```
+前端 ai-student-report.tsx
+  → POST /api/ai {type:"student-report", studentId, studentData, sourceRecordId/Date/Summary}
+  → 服务端检查 DEEPSEEK_API_KEY
+    ├── 未配置 → 返回 Mock 数据（_mode:"mock"）
+    ├── 已配置 → 调用 DeepSeek API（12s 超时）
+    │   ├── 成功 → 解析 JSON → merge 到 mock 结构 → 返回（_mode:"ai"）
+    │   └── 失败/超时 → 返回 Mock 数据（_mode:"mock", _fallback:true）
+    └── 持久化 → upsert AIReport + TeacherReview 到 SQLite
+```
+
+#### 跨页面持久化
+- 模块级 `inFlightRequests` Map：同 studentId 的 AI 请求去重，页面切换不中断
+- 前端 15s 超时 AbortController
+- localStorage 缓存 (`ai_analysis_cache`)：新记录保存时清除
 
 ### 5.6 个人中心 `/profile`
-- 基础信息展示（可编辑入口）
-- 运动目标和基础
-- 健康关注信息
-- 历史记录入口
-- 隐私说明 + AI 使用说明
+
+**组件**：`src/app/(student)/profile/page.tsx`（Server Component）
+
+**内容区域**：
+1. **基础信息卡片**：头像占位 + 姓名 + 年级/性别/年龄 + 身高/体重/BMI 数据
+2. **运动目标与基础**：双列卡片
+3. **健康关注信息**：标签展示 + 隐私提示
+4. **历史记录入口**：显示记录次数，卡片样式可点击
+5. **教师工作台入口**：快捷跳转 `/teacher`
+6. **隐私说明**：3 条数据保护说明
+7. **AI 使用说明**：4 条规范说明
+8. **退出登录按钮**：`LogoutButton` 组件，清除 `demo_login` + 跳转 `/`
 
 ---
 
-## 6. 教师端功能
+## 6. 教师端功能详解
 
 ### 6.1 班级总览 `/teacher`
-- 统计卡片行：班级人数、已记录人数、平均 BMI、及格率
-- 班级薄弱项排行柱状图（及格率从低到高）
-- 体测等级分布环形图（优秀/良好/及格/待提升）
-- 各项目平均表现表（分男女）
-- 重点关注学生列表（多维度标记）
-- AI 班级报告快捷入口
+
+**组件**：`src/app/teacher/page.tsx`（Server Component）
+**数据源**：`getClassSummary()` 从 Prisma 数据库实时计算
+
+**布局：12 列 CSS Grid（lg:grid-cols-12）**：
+- Row 1（col-span-12）：PageHeader "高二(1)班" + "2025年春季学期"
+- Row 2（col-span-12）：今日教学建议卡片（primary 浅色背景+左侧边框）
+  - 含动态统计文案（薄弱项+建议）
+  - "数据库统计 · 演示模式"标签
+- Row 3（col-span-12）：4 个统计卡片（2 列 → sm:4 列）
+  - `StatCard`：班级人数、已记录、平均 BMI、及格率
+- Row 4（col-span-12）：待审核提醒卡片（红色脉冲动画圆点）
+  - 显示待审核数量 + "前往审核"链接
+- Row 5（col-span-8）：图表区
+  - 班级薄弱项排行（ClassBarChart）：横向柱状，及格率从低到高
+  - 等级分布环形图（LevelDonutChart）：优秀/良好/及格/待提升
+- Row 5（col-span-4）：侧边栏
+  - 重点关注学生列表：可点击进入详情
+  - 快捷入口：AI 班级报告 + 学生列表
 
 ### 6.2 学生画像列表 `/teacher/students`
-- 学生列表（编号、性别、年级、综合评分、等级）
-- 优势/待提升项目标签
-- AI 建议状态标记（已生成/待审核/已推送）
-- 需要关注标记（低分/无记录/身体不适）
-- 搜索功能（按编号/姓名）
 
-### 6.3 AI 班级报告 `/teacher/report`
-- 班级整体体质分析
-- 共性薄弱项目（含及格率、影响人数）
-- 学生分层指导建议（A/B/C/D 四层）
-- 课堂训练重点（含建议活动、预期效果）
-- 教学改进建议
-- 标注「AI 生成，需经体育教师审核后使用」
+**组件**：`src/components/features/student-search-list.tsx`（Client Component）
+**数据源**：Prisma 数据库
 
-### 6.4 审核中心 `/teacher/review`
-- 待审核 / 已处理 Tab 切换
-- AI 报告预览（学生报告 + 班级报告）
-- 通过 → 推送给学生
-- 修改后通过（教师填写修改说明）
-- 退回（暂不推送）
-- 明确体现「AI 辅助，教师主导」机制
+**功能**：
+- 搜索框：支持搜索编号/姓名/年级/性别/"关注"
+- 学生卡片列表：头像+综合评分+等级+优劣标签+AI 状态
+- 空状态："未找到匹配的学生"
+- 点击卡片 → `/teacher/students/[id]`
 
----
+### 6.3 学生详情页 `/teacher/students/[id]`
 
-## 7. AI 模块设计
+**组件**：`src/app/teacher/students/[id]/page.tsx`（Server Component）
 
-### 7.1 整体架构
+**内容**：
+1. PageHeader：学生姓名 + 返回按钮
+2. 学生信息卡：头像+姓名+性别+年级+年龄+身高+体重+BMI
+3. 体测成绩表格：项目名+成绩+单位+得分+等级（颜色标记）
+4. 5 维雷达图
+5. AI 报告审核状态（独立 Client Component：`student-review-status.tsx`）
 
-```
-前端页面 → POST /api/ai → 检查 DEEPSEEK_API_KEY
-  ├── 未配置 → Mock 数据（_mode: "mock"）
-  ├── 已配置 → DeepSeek API（_mode: "ai"）
-  └── 调用失败 → Mock 回退（_mode: "mock", _fallback: true）
-```
+### 6.4 AI 班级报告 `/teacher/report`
 
-API Key 仅在服务端 `process.env` 中，前端永不可见。
+**组件**：`src/components/features/ai-class-report-view.tsx`（Client Component）
 
-### 7.2 AI 提示词设计
+**内容**：
+1. 整体分析：总人数/平均分/及格率/优秀率 + 综合评语
+2. 共性薄弱项（编号列表）：每项含及格率+影响人数+原因分析
+3. 学生分层指导（A/B/C/D 四层）：每层人数+指导建议
+4. 课堂训练重点（优先级排序）：建议活动列表+预期效果
+5. 教学改进建议：具体可落地建议
+6. "前往审核"CTA 按钮
+7. AI 免责声明（底部）
 
-提示词分为两个文件：
+### 6.5 审核中心 `/teacher/review`
 
-| 文件 | 用途 |
-|------|------|
-| `src/lib/ai/generate-student-prompt.ts` | 学生个人体质分析提示词 |
-| `src/lib/ai/generate-class-prompt.ts` | 班级体质分析提示词 |
+**组件**：`src/components/features/review-workflow.tsx`（Client Component）
 
-#### 学生提示词关键约束
-- 角色：中学体育教师助手
-- 输入：学生基本信息 + 当前体测成绩 + 历史记录 + 运动体感
-- 输出要求：体质画像、薄弱项分析、训练计划、安全提醒
-- 动态安全警告：疲劳度 ≥7 自动追加强度提醒；有不适状况自动追加避免动作
-- 反标签化："有提升空间"替代"差"
+**功能**：
+- Tab 切换：待审核 / 已处理
+- 审核卡片：报告类型+状态+AI 原始文本+教师操作区
+- 通过：确认 → 状态变为 approved
+- 修改后通过：编辑原文 + 填写修改原因 → 状态变为 modified
+- 退回：填写退回原因（必填）→ 状态变为 rejected
+- 操作反馈：内联成功/失败消息（2s 自动消失）
+- 状态颜色：pending=橙色、approved=绿色、modified=蓝色、rejected=红色
 
-#### 班级提示词关键约束
-- 角色：中学体育教研助手
-- 输入：班级统计摘要 + 薄弱项排行 + 项目平均 + 重点关注学生
-- 输出要求：整体分析、共性薄弱项、分层指导、课堂重点、改进建议
-- 隐私保护：不点名具体学生
+### 6.6 教师个人中心 `/teacher/profile`
 
-#### 提示词已知问题与优化建议
+**组件**：`src/app/teacher/profile/page.tsx`（Client Component）
 
-| 问题 | 严重程度 | 建议 |
-|------|---------|------|
-| 输出格式无结构化约束 | 高 | 增加 JSON Schema 约束，要求 AI 返回结构化数据，便于前端解析 |
-| 未设置 system prompt 与 user prompt 分离 | 中 | 当前全部内容作为 user prompt 发送；建议将角色和规则作为 system prompt，数据作为 user prompt |
-| 温度参数 0.7 偏高 | 中 | 分析类任务建议降至 0.3-0.5，输出更稳定 |
-| 模型配置 | 已优化 | `deepseek.ts` 与 `/api/ai` 均从环境变量读取模型和 base URL |
-| 输出长度控制 | 已优化 | `/api/ai` 已设置 `max_tokens: 4096` |
-| 缺少 few-shot 示例 | 低 | 建议在 prompt 中提供 1-2 个标准输出示例，引导 AI 输出格式 |
-
-### 7.3 AI 调用层
-
-| 文件 | 作用 |
-|------|------|
-| `src/lib/ai/deepseek.ts` | DeepSeek API 客户端（服务端调用） |
-| `src/lib/ai/mock-ai.ts` | Mock AI 输出（1.5s 模拟延迟） |
-| `src/lib/data/mock-ai-reports.ts` | Mock AI 报告数据（学生报告 + 班级报告 + 审核数据） |
-| `src/app/api/ai/route.ts` | AI API 路由（双模式切换入口，含超时回退） |
-
-### 7.4 AI 报告持久化
-- `/api/ai` 保留 DeepSeek / Mock 回退逻辑。
-- 生成或回退后的学生/班级报告会 upsert 到 `AIReport`。
-- 每份待审报告会创建或更新 `TeacherReview`，审核中心以数据库为唯一权威来源。
+**内容**：
+1. 教师信息卡片：头像+姓名+班级+教研组
+2. 统计数字：任教班级编号 + 班级学生数（20人）
+3. 快捷入口卡片：班级总览 + 审核中心
+4. AI 使用说明：3 条教师端规范
+5. 退出登录按钮
 
 ---
 
-## 8. 数据模型
+## 7. AI 模块完整设计
 
-### 8.1 核心类型（`src/lib/types.ts`）
+### 7.1 架构图
 
 ```
-StudentProfile       — 学生基础信息（匿名 S001-S020，含 BMI）
-FitnessItemDef       — 体测项目定义（9 项，含性别专属项目）
-FitnessRecord        — 体测记录（含项目成绩 + 运动后体感）
-FitnessRecordItem    — 单项成绩（值 + 得分 + 等级）
-BodyFeeling          — 运动后体感（疲劳度 1-10 + 恢复 + 酸痛 + 不适）
-FitnessDimension     — 体质维度（速度/力量/耐力/柔韧/身体形态，含班级均值）
-AIStudentReport      — AI 学生报告（画像 + 薄弱项 + 训练计划 + 安全提醒）
-AIClassReport        — AI 班级报告（整体分析 + 共性薄弱项 + 分层指导）
-TeacherReview        — 教师审核（待审核/已通过/已修改/已退回）
-ClassSummary         — 班级统计摘要
-RadarChartDataPoint  — 雷达图数据点（含满分线）
-TrendChartDataPoint  — 趋势图数据点
-BarChartDataPoint    — 柱状图数据点
-DonutChartSegment    — 环形图分段
-OnboardingData       — 引导步骤数据
+┌─────────────────────────────────────────────────────┐
+│  前端 Client Component                                │
+│  ai-student-report.tsx / ai-class-report-view.tsx    │
+│  ├── 模块级 Map 去重缓存                               │
+│  ├── 15s AbortController 超时                         │
+│  └── localStorage 结果缓存                             │
+└──────────────────┬──────────────────────────────────┘
+                   │ POST /api/ai
+                   ▼
+┌─────────────────────────────────────────────────────┐
+│  API Route: src/app/api/ai/route.ts                  │
+│  ├── 检查 DEEPSEEK_API_KEY（starts with "sk-"）       │
+│  ├── 未配置 → Mock 模式                               │
+│  └── 已配置 → DeepSeek API 调用                       │
+│       ├── 12s AbortController 超时                    │
+│       ├── 失败/超时 → Fallback Mock                   │
+│       └── 成功 → JSON.parse + merge 到默认结构         │
+└──────────────────┬──────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────┐
+│  DeepSeek API (https://api.deepseek.com/v1)          │
+│  model: deepseek-v4-flash / deepseek-chat            │
+│  temperature: 0.4                                    │
+│  max_tokens: 4096                                    │
+└─────────────────────────────────────────────────────┘
 ```
 
-### 8.2 体测项目（9 项）
+### 7.2 提示词设计
 
-| 项目 | 类别 | 性别专属 | 方向 |
-|------|------|---------|------|
-| 身高体重 | body | 否 | 适中为优 |
-| 肺活量 | endurance | 否 | 越高越好 |
-| 50 米跑 | speed | 否 | 越低越好 |
-| 立定跳远 | strength | 否 | 越高越好 |
-| 坐位体前屈 | flexibility | 否 | 越高越好 |
-| 引体向上 | strength | 男生 | 越高越好 |
-| 仰卧起坐 | strength | 女生 | 越高越好 |
-| 1000 米跑 | endurance | 男生 | 越低越好 |
-| 800 米跑 | endurance | 女生 | 越低越好 |
+#### 学生报告 System Prompt
+```
+你是中学（高中）体育教师助手。你只提供体育锻炼建议，不进行任何医学诊断。
+语言要积极、鼓励、保护学生自尊。不要使用"诊断""治疗""处方""肥胖""差""不行""排名"等表达。
+使用"有提升空间""待提升""值得关注""锻炼建议""训练参考"等积极表达。
 
-### 8.3 体测数据合理范围（`src/lib/constants.ts`）
+分析模式有两种：
+1. 专项分析模式（单项目）：当学生只录入了一个体能项目时，针对该项目进行深入的技术分析。
+2. 综合分析模式（多项目）：当学生录入了多个项目时，进行全面的体质画像分析。
 
-所有体测数据均定义了 `PHYSICAL_RANGES`（min/max），用于前端输入校验和异常值检测。
+训练计划要循序渐进，适合校园体育锻炼场景（高中）。
+如果学生体感疲劳较高（≥7/10），必须在训练建议中明确提醒降低强度。
+如果学生有身体不适状况，训练计划中必须避免可能加重不适的动作。
+所有训练建议必须标注"需经体育教师审核授权后实施"。
+输出结构化JSON，不要输出任何其他内容。
+```
 
-### 8.4 SQLite / Prisma 数据库模型
+#### 学生报告 User Prompt 结构
+```json
+{
+  "student": { 学生基本信息 },
+  "currentRecord": { 当前体测记录+逐项体感 },
+  "previousRecords": [ 历史记录（最多3条） ],
+  "analysisMode": "single_record_with_history_context"
+}
+```
 
-| 模型 | 说明 |
-|------|------|
-| `ClassGroup` | 班级、年级、学期、教师关联 |
-| `UserAccount` | 演示账号，含角色、账号、展示名、学生/班级关联 |
-| `Student` | 匿名学生基础信息、BMI、运动目标、运动基础、健康关注信息 |
-| `FitnessRecord` / `FitnessRecordItem` | 体测记录与单项成绩，运动体感字段随记录保存 |
-| `AIReport` | 学生/班级 AI 报告内容、生成模式、状态、版本 |
-| `TeacherReview` | 教师审核状态、备注、修改记录、审核时间 |
+根据记录项目数自动追加：
+- 1 项 → 【专项分析模式】仅一个项目，深入分析技术要领和针对性训练方法
+- N 项 → 【综合分析模式】N 个项目，全面体质画像分析
 
-数组类字段在 SQLite 中以 JSON 字符串保存，便于后续迁移到 MySQL。
+#### 班级报告 System Prompt
+```
+你是高中体育教研助手。根据班级体测数据生成班级体质健康分析报告。
+分析整体表现、共性薄弱项目、学生分层指导建议。
+提出课堂训练重点和分层运动指导建议。
+不给任何学生贴负面标签，不点名具体学生。
+不使用"差""不及格""肥胖""诊断""治疗""处方"等表达。
+所有建议必须标注"AI生成，需经体育教师审核后使用"。
+输出结构化JSON，不要输出任何其他内容。
+```
+
+### 7.3 AI 报告持久化
+
+`/api/ai` 生成报告后立即调用 `upsertAIReportForReview()`：
+1. `AIReport` 表：upsert 报告内容 JSON + 来源记录信息 + 生成时间
+2. `TeacherReview` 表：创建/更新对应的待审核记录（reviewer: "周老师"）
+3. 审核中心以数据库为唯一权威来源
+
+### 7.4 报告历史查询
+
+```typescript
+// src/lib/server/data-service.ts
+getStudentReportHistory(studentId) → StudentReportHistoryItem[]
+// 返回：id, report, generatedAt, mode, status, sourceRecordId, sourceRecordDate, sourceSummary
+```
 
 ---
 
-## 9. 体测数据采集与运动体感逻辑
+## 8. 完整数据模型
 
-### 9.1 采集流程
-1. **基础信息**：通过 `/onboarding` 首次引导采集（身高、体重、年级、性别、年龄、运动目标、运动基础、健康不适）
-2. **体测成绩**：通过 `/record` 记录向导采集（项目选择→成绩输入→体感反馈）
-3. **数据校验**：`src/lib/validators.ts` 实现四级异常值检测
-   - `normal`：在合理范围内
-   - `warning`：边缘值
-   - `anomaly`：异常值
-   - `impossible`：不可能值（如身高 300cm）
-4. **评分计算**：`src/lib/scoring.ts` 按性别/年级/项目查表计分（0-100）
+### 8.1 TypeScript 类型（`src/lib/types.ts`）
 
-### 9.2 运动体感采集（核心创新点）
-- **疲劳程度**：1-10 滑杆（Emoji 辅助：😊→😐→😫）
-- **恢复情况**：快速/正常/较慢 三档选择
-- **酸痛部位**：多选（腿/手臂/腰背/肩膀/无）
-- **不适状况**：运动性哮喘/心脏关注/关节不适/腰背不适/易头晕/其他/无
-- 体力项目强制采集体感，非体力项目跳过
-
-### 9.3 动态流程适配
-- 体力项目（speed/strength/endurance 类别）→ 完整 6 步流程
-- 非体力项目 → 简化 3 步流程
-- 身高体重不在体测记录中（已移至引导页单独采集）
-
----
-
-## 10. 可视化设计
-
-### 10.1 图表矩阵
-
-| 图表类型 | 组件 | 使用页面 | 数据字段 |
-|---------|------|---------|---------|
-| 雷达图 | `FitnessRadarChart` | 学生 Dashboard | 5 维体质（个人 vs 班级均值 vs 满分线） |
-| 折线图 | `FitnessTrendChart` | 学生 Dashboard | 单项成绩时间趋势 |
-| 柱状图 | `ClassBarChart` | 教师总览 | 班级薄弱项排行（横向柱状图） |
-| 环形图 | `LevelDonutChart` | 教师总览 | 等级分布（优秀/良好/及格/待提升） |
-| 统计卡 | `StatCard` | 多处 | 单一指标 + 环比变化 |
-
-### 10.2 图表规范
-- 所有图表使用 Recharts
-- 空状态：无数据时显示 `EmptyState` 组件 + 引导入口
-- 颜色映射：优秀=绿色、良好=蓝色、及格=橙色、待提升=红色
-- 响应式：图表尺寸随容器自适应
-
----
-
-## 11. 教师审核机制
-
-### 11.1 审核流程
 ```
-AI 生成报告 → 教师审核中心
-  ├── 通过 → 状态变为 approved → 可推送给学生
-  ├── 修改后通过 → 教师填写修改说明 → 状态变为 modified
-  └── 退回 → 状态变为 rejected → 不推送
+基础枚举：
+  Gender            = "male" | "female"
+  GradeLevel        = "高一" | "高二" | "高三"
+  FitnessItemId     = "height_weight" | "vital_capacity" | "50m_run" | "standing_long_jump" | "sit_and_reach" | "pull_up" | "sit_up" | "800m_run" | "1000m_run"
+  GradeTier         = "excellent" | "good" | "pass" | "improve"
+  SportGoal         = "improve_endurance" | "build_strength" | "lose_weight" | "improve_flexibility" | "overall_health" | "exam_preparation"
+  SportBase         = "none" | "light" | "moderate" | "active"
+  DiscomfortType    = "none" | "asthma" | "heart_concern" | "joint_pain" | "back_pain" | "dizziness" | "other"
+
+核心实体：
+  StudentProfile    — {id, name, gender, grade, age, height, weight, bmi, sportGoal, sportBase, discomforts[], createdAt, updatedAt}
+  FitnessRecord     — {id, studentId, date, semester, items[], bodyFeeling}
+  FitnessRecordItem — {itemId, value, score, grade}
+  BodyFeeling       — {fatigueLevel(1-10), recoveryStatus, hasSoreness, sorenessAreas[], hasDiscomfort, discomfortNotes}
+  AIStudentReport   — {id, studentId, generatedAt, version, status, fitnessProfile, weaknessAnalysis[], trainingPlan[], safetyReminders[]}
+  AIClassReport     — {id, generatedAt, version, status, overallAnalysis, commonWeaknesses[], studentTiers[], classTrainingFocus[], teachingSuggestions[]}
+  TeacherReview     — {id, reportId, reportType, reviewedAt, reviewerName, status, teacherNotes, modifications[]}
+  ClassSummary      — {totalStudents, recordedStudents, averageBmi, passRate, excellentRate, weakItemRanking[], projectAverages[], attentionStudents[]}
+
+图表数据：
+  RadarChartDataPoint  — {dimension, score, classAverage, fullMark}
+  TrendChartDataPoint  — {date, value, grade}
+  BarChartDataPoint    — {itemName, passRate, excellentRate}
+  DonutChartSegment    — {grade, label, count, percentage}
+  OnboardingData       — {grade, gender, age, height, weight, sportGoal, sportBase, discomforts[]}
 ```
 
-### 11.2 设计原则
-- **AI 辅助 · 教师主导**：所有 AI 内容必须经教师审核后才能使用
-- **不替代专业判断**：AI 只提供参考，最终决策权在教师
-- **透明标注**：所有 AI 生成内容标注「AI 生成，需经体育教师审核后使用」
+### 8.2 Prisma Schema（6 个数据模型）
+
+```
+ClassGroup {
+  id        String   @id
+  name      String   // "高二(1)班"
+  grade     String   // "高二"
+  semester  String   // "2025-春季"
+  teacherId String
+  students  Student[]
+  accounts  UserAccount[]
+  reports   AIReport[]
+}
+
+UserAccount {
+  id           String  @id
+  role         String  // "student" | "teacher"
+  username     String  @unique
+  displayName  String
+  passwordHash String  // "demo123"
+  studentId    String?
+  classId      String?
+  student      Student?  @relation
+  class        ClassGroup? @relation
+}
+
+Student {
+  id              String   @id         // "S001"
+  name            String               // "学生A"
+  gender          String               // "male" | "female"
+  grade           String               // "高一" | "高二" | "高三"
+  age             Int                  // 15-18
+  height          Float                // cm
+  weight          Float                // kg
+  bmi             Float
+  sportGoal       String
+  sportBase       String
+  discomfortsJson String   // JSON array
+  classId         String
+  class           ClassGroup @relation
+  account         UserAccount?
+  records         FitnessRecord[]
+  reports         AIReport[]
+  createdAt       DateTime
+  updatedAt       DateTime
+}
+
+FitnessRecord {
+  id               String   @id
+  studentId        String
+  date             DateTime
+  semester         String
+  fatigueLevel     Int
+  recoveryStatus   String
+  hasSoreness      Boolean
+  sorenessAreasJson String  // JSON array
+  hasDiscomfort    Boolean
+  discomfortNotes  String
+  student          Student  @relation
+  items            FitnessRecordItem[]
+}
+
+FitnessRecordItem {
+  id        String @id
+  recordId  String
+  itemId    String
+  value     Float
+  score     Int
+  grade     String
+  record    FitnessRecord @relation
+}
+
+AIReport {
+  id               String   @id
+  reportKind       String   // "student" | "class"
+  studentId        String?
+  classId          String?
+  contentJson      String   // JSON text
+  mode             String   // "ai" | "mock"
+  status           String   // "draft" | "pending_review" | "approved" | "rejected"
+  version          Int
+  sourceRecordId   String?
+  sourceRecordDate DateTime?
+  sourceSummary    String?
+  generatedAt      DateTime
+  createdAt        DateTime
+  student          Student?  @relation
+  class            ClassGroup? @relation
+  review           TeacherReview?
+}
+
+TeacherReview {
+  id               String   @id
+  reportId         String   @unique
+  reportType       String   // "student" | "class"
+  reviewerName     String   // "周老师"
+  status           String   // "pending" | "approved" | "modified" | "rejected"
+  teacherNotes     String
+  reviewedAt       DateTime?
+  modificationsJson String? // JSON
+  report           AIReport @relation
+  createdAt        DateTime
+}
+```
+
+### 8.3 体测项目定义（9 项）
+
+| 项目 ID | 名称 | 单位 | 类别 | 性别 | 方向 |
+|---------|------|------|------|------|------|
+| height_weight | 身高体重 | cm/kg | body | 通用 | 适中 |
+| vital_capacity | 肺活量 | ml | endurance | 通用 | ↑ |
+| 50m_run | 50米跑 | 秒 | speed | 通用 | ↓ |
+| standing_long_jump | 立定跳远 | cm | strength | 通用 | ↑ |
+| sit_and_reach | 坐位体前屈 | cm | flexibility | 通用 | ↑ |
+| pull_up | 引体向上 | 次 | strength | 男生 | ↑ |
+| sit_up | 仰卧起坐 | 次/分钟 | strength | 女生 | ↑ |
+| 800m_run | 800米跑 | 秒 | endurance | 女生 | ↓ |
+| 1000m_run | 1000米跑 | 秒 | endurance | 男生 | ↓ |
+
+### 8.4 体测数据合理范围
+
+| 项目 | min | max | 单位 |
+|------|-----|-----|------|
+| height | 120 | 210 | cm |
+| weight | 30 | 120 | kg |
+| vital_capacity | 1000 | 10000 | ml |
+| 50m_run | 6.0 | 12.0 | 秒 |
+| standing_long_jump | 100 | 280 | cm |
+| sit_and_reach | -10 | 30 | cm |
+| pull_up | 0 | 30 | 次 |
+| sit_up | 0 | 60 | 次/分钟 |
+| 1000m_run | 180 | 420 | 秒 |
+| 800m_run | 180 | 360 | 秒 |
 
 ---
 
-## 12. 组件架构
+## 9. 评分算法（`src/lib/scoring.ts`）
 
-### 12.1 五层组件分层
+基于**国家学生体质健康标准（高中版）**的三维查表法：
+
+```
+SCORING[gender][grade][itemId] = { excellent, good, pass } 阈值
+
+计算逻辑：
+  higherIsBetter = true（值越大越好）：
+    value >= excellent → 95 分
+    value >= good      → 85 分
+    value >= pass      → 70 分
+    value < pass       → Math.max(30, Math.round(60 * value/pass))
+
+  higherIsBetter = false（值越小越好）：
+    value <= excellent → 95 分
+    value <= good      → 85 分
+    value <= pass      → 70 分
+    value > pass       → Math.max(30, Math.round(60 * pass/value))
+```
+
+评分标准覆盖：高一、高二、高三，三个年级各有独立阈值。
+
+---
+
+## 10. 组件架构
+
+### 10.1 五层分层
 
 ```
 src/components/
-├── ui/          — shadcn/ui 基础组件（21 个，无业务逻辑）
-├── layout/      — 布局组件（app-shell, ios-liquid-nav, desktop-sidebar, page-header）
-├── forms/       — 表单组件（wheel-picker, feeling-slider）
-├── charts/      — 图表组件（5 个 Recharts 封装）
-└── features/    — 业务功能组件（ai-report-card, training-plan-card, review-card 等）
+├── ui/          # shadcn/ui 基础组件（21 个）
+│   ├── button.tsx      — 按钮（variant: default/destructive/outline/secondary/ghost/link, size: default/sm/lg/icon）
+│   ├── card.tsx        — 卡片（Card/CardHeader/CardTitle/CardDescription/CardContent/CardFooter）
+│   ├── input.tsx       — 输入框
+│   ├── badge.tsx       — 标签（variant: default/secondary/destructive/outline + excellent/good/pass/improve）
+│   ├── dialog.tsx      — 对话框（基于 Radix Dialog）
+│   ├── select.tsx      — 下拉选择（基于 Radix Select）
+│   ├── separator.tsx   — 分割线（基于 Radix Separator）
+│   ├── skeleton.tsx    — 骨架屏
+│   ├── progress.tsx    — 进度条（基于 Radix Progress）
+│   ├── tabs.tsx        — 标签页（基于 Radix Tabs）
+│   ├── textarea.tsx    — 文本域
+│   ├── label.tsx       — 标签（基于 Radix Label）
+│   ├── avatar.tsx      — 头像（基于 Radix Avatar）
+│   ├── dropdown-menu.tsx — 下拉菜单
+│   ├── sheet.tsx       — 侧边面板
+│   ├── tooltip.tsx     — 工具提示
+│   ├── alert.tsx       — 警告提示
+│   ├── table.tsx       — 表格
+│   ├── checkbox.tsx    — 复选框
+│   ├── radio-group.tsx — 单选组
+│   ├── switch.tsx      — 开关
+│   └── slider.tsx      — 滑杆
+│
+├── layout/      # 布局组件
+│   ├── app-shell.tsx        — 响应式外壳：根据 pathname 判断学生端/教师端，桌面端教师显示侧边栏
+│   ├── ios-liquid-nav.tsx   — 液态玻璃浮动胶囊导航：5 个等宽项，w-[calc(100vw-24px)]→max-w-[480px]
+│   ├── desktop-sidebar.tsx  — 教师端桌面侧边栏：lg:block 显示，5 个导航项
+│   └── page-header.tsx      — 页面标题：title + description + 可选 backHref 返回按钮
+│
+├── forms/       # 表单组件
+│   ├── wheel-picker.tsx     — iOS 滚轮选择器：触控拖动 + ±微调按钮 + 快捷选项 + min/max 范围
+│   └── feeling-slider.tsx   — 运动体感滑杆：1-10 数值 + Emoji 表情辅助
+│
+├── charts/      # 图表组件
+│   ├── fitness-radar-chart.tsx  — 5 维体质雷达图：RadarChart, 2 条线（个人实线+班级虚线）
+│   ├── fitness-trend-chart.tsx  — 成绩趋势：LineChart, X=时间 Y=数值, dot+label
+│   ├── class-bar-chart.tsx      — 薄弱项排行：BarChart 横向, X=及格率%, 颜色映射等级
+│   ├── level-donut-chart.tsx    — 等级分布：PieChart 环形, innerRadius 60%, 4 色段
+│   └── stat-card.tsx            — 统计数字卡：icon + value + unit + trend arrow
+│
+└── features/    # 业务组件
+    ├── landing-page.tsx           — 登录页：角色切换+账号下拉+密码+品牌文案
+    ├── auth-guard.tsx             — 登录守卫：骨架屏 loading → 检查登录 → redirect
+    ├── logout-button.tsx          — 退出按钮：清除 demo_login → router.push("/")
+    ├── onboarding-steps.tsx       — 5 步引导：年级/性别/年龄/身高/体重/目标/基础/健康
+    ├── record-project-select.tsx  — 项目选择：9 个卡片网格，性别过滤
+    ├── record-score-input.tsx     — 成绩输入：每个已选项目一个滚轮
+    ├── record-feeling-step.tsx    — 逐项体感：每个项目独立疲劳/恢复/酸痛卡片
+    ├── record-complete.tsx        — 完成页：确认摘要 + 跳转
+    ├── ai-student-report.tsx      — AI 学生报告：分析策略+生成状态+历史列表+报告内容
+    ├── ai-class-report-view.tsx   — AI 班级报告视图
+    ├── ai-generation-status.tsx   — AI 生成状态：3 步进度+进度条+骨架屏+错误/回退状态
+    ├── review-workflow.tsx        — 审核工作流：Tab+通过/修改/退回+内联反馈
+    ├── student-search-list.tsx    — 学生搜索：筛选+卡片列表+空状态
+    ├── student-review-status.tsx  — 学生详情审核状态（Client Component）
+    └── empty-state.tsx            — 空状态占位：图标+标题+描述+可选 action
 ```
 
-### 12.2 Server/Client Component 边界
-- **Server Components（默认）**：`page.tsx` 负责数据准备
-- **Client Components**（`'use client'`）：`components/` 下的叶子组件
-- `use client` 不放在 page 级别
+### 10.2 Server/Client Component 边界
 
-### 12.3 关键布局组件
-- **`AppShell`**：响应式外壳，根据路由自动选择布局（学生端/教师端）
-- **`IosLiquidNav`**：iOS 26 液态玻璃浮动胶囊导航，自适应可见项目数，溢出自动折叠到「更多」菜单
-- **`IosLiquidNav` 当前策略**：手机端填充底部安全宽度，桌面端最大 480px，所有功能始终展开，不折叠
-- **`DesktopSidebar`**：教师端桌面侧边栏
-- **`mobile-bottom-nav.tsx`**：已废弃，被 `IosLiquidNav` 替代（保留以备参考）
+**Server Components（默认，无 `use client`）**：
+- 所有 `page.tsx`（除 `/teacher/profile`）
+- 所有 `layout.tsx`
+- `app-shell.tsx`、`page-header.tsx`
 
----
+**Client Components（有 `use client`）**：
+- 所有 `features/` 下的业务组件
+- 所有 `forms/` 下的交互组件
+- 所有 `charts/` 下的图表组件（Recharts 需要浏览器 API）
+- `ios-liquid-nav.tsx`（需要 `usePathname()`）
+- `desktop-sidebar.tsx`（需要 `usePathname()`）
+- `auth-guard.tsx`（需要 `useRouter()`）
+- `landing-page.tsx`（需要 `useState` + `useRouter()`）
 
-## 13. 当前已实现内容
-
-### MVP 完成度：~85%
-
-| 模块 | 完成度 | 备注 |
-|------|--------|------|
-| 项目初始化 + 配置 | 100% | Next.js 14 + shadcn/ui + Tailwind |
-| 数据模型 + 类型定义 | 100% | `types.ts` 完整覆盖所有实体 |
-| Mock 数据集 | 100% | 20 名学生 + 体测记录 + AI 报告 |
-| shadcn/ui 组件库（21 个） | 100% | 覆盖 button/card/form/dialog/table 等 |
-| iOS 26 液态玻璃导航 | 100% | 自适应、溢出菜单、桌面/移动端适配 |
-| 学生端 - 首次引导 | 100% | 5 步引导 + 滚轮选择器 |
-| 学生端 - 首页 | 95% | 未引导/已引导双状态，高级体质画像入口，宽屏双列 |
-| 学生端 - 体测记录 | 95% | 动态步骤 + 滚轮输入 + 体感滑杆 |
-| 学生端 - 体质画像 | 95% | 响应式多列 Dashboard、雷达图、趋势图、本期洞察 |
-| 学生端 - AI 指导 | 85% | 当前展示 Mock 数据，待对接真实 API |
-| 学生端 - 个人中心 | 90% | 信息展示 + 隐私说明 |
-| 教师端 - 班级总览 | 90% | 统计卡、柱状图、环形图 |
-| 教师端 - 学生列表 | 85% | 列表展示 + 搜索入口 |
-| 教师端 - AI 班级报告 | 85% | 当前展示 Mock 数据 |
-| 教师端 - 审核中心 | 90% | 通过/修改/退回流程 |
-| AI API 路由 | 98% | Mock + DeepSeek 双模式 + 失败/超时回退 |
-| 文档体系 | 100% | README + PRD + SKILLS + HANDOFF |
+**关键规则**：
+- `use client` 不放在 `page.tsx` 级别
+- 数据获取在 Server Component 完成，通过 props 传递给 Client Component
 
 ---
 
-## 14. 当前存在的问题
+## 11. UI/UX 设计规范
 
-### 功能层面
+### 11.1 设计语言
 
-| 问题 | 严重度 | 说明 |
-|------|--------|------|
-| AI 指导页真实 API 体验 | 低 | `/ai-guide` 已调用 `/api/ai`，真实接口响应慢时会超时回退到示例报告 |
-| 班级报告真实 API 体验 | 低 | `/teacher/report` 已调用 `/api/ai`，真实接口响应慢时会超时回退到示例报告 |
-| 学生首页数据硬编码 | 低 | 展示"学生A"的数据，应从 localStorage 读取引导数据 |
-| 学生详情页 | 已完成 | `/teacher/students/[id]` 已创建，并修复了 Server/Client 边界导致的错误边界问题 |
-| 无数据持久化 | 中 | 所有数据在内存中，刷新即丢失 |
+- **参考**：Apple Health / Fitness App（Web 适配版）
+- **原则**：Clarity（清晰）、Deference（克制）、Depth（层次）
+- **字体**：系统字体栈 — `-apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", ...`
 
-### 技术层面
+### 11.2 响应式断点
 
-| 问题 | 严重度 | 说明 |
-|------|--------|------|
-| ESLint 警告 | 已修复 | `npm run lint` 0 警告 |
-| 暗色模式 | 低 | CSS Variables 已定义但未充分测试 |
-| 自动化测试覆盖 | 中 | 尚未引入 Vitest/Playwright 测试套件；本轮已进行浏览器烟测、路由烟测、typecheck、lint、build |
-| AI 响应无限等待风险 | 已修复 | `/api/ai` 与前端 AI 页面均增加超时控制与回退展示 |
+| 断点 | 宽度 | 布局策略 |
+|------|------|---------|
+| 基准（Mobile） | 375px | 单列、全宽卡片、浮动底部导航 |
+| sm | 640px | 双列网格、卡片并排 |
+| md | 768px | 内容居中、max-w 约束 |
+| lg | 1024px | 多列 Dashboard、侧边栏展开 |
+| xl | 1280px | max-w-6xl 宽内容区 |
 
-### ✅ 已修复（2026-05-30 体验优化）
+### 11.3 关键设计 Token
 
-| 问题 | 状态 |
-|------|------|
-| `.env.example` 含真实 API Key | ✅ 已修复 |
-| 学生首页信息过密、主动作不突出 | ✅ 已重构 |
-| 记录页体力项目 6 步过长 | ✅ 压缩为 4 步 |
-| AI 指导页长文本难读 | ✅ 改为结构化卡片 |
-| 教师首页缺少教学建议 | ✅ 增加"今日教学建议"和"待审核" |
-| AI 标注不统一 | ✅ 统一为"AI生成，需经体育教师审核后使用" |
-| Page 级别 `use client` 违规 | ✅ 全部提取到叶子组件 |
-| 卡片样式不统一（渐变、阴影、圆角） | ✅ 统一 rounded-xl shadow-sm |
-| AIReportCard 渐变左条 | ✅ 替换为纯色 |
-| 医学化表达 | ✅ 已扫描确认无违规 |
-| 审核中心操作流程 | ✅ 按钮文案简化、状态反馈优化 |
-| `.next` 开发缓存损坏导致裸样式/Server Error | ✅ 已通过停止 dev server、清理 `.next`、重启修复 |
-| 手机底部导航过窄 | ✅ 改为外层安全边距 + 内部全宽，桌面端 max-w 480px |
-| 首页视觉单薄 | ✅ 改为体质画像主视觉 + 价值说明 + 双状态响应式首页 |
-| Dashboard 桌面端空间浪费 | ✅ 改为 `max-w-7xl` 多列数据仪表盘 |
-| AI 生成慢时缺少反馈 | ✅ 增加分阶段进度、骨架屏、处理中状态 |
-| AI 训练计划授权提示不完整 | ✅ 统一补充“训练计划须经体育教师审核授权后实施” |
-| 学生详情页进入错误边界 | ✅ 拆分 `StudentReviewStatus` 客户端组件，避免 Server Component 直接读取 localStorage |
-| 体测记录日期显示 ISO 时间戳 | ✅ 教师端学生详情页改为 `YYYY-MM-DD` 展示 |
-| 触控目标偏小 | ✅ 调整返回链接、快捷年龄按钮、审核按钮、搜索输入等为 ≥44px |
-| AI 外部服务响应过慢导致一直“处理中” | ✅ 服务端 12s 超时、前端 15s 超时，自动展示回退报告 |
+```
+颜色：
+  --primary: 217 91% 60%         → 蓝色主色
+  --level-excellent: 142 76% 36% → 绿色（优秀）
+  --level-good: 217 91% 60%      → 蓝色（良好）
+  --level-pass: 38 92% 50%       → 橙色（及格）
+  --level-improve: 0 72% 51%     → 红色（待提升）
 
-### 开发运行态注意事项
+阴影：
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04)
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.06)
+  --shadow-lg: 0 12px 32px -4px rgb(0 0 0 / 0.08)
 
-Next.js dev server 与 `npm run build` 都会写入 `.next`。如果开发服务运行期间又执行生产构建，或热更新过程中缓存文件被中断，可能出现：
-- 页面 HTML 正常但 CSS/JS chunk 404，界面变成裸 HTML
-- `Cannot find module './xxx.js'`
-- `__webpack_modules__[moduleId] is not a function`
+圆角：
+  rounded-xl → 12px（卡片）
+  rounded-full → 按钮、胶囊导航
+  rounded-lg → 内部元素
 
-处理方式：
-1. 停止占用 3000 端口的 dev server
-2. 删除 `.next`
-3. 重新执行 `npm run dev`
-4. 执行生产构建时建议先停止 dev server，构建完成后再启动 dev server
-
----
-
-## 15. 后续优化计划
-
-### P0 — 已完成 ✅
-1. ✅ 修复 `.env.example` API Key 泄露
-2. ✅ 统一 AI 标注
-3. ✅ 扫描并确认无医学化表达
-4. ✅ 重构学生首页（主动作突出）
-5. ✅ 压缩记录页流程（6→4步）
-6. ✅ AI 指导页结构化卡片
-7. ✅ 教师首页增加教学建议 + 待审核
-8. ✅ 统一卡片样式
-9. ✅ 移除 page.tsx 的 `use client`
-
-### P1 — 完善功能
-1. 图表旁增加解释性结论
-2. 学生详情页 `/teacher/students/[id]`
-3. 学生首页读取 localStorage 动态展示
-4. 真实数据库接入（SQLite/PostgreSQL + Prisma）
-
-### P2 — 增强体验
-5. AI 指导页对接真实 /api/ai
-6. 班级报告页对接真实 /api/ai
-7. 用户认证系统
-8. 暗色模式切换完善
-9. PWA 支持
-10. 测试覆盖
-12. 单元测试 + E2E 测试（Vitest + Playwright）
-13. AI 提示词优化（结构化输出 + few-shot 示例）
-
----
-
-## 16. 如何启动项目
-
-### 环境要求
-- Node.js 18+
-- npm 8+
-
-### 安装与运行
-
-```bash
-cd E:\projects\体育课设
-
-# 1. 安装依赖
-npm install
-
-# 2. 配置环境变量（如使用真实 AI）
-cp .env.example .env.local
-# 编辑 .env.local 填入 DeepSeek API Key（可选，不填则使用 Mock）
-
-# 3. 启动开发服务器
-npm run dev
-# 学生端 → http://localhost:3000
-# 教师端 → http://localhost:3000/teacher
-
-# 4. 类型检查
-npm run typecheck    # tsc --noEmit
-
-# 5. 构建
-npm run build
-
-# 6. Lint
-npm run lint
+触控：
+  最小触控目标：44×44px
+  导航项：min-h-11（44px）
+  按钮：h-11（44px）默认
 ```
 
-### 数据库命令
+### 11.4 移动端导航
 
-```bash
-npm run db:generate   # 生成 Prisma Client
-npm run db:migrate    # 应用本地 SQLite migration
-npm run db:seed       # 从 mock 数据写入 seed 数据
-npm run db:studio     # 打开 Prisma Studio
-npm run db:reset      # 重置本地数据库
-```
+**IosLiquidNav**（`src/components/layout/ios-liquid-nav.tsx`）：
+- 手机端：`w-[calc(100vw-24px)]`，两侧留 12px 安全边距
+- 桌面端：`max-w-[480px]`，居中
+- 5 个导航项等宽（flex-1）
+- 胶囊外形：`rounded-full`，白色半透明背景 + backdrop-blur
+- 所有功能始终展开（不折叠到"更多"菜单）
+- 支持 iOS safe-area-inset-bottom
 
-> 当前 Windows/Node 24 环境下 Prisma schema-engine 执行 `migrate dev/db push` 会出现空错误；项目保留 `prisma/schema.prisma` 与 `prisma/migrations`，并用 `prisma/migrate.ts` 通过 `better-sqlite3` 应用 migration SQL。Prisma Client 仍是运行时 ORM。
+---
 
-### 环境变量说明
+## 12. 演示模式状态管理（`src/lib/demo-store.ts`）
 
-```env
-# .env.local（不入库）
-DEEPSEEK_API_KEY=sk-your-key-here      # 必填，否则使用 Mock
-DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
-DEEPSEEK_MODEL=deepseek-v4-flash
+### localStorage Key 设计
+
+| Key | 存储内容 | 格式 |
+|-----|---------|------|
+| `demo_login` | 登录状态 | `{role, username, name, class, grade, gender, studentId, timestamp}` |
+| `onboardingData` | 引导数据 | `OnboardingData` JSON |
+| `demo_records` | 体测记录（冗余） | `StoredRecord[]` |
+| `demo_reviews` | 审核状态 | `StoredReview[]` |
+| `ai_analysis_cache` | AI 缓存 | `CachedAnalysis` |
+| `demo_mode` | 演示模式标记 | `"true"` |
+
+### 关键函数
+
+```typescript
+// 引导数据
+getOnboardingData() → OnboardingData | null
+saveOnboardingData(data)
+
+// 体测记录
+getRecords() → StoredRecord[]
+saveRecord(record)      // 写入 + 清除 AI 缓存
+getLatestStoredRecord() → StoredRecord | null
+
+// AI 分析缓存
+getCachedAnalysis() → CachedAnalysis | null
+saveCachedAnalysis(analysis)
+
+// 审核状态
+getReviews() → StoredReview[]
+updateReview(reviewId, updates)
+
+// 重置
+seedDemoData()          // 写入预设演示数据
+resetDemoData()         // 清除所有 localStorage
 ```
 
 ---
 
-## 17. 开发注意事项
+## 13. 安全红线与合规
 
-### 安全红线（不可违反）
+### 不可违反的安全规则
 
-1. **不做医学诊断**：所有 AI 输出仅涉及体育锻炼参考，不使用"诊断"、"治疗"、"处方"等医学化表达
-2. **不贴负面标签**：使用"有提升空间"替代"差"、"不及格"；使用"待提升"替代"不及格"
+1. **不做医学诊断**：所有 AI 输出仅涉及体育锻炼参考。Prompt 和 UI 标注均禁止医学化表达
+2. **不贴负面标签**：严格使用反标签化映射表
 3. **不暴露隐私**：
    - Mock 数据使用 S001-S020 匿名标识
    - 不得使用真实学生姓名、照片、学号
-   - 不在前端暴露 API Key
-4. **AI 生成标注**：所有 AI 内容必须标注「AI 生成，需经体育教师审核后使用」
-5. **教师主导审核**：AI 内容未经教师审核不得推送给学生
+   - 不在前端暴露 API Key（仅存服务端 `.env.local`）
+   - `prisma/dev.db` 不入库
+4. **AI 生成标注**：所有 AI 内容必须标注「AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。」
+5. **教师主导审核**：AI 建议未经教师审核不得推送给学生
 
 ### 代码规范
 
-- TypeScript 严格模式，禁止 `any`
+- TypeScript 严格模式，禁止 `any` 类型
 - 组件五层分层：ui / layout / forms / charts / features
 - `use client` 仅放在叶子组件
-- 颜色使用 CSS variables 语义 token，禁止硬编码（如 `#3b82f6`）
+- 颜色使用 CSS variables 语义 token，禁止硬编码
 - 命名：组件 PascalCase，Hook `use` 前缀，布尔 `is/has` 前缀
 - 移动端优先：先写 375px，再写 md/lg 断点
-- 触控目标 ≥44px
-
-### 文档同步规则
-
-- 修改代码后需同步更新相关文档（README、HANDOFF、SKILLS）
-- 新增页面需更新路由表和页面结构说明
-- 新增依赖需更新 `package.json` 和技术栈说明
+- 触控目标 ≥ 44px
 
 ---
 
-## 18. 文件结构（源码层面）
+## 14. 已完成/待完成状态
 
-```
-src/
-├── app/                                    # Next.js App Router
-│   ├── layout.tsx                          # 根布局（字体、metadata、viewport）
-│   ├── globals.css                         # CSS Variables 主题系统 + 液态玻璃动画
-│   ├── loading.tsx                         # 全局加载骨架屏
-│   ├── error.tsx                           # 全局错误边界
-│   ├── not-found.tsx                       # 404 页面
-│   ├── (student)/                          # 学生端路由组（URL 不含前缀）
-│   │   ├── layout.tsx                      # 学生端布局（iOS 液态玻璃导航）
-│   │   ├── page.tsx                        # 首页 /
-│   │   ├── onboarding/page.tsx             # 引导填写
-│   │   ├── record/page.tsx                 # 体测记录
-│   │   ├── dashboard/page.tsx              # 体质画像
-│   │   ├── ai-guide/page.tsx               # AI 指导
-│   │   └── profile/page.tsx                # 个人中心
-│   ├── teacher/                            # 教师端路由（URL：/teacher/*）
-│   │   ├── layout.tsx                      # 教师端布局（侧边栏 + 导航）
-│   │   ├── page.tsx                        # 班级总览
-│   │   ├── students/page.tsx               # 学生列表
-│   │   ├── report/page.tsx                 # AI 班级报告
-│   │   └── review/page.tsx                 # 审核中心
-│   └── api/ai/route.ts                     # AI API 路由
-├── components/
-│   ├── ui/                                 # shadcn/ui 组件（21 个）
-│   ├── layout/                             # 布局组件
-│   │   ├── app-shell.tsx                   # 响应式外壳
-│   │   ├── ios-liquid-nav.tsx              # iOS 26 液态玻璃导航
-│   │   ├── desktop-sidebar.tsx             # 教师端桌面侧边栏
-│   │   └── page-header.tsx                 # 页面标题栏
-│   ├── forms/                              # 表单组件
-│   │   ├── wheel-picker.tsx                # iOS 风格滚轮选择器
-│   │   └── feeling-slider.tsx              # 运动体感滑杆
-│   ├── charts/                             # 图表组件
-│   │   ├── fitness-radar-chart.tsx         # 5 维体质雷达图
-│   │   ├── fitness-trend-chart.tsx         # 成绩趋势折线图
-│   │   ├── class-bar-chart.tsx             # 班级薄弱项柱状图
-│   │   ├── level-donut-chart.tsx           # 等级分布环形图
-│   │   └── stat-card.tsx                   # 统计数字卡片
-│   └── features/                           # 业务功能组件
-│       ├── fitness-item-card.tsx           # 体测项目卡片
-│       ├── ai-report-card.tsx              # AI 报告卡片（含标注）
-│       ├── training-plan-card.tsx          # 训练计划卡片
-│       ├── review-card.tsx                 # 审核卡片
-│       ├── empty-state.tsx                 # 空状态占位
-│       └── loading-skeleton.tsx            # 骨架屏
-└── lib/
-    ├── types.ts                            # 所有 TypeScript 类型定义
-    ├── constants.ts                        # 常量（体测项目、范围、选项）
-    ├── validators.ts                       # 数据验证（四级异常值检测）
-    ├── scoring.ts                          # 体测评分逻辑
-    ├── utils.ts                            # 工具函数（cn）
-    ├── data/                               # Mock 数据集
-    │   ├── mock-students.ts                # 20 名学生
-    │   ├── mock-fitness-records.ts         # 体测记录
-    │   └── mock-ai-reports.ts              # AI 报告
-    └── ai/                                 # AI 接口层
-        ├── generate-student-prompt.ts      # 学生分析提示词
-        ├── generate-class-prompt.ts        # 班级分析提示词
-        ├── mock-ai.ts                      # Mock AI 输出
-        └── deepseek.ts                     # DeepSeek API 客户端
-```
+### ✅ 已完成（MVP 0.3.2）
+
+| 模块 | 完成度 | 说明 |
+|------|--------|------|
+| 项目初始化 + 配置 | 100% | Next.js 14 + shadcn/ui 21 组件 + Tailwind |
+| Prisma 数据模型（6 表） | 100% | Schema + migrations + seed 脚本 |
+| SQLite 数据持久化 | 100% | 读写正常，dev.db 本地文件 |
+| 演示登录系统 | 100% | 角色切换+账号下拉+密码+AuthGuard |
+| 学生端 5 页面 | 95% | 功能完整，部分数据硬编码 S001 |
+| 教师端 6 页面 | 95% | 功能完整，审核流可用 |
+| 7 个 API 端点 | 100% | 全部通过测试 |
+| AI API（Mock + DeepSeek） | 100% | 双模式切换+超时回退+报告持久化 |
+| AI 分析策略（专项/综合） | 100% | 单项目专项分析 + 多项目综合分析 |
+| AI 报告历史 | 100% | 数据库存储+前端列表+切换查看 |
+| 逐项体感采集 | 100% | 每个项目独立疲劳/恢复/酸痛反馈 |
+| 4 种图表 | 100% | 雷达图+趋势图+柱状图+环形图 |
+| iOS 液态玻璃导航 | 100% | 响应式+安全区+桌面端适配 |
+| 文档体系 | 100% | README+HANDOFF+SKILLS+AGENTS |
+
+### 🔲 后续优化
+
+| 优先级 | 项目 | 说明 |
+|--------|------|------|
+| P1 | 学生端动态数据 | 当前硬编码 S001，应从登录态读取 studentId |
+| P1 | 自动化测试 | Vitest 单元测试 + Playwright E2E |
+| P1 | PWA 支持 | Service Worker + manifest.json |
+| P2 | 暗色模式完善 | CSS Variables 已定义，需测试各组件 |
+| P2 | 真实学生数据导入 | CSV/Excel 批量导入 |
+| P2 | AI 提示词优化 | few-shot 示例 + JSON Schema 约束 |
+| P3 | 生产部署 | Vercel/服务器部署 + MySQL 迁移 |
+| P3 | 多班级支持 | 当前仅高二(1)班 |
+| P3 | 消息推送 | 审核通过后通知学生 |
 
 ---
 
-> 📋 **本文档目标**：让接手本项目的开发者或 AI Agent 能够在 10 分钟内完整理解项目全貌、当前进度、架构决策、安全红线和开发规范，并知道从哪里继续工作。
+## 15. 开发注意事项
+
+### 环境问题
+
+- **Windows/Node 24 + Prisma**：`migrate dev`/`db push` 可能在 schema-engine 阶段报空错误。解决方案：使用 `prisma/migrate.ts` 通过 better-sqlite3 直接执行 SQL migration。
+- **`.next` 缓存损坏**：开发中若出现裸 HTML/CSS 404，停止 dev server → 删除 `.next` → 重启 `npm run dev`。
+- **不要同时运行 `npm run build` 和 `npm run dev`**：两者都写入 `.next`，可能导致缓存冲突。
+
+### 数据库操作
+
+```bash
+npm run db:generate   # 生成 Prisma Client
+npm run db:migrate    # 执行自定义 migration（better-sqlite3）
+npm run db:seed       # 写入种子数据（20 学生+1 教师+体测记录+AI 报告）
+npm run db:studio     # Prisma Studio GUI（localhost:5555）
+npm run db:reset      # 删除 dev.db 并重建
+```
+
+### 文件修改同步规则
+
+- 新增路由 → 更新路由表（HANDOFF §4）
+- 新增依赖 → 更新技术栈表（HANDOFF §3）
+- 新增/修改类型 → 更新数据模型（HANDOFF §8）
+- 新增组件 → 更新组件架构（HANDOFF §10）
+- 新增页面 → 更新功能模块（HANDOFF §5/§6）
+
+---
+
+## 16. 快速启动检查清单
+
+```bash
+# 1. 确认环境
+node --version   # >= 18
+npm --version    # >= 8
+
+# 2. 安装
+cd E:\projects\体育课设
+npm install
+
+# 3. 数据库
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+
+# 4. 启动
+npm run dev
+# → http://localhost:3000
+
+# 5. 验证
+npm run typecheck   # 应 0 错误
+npm run lint        # 应 0 警告
+npm run build       # 应 15/15 路由通过
+```
+
+### 浏览器验证清单
+- [ ] `/` 登录页 → 角色切换 → 账号下拉 → 登录成功 → 跳转正确
+- [ ] `/dashboard` 学生首页 → 雷达图 + 趋势图 + 洞察 + AI 入口
+- [ ] `/record` 体测记录 → 4 步流程 → 体感采集 → 保存成功
+- [ ] `/ai-guide` AI 指导 → 报告历史列表 → 切换查看不同报告
+- [ ] `/profile` 个人中心 → 退出登录 → 回到 `/`
+- [ ] `/teacher` 教师总览 → 统计卡 + 图表 + 重点关注
+- [ ] `/teacher/students` 学生列表 → 搜索 → 点击进入详情
+- [ ] `/teacher/review` 审核中心 → 通过/修改/退回操作
+- [ ] 移动端（375px）→ 底部导航正常 → 触控 ≥44px
+- [ ] 桌面端（1440px）→ 多列网格 → 侧边栏显示
+
+---
+
+> 📋 **本文档目标**：让 AI Agent 能够在 15 分钟内完整理解项目全貌、当前进度、架构决策、安全红线和开发规范，并知道从哪里继续工作。
+>
+> **最后更新**：2026-05-31 · 版本 MVP 0.3.2

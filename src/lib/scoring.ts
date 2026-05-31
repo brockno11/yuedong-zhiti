@@ -1,7 +1,7 @@
 // ===== 跃动智体 — 体测评分逻辑 =====
 import type { FitnessItemId, GradeLevel, Gender } from "./types";
 
-// ---- 评分标准（初中生，参考国家学生体质健康标准）----
+// ---- 评分标准（高中生，参考国家学生体质健康标准）----
 // 结构: [性别][年级][项目] = { excellent, good, pass } 阈值
 
 type ScoreThresholds = {
@@ -14,7 +14,7 @@ type ScoringTable = Record<string, Record<string, Record<string, ScoreThresholds
 
 const SCORING: ScoringTable = {
   male: {
-    初一: {
+    高一: {
       vital_capacity: { excellent: 3600, good: 3000, pass: 2000 },
       "50m_run": { excellent: 7.8, good: 8.4, pass: 9.6 },
       standing_long_jump: { excellent: 210, good: 190, pass: 160 },
@@ -22,7 +22,7 @@ const SCORING: ScoringTable = {
       pull_up: { excellent: 10, good: 6, pass: 2 },
       "1000m_run": { excellent: 235, good: 255, pass: 295 },
     },
-    初二: {
+    高二: {
       vital_capacity: { excellent: 3800, good: 3200, pass: 2200 },
       "50m_run": { excellent: 7.5, good: 8.2, pass: 9.4 },
       standing_long_jump: { excellent: 220, good: 200, pass: 170 },
@@ -30,7 +30,7 @@ const SCORING: ScoringTable = {
       pull_up: { excellent: 11, good: 7, pass: 3 },
       "1000m_run": { excellent: 230, good: 250, pass: 290 },
     },
-    初三: {
+    高三: {
       vital_capacity: { excellent: 4000, good: 3400, pass: 2400 },
       "50m_run": { excellent: 7.3, good: 7.9, pass: 9.2 },
       standing_long_jump: { excellent: 235, good: 210, pass: 180 },
@@ -40,7 +40,7 @@ const SCORING: ScoringTable = {
     },
   },
   female: {
-    初一: {
+    高一: {
       vital_capacity: { excellent: 2800, good: 2300, pass: 1500 },
       "50m_run": { excellent: 8.4, good: 9.0, pass: 10.2 },
       standing_long_jump: { excellent: 180, good: 160, pass: 135 },
@@ -48,7 +48,7 @@ const SCORING: ScoringTable = {
       sit_up: { excellent: 42, good: 36, pass: 24 },
       "800m_run": { excellent: 215, good: 230, pass: 270 },
     },
-    初二: {
+    高二: {
       vital_capacity: { excellent: 3000, good: 2500, pass: 1700 },
       "50m_run": { excellent: 8.3, good: 8.9, pass: 10.0 },
       standing_long_jump: { excellent: 185, good: 165, pass: 140 },
@@ -56,7 +56,7 @@ const SCORING: ScoringTable = {
       sit_up: { excellent: 44, good: 38, pass: 26 },
       "800m_run": { excellent: 210, good: 225, pass: 265 },
     },
-    初三: {
+    高三: {
       vital_capacity: { excellent: 3200, good: 2700, pass: 1900 },
       "50m_run": { excellent: 8.1, good: 8.7, pass: 9.8 },
       standing_long_jump: { excellent: 195, good: 175, pass: 145 },

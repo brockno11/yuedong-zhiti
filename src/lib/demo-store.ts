@@ -140,13 +140,13 @@ export function resetDemoData(): void {
 
 export function seedDemoData(): void {
   if (typeof window === "undefined") return;
-  // 预设引导数据
+  // 预设引导数据（高二男生）
   saveOnboardingData({
-    grade: "初二",
+    grade: "高二",
     gender: "male",
-    age: 14,
-    height: 168,
-    weight: 55,
+    age: 16,
+    height: 172,
+    weight: 60,
     sportGoal: "overall_health",
     sportBase: "moderate",
     discomforts: ["none"],

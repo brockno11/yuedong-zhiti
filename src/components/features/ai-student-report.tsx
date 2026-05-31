@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AIGenerationStatus, type AIStatus } from "@/components/features/ai-generation-status";
 import { mockAIStudentReport } from "@/lib/data/mock-ai-reports";
-import { mockStudents } from "@/lib/data/mock-students";
-import { getLatestRecord } from "@/lib/data/mock-fitness-records";
-import { getCachedAnalysis, saveCachedAnalysis, getLatestStoredRecord } from "@/lib/demo-store";
+import type { StudentReportHistoryItem } from "@/lib/server/db-mappers";
+import { FITNESS_ITEMS } from "@/lib/constants";
 import {
   Brain,
   Sparkles,
@@ -16,8 +16,11 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  History,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
-import type { AIStudentReport } from "@/lib/types";
+import type { AIStudentReport, FitnessRecord, StudentProfile } from "@/lib/types";
 
 // 模块级缓存：跨页面导航不中断 AI 请求
 const inFlightRequests = new Map<string, Promise<{ data: unknown; mode: string; fallback: boolean }>>();
@@ -25,29 +28,33 @@ const CLIENT_AI_TIMEOUT_MS = 15000;
 
 interface AIStudentReportProps {
   studentId?: string;
+  student: StudentProfile | null;
+  records: FitnessRecord[];
+  reportHistory: StudentReportHistoryItem[];
 }
 
-export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps) {
-  const [report, setReport] = useState<AIStudentReport | null>(null);
-  const [status, setStatus] = useState<AIStatus>("idle");
-  const [mode, setMode] = useState<"ai" | "mock" | "fallback" | undefined>();
+export function AIStudentReportView({
+  studentId = "S001",
+  student,
+  records,
+  reportHistory,
+}: AIStudentReportProps) {
+  const initialHistory = reportHistory[0] ?? null;
+  const [report, setReport] = useState<AIStudentReport | null>(initialHistory?.report ?? null);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(initialHistory?.id ?? null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(initialHistory?.generatedAt ?? null);
+  const [sourceSummary, setSourceSummary] = useState<string | null>(initialHistory?.sourceSummary ?? null);
+  const [status, setStatus] = useState<AIStatus>(initialHistory ? "complete" : "idle");
+  const [mode, setMode] = useState<"ai" | "mock" | "fallback" | undefined>(
+    initialHistory?.mode === "ai" ? "ai" : initialHistory ? "mock" : undefined
+  );
   const [errorMsg, setErrorMsg] = useState<string>("");
   const mountedRef = useRef(true);
 
-  const student = mockStudents.find((s) => s.id === studentId) || mockStudents[0];
-  const latestRecord = getLatestRecord(studentId);
+  const latestRecord = records[0] ?? null;
   const cacheKey = `student-${studentId}`;
 
   const fetchReport = useCallback(async () => {
-    // 检查本地缓存
-    const cached = getCachedAnalysis();
-    if (cached?.studentReport) {
-      setReport(cached.studentReport as unknown as AIStudentReport);
-      setMode(cached.mode as "ai" | "mock" | "fallback");
-      setStatus("complete");
-      return;
-    }
-
     // 检查是否有正在进行的同 ID 请求（跨页面导航场景）
     if (inFlightRequests.has(cacheKey)) {
       try {
@@ -68,23 +75,25 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
       return;
     }
 
+    if (!student || !latestRecord) {
+      setErrorMsg("暂无可用于分析的体测记录");
+      setStatus("fallback");
+      setReport(mockAIStudentReport);
+      return;
+    }
+
     setStatus("analyzing");
     setErrorMsg("");
 
     // 创建持久化请求
     const requestPromise = (async () => {
-      const storedRecord = getLatestStoredRecord();
       const studentData = {
         student,
         currentRecord: latestRecord,
-        previousRecords: [],
-        storedRecord: storedRecord ? {
-          scores: storedRecord.scores,
-          feelings: storedRecord.feelings,
-          items: storedRecord.selectedItems,
-          overallDiscomfort: storedRecord.overallDiscomfort,
-        } : null,
+        previousRecords: records.slice(1, 4),
+        analysisMode: "single_record_with_history_context",
       };
+      const sourceSummaryText = buildRecordSummary(latestRecord);
 
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), CLIENT_AI_TIMEOUT_MS);
@@ -92,7 +101,14 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ type: "student-report", studentId, studentData }),
+        body: JSON.stringify({
+          type: "student-report",
+          studentId,
+          studentData,
+          sourceRecordId: latestRecord.id,
+          sourceRecordDate: latestRecord.date,
+          sourceSummary: sourceSummaryText,
+        }),
       }).finally(() => window.clearTimeout(timeoutId));
 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -101,14 +117,6 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
       const responseMode = data._mode as string;
       const isFallback = !!data._fallback;
       const parsed = data.content ? { ...mockAIStudentReport, ...safeMerge(data) } : data;
-
-      // 存入 localStorage 缓存
-      saveCachedAnalysis({
-        studentReport: parsed as unknown as Record<string, unknown>,
-        classReport: null,
-        lastUpdated: new Date().toISOString(),
-        mode: isFallback ? "fallback" : (responseMode as "ai" | "mock"),
-      });
 
       return { data: parsed, mode: responseMode, fallback: isFallback };
     })();
@@ -121,6 +129,9 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
       if (mountedRef.current) {
         setReport(result.data as unknown as AIStudentReport);
         setMode(result.fallback ? "fallback" : (result.mode as "ai" | "mock"));
+        setGeneratedAt((result.data as AIStudentReport).generatedAt);
+        setSourceSummary(buildRecordSummary(latestRecord));
+        setSelectedHistoryId(null);
         setStatus(result.fallback ? "fallback" : "complete");
       }
     } catch (err) {
@@ -132,7 +143,7 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
         setStatus("fallback");
       }
     }
-  }, [studentId, student, latestRecord, cacheKey]);
+  }, [studentId, student, latestRecord, records, cacheKey]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -171,7 +182,7 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
           errorMessage={errorMsg}
           onRetry={fetchReport}
         />
-        {report && <ReportContent report={report} mode={mode} />}
+        {report && <ReportContent report={report} mode={mode} generatedAt={generatedAt} sourceSummary={sourceSummary} />}
       </div>
     );
   }
@@ -184,13 +195,40 @@ export function AIStudentReportView({ studentId = "S001" }: AIStudentReportProps
       {/* 生成状态标签 */}
       <AIGenerationStatus status="complete" mode={mode} />
 
-      <ReportContent report={report} mode={mode} />
+      <GuidanceStrategyCard recordCount={records.length} latestRecord={latestRecord} onGenerate={fetchReport} />
+
+      {reportHistory.length > 0 && (
+        <ReportHistoryList
+          items={reportHistory}
+          selectedId={selectedHistoryId}
+          onSelect={(item) => {
+            setSelectedHistoryId(item.id);
+            setReport(item.report);
+            setGeneratedAt(item.generatedAt);
+            setSourceSummary(item.sourceSummary);
+            setMode(item.mode === "ai" ? "ai" : "mock");
+            setStatus("complete");
+          }}
+        />
+      )}
+
+      <ReportContent report={report} mode={mode} generatedAt={generatedAt} sourceSummary={sourceSummary} />
     </div>
   );
 }
 
 // ===== 报告内容渲染（纯展示） =====
-function ReportContent({ report, mode }: { report: AIStudentReport; mode?: string }) {
+function ReportContent({
+  report,
+  mode,
+  generatedAt,
+  sourceSummary,
+}: {
+  report: AIStudentReport;
+  mode?: string;
+  generatedAt: string | null;
+  sourceSummary: string | null;
+}) {
   const profile = report.fitnessProfile;
 
   // 找出审核状态
@@ -223,6 +261,16 @@ function ReportContent({ report, mode }: { report: AIStudentReport; mode?: strin
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className="text-[10px]">
+              生成时间：{formatDisplayTime(generatedAt ?? report.generatedAt)}
+            </Badge>
+            {sourceSummary && (
+              <Badge variant="secondary" className="text-[10px]">
+                来源：{sourceSummary}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm font-semibold">{profile.summary}</p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -350,6 +398,207 @@ function ReportContent({ report, mode }: { report: AIStudentReport; mode?: strin
       </Card>
     </>
   );
+}
+
+function GuidanceStrategyCard({
+  recordCount,
+  latestRecord,
+  onGenerate,
+}: {
+  recordCount: number;
+  latestRecord: FitnessRecord | null;
+  onGenerate: () => void;
+}) {
+  if (!latestRecord) return null;
+
+  const itemCount = latestRecord.items.length;
+  const isComprehensive = itemCount >= 2;
+  const analysisType = getAnalysisType(itemCount);
+  const TypeIcon = analysisType.icon;
+
+  return (
+    <Card className="rounded-xl border-primary/20 bg-primary/5 shadow-sm">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-start gap-3">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isComprehensive ? "bg-primary/10" : "bg-blue-500/10"}`}>
+            <TypeIcon className={`h-5 w-5 ${isComprehensive ? "text-primary" : "text-blue-500"}`} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold">
+                {isComprehensive ? "本次综合分析" : "本次专项分析"}
+              </p>
+              <Badge variant={analysisType.variant} className="text-[10px]">
+                {analysisType.label}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {isComprehensive
+                ? `基于 ${itemCount} 个项目的完整记录，AI 将综合评估你的体质水平，提供跨维度的训练建议`
+                : `单项目专项分析：AI 将针对「${FITNESS_ITEMS.find(i => i.id === latestRecord.items[0]?.itemId)?.name ?? "该项目"}」进行深入分析，提供该项目的技术指导和提升建议`
+              }
+            </p>
+            <p className="mt-2 text-xs text-primary">
+              📋 来源记录：{buildRecordSummary(latestRecord)}
+              <span className="ml-2 text-muted-foreground">· {relativeTime(latestRecord.date)}记录</span>
+              {recordCount > 1 && <span className="ml-1 text-muted-foreground">· 累计 {recordCount} 次</span>}
+            </p>
+          </div>
+        </div>
+        <Button size="sm" className="h-11 w-full gap-2" onClick={onGenerate}>
+          <Brain className="h-4 w-4" />
+          {isComprehensive ? "生成综合体质分析报告" : "生成专项分析与指导"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReportHistoryList({
+  items,
+  selectedId,
+  onSelect,
+}: {
+  items: StudentReportHistoryItem[];
+  selectedId: string | null;
+  onSelect: (_item: StudentReportHistoryItem) => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <Card className="rounded-xl shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <History className="h-5 w-5 text-primary" />
+            历史分析报告
+          </CardTitle>
+          <Badge variant="secondary" className="text-[10px]">{items.length} 份</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          每次体测记录都可以生成专属分析，点击查看不同时期的报告
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.map((item, index) => {
+          const itemCount = item.report?.weaknessAnalysis?.length ?? item.report?.fitnessProfile?.dimensions?.length;
+          const analysisType = getAnalysisType(itemCount);
+          const TypeIcon = analysisType.icon;
+          const isLatest = index === 0;
+          const isSelected = selectedId === item.id;
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item)}
+              className={`w-full rounded-xl border p-3.5 text-left transition-all ${
+                isSelected
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/30 hover:bg-accent"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">
+                      {item.sourceSummary ?? "综合体质分析"}
+                    </p>
+                    {isLatest && (
+                      <Badge variant="excellent" className="text-[10px]">最新</Badge>
+                    )}
+                    <Badge variant={analysisType.variant} className="text-[10px] gap-1">
+                      <TypeIcon className="h-3 w-3" />
+                      {analysisType.label}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDisplayTime(item.generatedAt)}
+                    </span>
+                    <span>{relativeTime(item.generatedAt)}</span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">
+                    {item.report.fitnessProfile.summary.slice(0, 80)}...
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <Badge
+                    variant={
+                      item.status === "approved" ? "excellent"
+                      : item.status === "rejected" ? "improve"
+                      : "pass"
+                    }
+                    className="text-[10px]"
+                  >
+                    {item.status === "approved" ? "✓ 已审核"
+                    : item.status === "rejected" ? "✗ 已退回"
+                    : "待审核"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">
+                    {item.mode === "ai" ? "AI 生成" : "示例数据"}
+                  </span>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function buildRecordSummary(record: FitnessRecord): string {
+  const itemNames = record.items
+    .map((item) => FITNESS_ITEMS.find((definition) => definition.id === item.itemId)?.name ?? item.itemId)
+    .slice(0, 3)
+    .join("、");
+  const more = record.items.length > 3 ? `等 ${record.items.length} 项` : `${record.items.length} 项`;
+  return `${formatDisplayTime(record.date)} · ${itemNames}${more}`;
+}
+
+function formatDisplayTime(value: string | null): string {
+  if (!value) return "暂无时间";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** 相对时间显示：如"3天前""1周前""2个月前" */
+function relativeTime(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffMinutes < 1) return "刚刚";
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 7) return `${diffDays}天前`;
+  if (diffWeeks < 4) return `${diffWeeks}周前`;
+  if (diffMonths < 12) return `${diffMonths}个月前`;
+  return `${Math.floor(diffDays / 365)}年前`;
+}
+
+/** 判断分析类型 */
+function getAnalysisType(itemCount: number | undefined): { label: string; icon: typeof Zap; variant: "excellent" | "secondary" } {
+  if (!itemCount || itemCount <= 1) {
+    return { label: "专项分析", icon: Zap, variant: "secondary" };
+  }
+  return { label: "综合分析", icon: TrendingUp, variant: "excellent" };
 }
 
 // 安全深合并：AI 返回数据深度合并到 mock 默认结构，不丢失嵌套字段
