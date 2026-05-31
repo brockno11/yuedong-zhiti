@@ -75,6 +75,14 @@ export default async function PortraitPage() {
     <div className="mx-auto max-w-6xl space-y-5 px-4 sm:px-0">
       <PageHeader title="体质画像" description={`${student.name} · ${student.grade} · ${latestRecord.semester}`} />
 
+      {/* 批次 + 记录类型 */}
+      {(latestRecord.batchName || latestRecord.recordType) && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {latestRecord.batchName && <Badge variant="secondary" className="text-[10px]">{latestRecord.batchName}</Badge>}
+          <Badge variant="outline" className="text-[10px]">{latestRecord.recordType === "daily_training" ? "日常训练" : "正式体测"}</Badge>
+        </div>
+      )}
+
       {completeness.isPartial && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           当前画像基于已录入的 {completeness.recordedCount}/{completeness.expectedCount} 个项目生成，部分维度因缺少数据暂不评价。
