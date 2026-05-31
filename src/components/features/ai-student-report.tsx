@@ -214,12 +214,73 @@ export function AIStudentReportView({
     );
   }
 
-  if (!report) return null;
-
-  // ===== 正常展示（有报告）=====
+  // ===== 发现新记录但无对应报告（优先处理）=====
   const isHistoricalView = reportState === "viewingHistorical";
   const isCurrent = reportState === "hasCurrentReport";
   const hasNewer = reportState === "hasNewerRecord";
+
+  if (hasNewer && !report) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <p className="text-sm font-semibold text-amber-800">发现新的体测记录</p>
+          </div>
+          <p className="text-xs text-amber-700">当前报告基于旧记录生成，你可以继续查看旧报告，也可以基于最新记录重新生成。</p>
+          <div className="flex gap-2">
+            <Button size="sm" className="gap-1" onClick={generateReport}><Sparkles className="h-3.5 w-3.5" />基于最新记录重新生成</Button>
+            {reportHistory.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={() => {
+                const firstReport = reportHistory[0];
+                setReport(firstReport.report);
+                setSelectedHistoryId(firstReport.id);
+                setGeneratedAt(firstReport.generatedAt);
+                setSourceSummary(firstReport.sourceSummary);
+                setMode(firstReport.mode === "ai" ? "ai" : "mock");
+                setStatus("complete");
+              }}>查看旧报告</Button>
+            )}
+          </div>
+        </div>
+
+        {reportHistory.length > 0 && (
+          <Card className="rounded-xl shadow-sm">
+            <button type="button" onClick={() => setHistoryOpen(!historyOpen)} className="w-full flex items-center justify-between p-4 text-left">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-primary" /><span className="text-sm font-semibold">历史报告</span>
+                <Badge variant="secondary" className="text-[10px]">{reportHistory.length} 份</Badge>
+              </div>
+              {historyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+            {historyOpen && (
+              <CardContent className="pt-0 space-y-2">
+                {reportHistory.map((item, index) => {
+                  const isSelected = selectedHistoryId === item.id;
+                  return (
+                    <button key={item.id} type="button" onClick={() => { setSelectedHistoryId(item.id); setReport(item.report); setGeneratedAt(item.generatedAt); setSourceSummary(item.sourceSummary); setMode(item.mode === "ai" ? "ai" : "mock"); setStatus("complete"); }}
+                      className={`w-full rounded-xl border p-3 text-left ${isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0"><p className="text-xs font-semibold truncate">{item.sourceSummary ?? "综合体质分析"}</p><p className="text-[11px] text-muted-foreground mt-0.5">{formatDisplayTime(item.generatedAt)}</p></div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Badge variant={item.status === "approved" ? "excellent" : item.status === "rejected" ? "improve" : "pass"} className="text-[9px]">{item.status === "approved" ? "已审核" : item.status === "rejected" ? "已退回" : "待审核"}</Badge>
+                          {index === 0 && !isSelected && <Badge variant="excellent" className="text-[9px]">最新</Badge>}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </CardContent>
+            )}
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  if (!report) return null;
+
+  // ===== 正常展示（有报告）=====
 
   return (
     <div className="space-y-5">
