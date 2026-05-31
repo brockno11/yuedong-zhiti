@@ -493,27 +493,7 @@ function ReportContent({
 
   return (
     <>
-      {/* 重点提升 */}
-      {report.weaknessAnalysis.length > 0 && (
-        <Card className="rounded-xl shadow-sm">
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Target className="h-5 w-5 text-primary" />重点提升</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {report.weaknessAnalysis.slice(0, 3).map((w, i) => (
-              <div key={i} className="rounded-xl border p-3.5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span>
-                  <p className="text-sm font-semibold">{w.item}</p>
-                  <Badge variant="outline" className="text-[10px]">{w.currentLevel}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">{w.possibleCauses[0]}</p>
-                <p className="text-xs text-primary mt-1 flex items-center gap-1"><Sparkles className="h-3 w-3" />{w.improvementPotential}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 本周训练计划 */}
+      {/* 本周训练计划 — 前置，为核心模块 */}
       {report.trainingPlan.length > 0 && (
         <Card className="rounded-xl shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">本周训练计划</CardTitle></CardHeader>
@@ -539,6 +519,26 @@ function ReportContent({
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-level-pass" />
               <p className="text-xs text-muted-foreground">AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。</p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 重点提升 */}
+      {report.weaknessAnalysis.length > 0 && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Target className="h-5 w-5 text-primary" />已录项目分析</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {report.weaknessAnalysis.slice(0, 3).map((w, i) => (
+              <div key={i} className="rounded-xl border p-3.5">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span>
+                  <p className="text-sm font-semibold">{w.item}</p>
+                  <Badge variant="outline" className="text-[10px]">{w.currentLevel}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{w.possibleCauses[0]}</p>
+                <p className="text-xs text-primary mt-1 flex items-center gap-1"><Sparkles className="h-3 w-3" />{w.improvementPotential}</p>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

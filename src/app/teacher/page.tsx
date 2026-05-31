@@ -37,9 +37,14 @@ export default async function TeacherOverviewPage({
   const attentionCount = summary.attentionStudents.length;
   const suggestionParts: string[] = [];
 
+  // 人数概况
+  suggestionParts.push(
+    `当前批次已有 ${summary.recordedStudents}/${summary.totalStudents} 名学生录入数据`
+  );
+
   if (topWeak && topWeak.passRate < 70) {
     suggestionParts.push(
-      `${topWeak.itemName}通过率仅${topWeak.passRate}%，建议本周课堂融入针对性训练环节`
+      `其中${topWeak.itemName}通过率仅${topWeak.passRate}%，建议本周课堂融入针对性训练环节`
     );
   }
   if (secondWeak && secondWeak.passRate < 70) {
@@ -49,21 +54,21 @@ export default async function TeacherOverviewPage({
   }
   if (summary.passRate < 80) {
     suggestionParts.push(
-      `班级整体及格率${summary.passRate}%，建议采用分层教学，将学生按能力分组进行差异化训练`
+      `整体及格率${summary.passRate}%，建议采用分层教学`
     );
   }
   if (attentionCount > 0) {
     suggestionParts.push(
-      `有${attentionCount}名学生需要重点关注（BMI偏高/体测不达标/运动不适），建议课后一对一沟通`
+      `有${attentionCount}名学生需重点关注，建议课后一对一沟通`
     );
   }
   if (summary.pendingReviewCount > 0) {
     suggestionParts.push(
-      `还有${summary.pendingReviewCount}份AI报告等待审核，审核后学生端才能查看`
+      `${summary.pendingReviewCount}份AI报告待审核，审核后学生端才能查看`
     );
   }
-  if (suggestionParts.length === 0) {
-    suggestionParts.push("班级整体表现良好，继续保持当前训练节奏，关注学生个体差异即可");
+  if (suggestionParts.length <= 1) {
+    suggestionParts.push("班级整体表现良好，继续保持当前训练节奏");
   }
 
   const teachingSuggestion = suggestionParts.join("。");
