@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       ? {
           ...mockAIStudentReport,
           ...parsed,
-          id: `AI-S-${body.studentId ?? "001"}`,
+          id: `AI-S-${body.studentId ?? "001"}-${Date.now()}`,
           studentId: body.studentId ?? mockAIStudentReport.studentId,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       : {
           ...mockAIClassReport,
           ...parsed,
-          id: "AI-C-001",
+          id: `AI-C-001-${Date.now()}`,
           generatedAt: new Date().toISOString(),
           version: mockAIClassReport.version + 1,
           status: "pending_review" as const,
