@@ -39,7 +39,7 @@ export default async function ProfilePage() {
   if (!student) {
     return (
       <div className="mx-auto max-w-lg">
-        <PageHeader title="个人中心" backHref="/" />
+        <PageHeader title="个人中心" />
         <p className="text-sm text-muted-foreground">请先完成首次引导</p>
       </div>
     );

@@ -10,13 +10,6 @@ interface DashboardHeroProps {
   semester: string;
 }
 
-const gradeConfig: Record<string, { label: string; color: string }> = {
-  excellent: { label: "优秀", color: "text-level-excellent" },
-  good: { label: "良好", color: "text-level-good" },
-  pass: { label: "及格", color: "text-level-pass" },
-  improve: { label: "待提升", color: "text-level-improve" },
-};
-
 function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 11) return "早上好";
@@ -26,44 +19,30 @@ function getGreeting(): string {
 }
 
 function getGradeLabel(score: number): string {
-  if (score >= 90) return "excellent";
-  if (score >= 80) return "good";
-  if (score >= 60) return "pass";
-  return "improve";
+  if (score >= 90) return "优秀";
+  if (score >= 80) return "良好";
+  if (score >= 60) return "及格";
+  return "待提升";
 }
 
-export function DashboardHero({
-  studentName,
-  avgScore,
-  semester,
-}: DashboardHeroProps) {
+export function DashboardHero({ studentName, avgScore }: DashboardHeroProps) {
   const greeting = getGreeting();
-  const grade = getGradeLabel(avgScore);
-  const info = gradeConfig[grade];
+  const gradeLabel = getGradeLabel(avgScore);
 
   return (
     <div className="rounded-2xl bg-gradient-to-br from-primary/5 via-primary/3 to-transparent border border-primary/10 p-5 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <p className="text-sm text-muted-foreground">{greeting}</p>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {studentName}
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span>{semester}</span>
-            <span className={info.color}>
-              综合评分 {avgScore} 分 · {info.label}
-            </span>
-          </div>
-        </div>
+      <p className="text-sm text-muted-foreground">{greeting}</p>
+      <h1 className="mt-1 text-2xl font-bold tracking-tight">{studentName}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        综合评分 {avgScore} 分 · {gradeLabel} · 今天可以记录一次体测
+      </p>
 
-        <Link href="/record" className="shrink-0">
-          <Button size="lg" className="h-12 gap-2 px-6 text-base shadow-sm">
-            <PlusCircle className="h-5 w-5" />
-            开始记录
-          </Button>
-        </Link>
-      </div>
+      <Link href="/record" className="mt-4 inline-block w-full sm:w-auto">
+        <Button size="lg" className="h-12 w-full gap-2 text-base shadow-sm sm:w-auto">
+          <PlusCircle className="h-5 w-5" />
+          开始记录
+        </Button>
+      </Link>
     </div>
   );
 }

@@ -26,7 +26,6 @@ export default async function AIGuidePage() {
       <PageHeader
         title="AI 智能指导"
         description="基于你的体测数据生成个性化分析与训练参考"
-        backHref="/dashboard"
       />
 
       <AIStudentReportView

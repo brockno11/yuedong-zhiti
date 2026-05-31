@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import type { FitnessItemId, BodyFeeling } from "@/lib/types";
 const PHYSICAL_CATEGORIES = ["speed", "strength", "endurance"];
 
 export function RecordWizard() {
-  const router = useRouter();
   const [step, setStep] = useState(0);
   const [selectedItems, setSelectedItems] = useState<FitnessItemId[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -28,6 +26,7 @@ export function RecordWizard() {
     discomfortNotes: "",
   });
   const [isSaving, setIsSaving] = useState(false);
+  const savedRef = useRef(false);
 
   const hasPhysicalItems = selectedItems.some((id) => {
     const item = FITNESS_ITEMS.find((i) => i.id === id);
@@ -107,13 +106,24 @@ export function RecordWizard() {
     }
 
     localStorage.removeItem("ai_analysis_cache");
-    router.push("/dashboard");
+    // 保存完成，不自动跳转 — 让用户在完成页选择下一步
+    setIsSaving(false);
+    savedRef.current = true;
   };
+
+  // 到达完成步骤时自动保存（savedRef 防止重复执行）
+  const completionStep = hasPhysicalItems ? 3 : 2;
+  useEffect(() => {
+    if (step === completionStep && !savedRef.current && !isSaving) {
+      handleComplete();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, completionStep, isSaving]);
 
   return (
     <>
       <Link
-        href="/"
+        href="/dashboard"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -181,13 +191,7 @@ export function RecordWizard() {
             <RecordComplete
               itemCount={selectedItems.length}
               hasPhysicalItems={hasPhysicalItems}
-              onViewDashboard={handleComplete}
             />
-            {isSaving && (
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                正在保存到本地数据库...
-              </p>
-            )}
           </CardContent>
         ) : null}
       </Card>

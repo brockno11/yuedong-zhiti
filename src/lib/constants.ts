@@ -163,8 +163,7 @@ export const RECOVERY_OPTIONS = [
 // ---- 导航配置 ----
 export const STUDENT_NAV_ITEMS = [
   { href: "/dashboard", label: "首页", icon: "Home" },
-  { href: "/record", label: "记录", icon: "PlusCircle" },
-  { href: "/dashboard", label: "画像", icon: "BarChart3" },
+  { href: "/portrait", label: "画像", icon: "BarChart3" },
   { href: "/ai-guide", label: "AI指导", icon: "Sparkles" },
   { href: "/profile", label: "我的", icon: "User" },
 ] as const;
