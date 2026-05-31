@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-05-31 | 版本：MVP 0.4.0 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 15/15
+> 生成日期：2026-05-31 | 版本：MVP 0.4.2 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 20/20
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
@@ -86,38 +86,48 @@
 
 ---
 
-## 4. 完整路由表（16 个路由 + 7 个 API 端点）
+## 4. 完整路由表（20 个路由 + 11 个 API 端点）
 
-### 前端页面路由
+### 前端页面路由 — 学生端（5 个页面，4 Tab 底部导航）
+
+| # | 路由 | 页面类型 | 功能描述 | 导航 |
+|---|------|---------|---------|------|
+| 1 | `/dashboard` | Server | 学生首页：问候+CTA"开始记录"+状态简卡+最近记录+快捷入口（画像/AI） | Tab: 首页 |
+| 2 | `/portrait` | Server | 体质画像页：综合评分+雷达图+趋势图+优势/待提升+记录新数据入口 | Tab: 画像 |
+| 3 | `/ai-guide` | Server | AI 指导：体质画像详情+薄弱项分析+训练计划+安全提醒+报告历史 | Tab: AI指导 |
+| 4 | `/profile` | Server | 个人中心：基础信息+身体数据+健康关注+隐私说明+退出登录 | Tab: 我的 |
+| 5 | `/record` | Client | 体测记录向导（不在导航中，通过首页CTA或画像页入口进入）| 无Tab |
+
+### 前端页面路由 — 教师端 + 系统页
 
 | # | 路由 | 页面类型 | 功能描述 | 布局组件 |
 |---|------|---------|---------|---------|
 | 1 | `/` | Server | 登录首页：角色切换（学生/教师）+ 账号下拉选择 + 密码输入 + 品牌文案 | 无导航 |
-| 2 | `/dashboard` | Server | 学生首页：体质画像仪表盘（雷达图、趋势图、洞察、优劣项目） | AppShell + IosLiquidNav |
-| 3 | `/onboarding` | Client | 5 步引导式信息填写（基础信息→身体数据→运动目标→运动基础→健康状况） | AppShell + IosLiquidNav |
-| 4 | `/record` | Client | 体测记录向导（项目选择→成绩输入→逐项体感→完成），动态步骤 | AppShell + IosLiquidNav |
-| 5 | `/ai-guide` | Server | AI 智能指导：体质画像+薄弱项分析+训练计划+安全提醒+报告历史 | AppShell + IosLiquidNav |
-| 6 | `/profile` | Server | 学生个人中心：基础信息+身体数据+健康关注+隐私说明+退出登录 | AppShell + IosLiquidNav |
-| 7 | `/teacher` | Server | 教师端班级总览：统计卡+薄弱项排行图+等级环形图+重点关注+教学建议 | AppShell + DesktopSidebar |
-| 8 | `/teacher/students` | Server | 学生画像列表：搜索过滤（编号/姓名/年级/性别/关注）+ 评分等级 | AppShell + DesktopSidebar |
-| 9 | `/teacher/students/[id]` | Server | 学生详情页：基础信息+体测记录表+雷达图+AI 报告审核状态 | AppShell + DesktopSidebar |
-| 10 | `/teacher/report` | Server | AI 班级报告：整体分析+共性薄弱项+分层指导+课堂重点+教学建议 | AppShell + DesktopSidebar |
-| 11 | `/teacher/review` | Server | 审核中心：待审核/已处理 Tab + 通过/修改/退回操作 + 内联反馈 | AppShell + DesktopSidebar |
-| 12 | `/teacher/profile` | Client | 教师个人中心：教师信息+班级统计+快捷入口+AI 说明+退出登录 | AppShell + DesktopSidebar |
+| 2 | `/onboarding` | Client | 5 步引导式信息填写 | AppShell + IosLiquidNav |
+| 7 | `/teacher` | Server | 班级总览：统计卡+薄弱项排行+等级环形图+重点关注+今日建议 | AppShell + DesktopSidebar |
+| 8 | `/teacher/class` | Server | 班级管理：班级列表+学生管理+添加学生表单+自动账号生成 | AppShell + DesktopSidebar |
+| 9 | `/teacher/students` | Server | 学生画像列表：搜索过滤（编号/姓名/年级/性别/关注） | AppShell + DesktopSidebar |
+| 10 | `/teacher/students/[id]` | Server | 学生详情页：基础信息+体测记录表+雷达图+AI报告审核 | AppShell + DesktopSidebar |
+| 11 | `/teacher/report` | Server | AI 班级报告：整体分析+共性薄弱项+分层指导+教学建议 | AppShell + DesktopSidebar |
+| 12 | `/teacher/review` | Server | 审核中心：待审核/已处理+通过/退回+内联反馈 | AppShell + DesktopSidebar |
+| 13 | `/teacher/profile` | Client | 教师个人中心：信息+班级统计+快捷入口+退出登录 | AppShell + DesktopSidebar |
 
 ### API 端点
 
 | # | 方法 | 路由 | 功能 | 请求体 | 返回 |
 |---|------|------|------|--------|------|
-| 1 | POST | `/api/auth/login` | 演示登录验证 | `{role, username, password}` | `{data: {...}}` 或 401 |
-| 2 | POST | `/api/ai` | AI 分析生成 | `{type, studentId, studentData, ...}` | AI 报告 JSON + `_mode`, `_fallback` |
+| 1 | POST | `/api/auth/login` | 演示登录验证 | `{role, username, password}` | `{data: {...}}` |
+| 2 | POST | `/api/ai` | AI 分析生成 | `{type, studentId, ...}` | AI报告JSON + `_mode` |
 | 3 | GET | `/api/students` | 获取所有学生列表 | — | `StudentProfile[]` |
-| 4 | GET | `/api/students/[id]` | 获取单个学生+体测记录 | — | `{student, records}` |
-| 5 | GET | `/api/fitness-records` | 获取体测记录列表 | query: `?studentId=` | `FitnessRecord[]` |
-| 6 | POST | `/api/fitness-records` | 创建新体测记录 | `{studentId, items[], bodyFeeling}` | 创建的 `FitnessRecord` |
-| 7 | GET | `/api/class-summary` | 班级统计摘要 | — | `ClassSummaryWithLevels` |
-| 8 | GET | `/api/reviews` | 获取审核列表 | — | `TeacherReview[]` |
-| 9 | PATCH | `/api/reviews/[id]` | 更新审核状态 | `{status, teacherNotes, modifications}` | 更新的 `TeacherReview` |
+| 4 | GET | `/api/students/[id]` | 获取学生详情+体测记录 | — | `{student, records}` |
+| 5 | GET/POST | `/api/fitness-records` | 读/写体测记录 | `{studentId, items[]}` | `FitnessRecord` |
+| 6 | GET | `/api/class-summary` | 班级统计摘要 | — | `ClassSummary` |
+| 7 | GET | `/api/reviews` | 获取审核列表 | — | `TeacherReview[]` |
+| 8 | PATCH | `/api/reviews/[id]` | 更新审核状态 | `{status, notes}` | `TeacherReview` |
+| 9 | GET/POST | `/api/classes` | 列出/创建班级 | `{name, grade}` | `ClassGroup` |
+| 10 | GET | `/api/classes/[id]` | 班级详情+学生列表 | — | `ClassWithStudents` |
+| 11 | POST | `/api/classes/[id]/students` | 添加学生(自动生成账号) | `{name, gender, ...}` | `{studentId, password}` |
+| 12 | PATCH/DELETE | `/api/classes/[id]/students/[sid]` | 编辑/删除学生 | — | — |
 
 ---
 
@@ -149,29 +159,34 @@
 - 未登录访问受保护页面 → 显示骨架屏 → `router.replace("/")`
 - 已登录访问 `/` → `router.replace("/dashboard" 或 "/teacher")`
 
-### 5.2 体质画像仪表盘 `/dashboard`
+### 5.2 学生首页 `/dashboard`（v0.4.2 轻量化）
 
-**组件**：`src/app/(student)/dashboard/page.tsx`（Server Component）
+**组件**：`src/app/(student)/dashboard/page.tsx`（Server Component）+ `dashboard-hero.tsx`（Client Component）
 **数据源**：Prisma 数据库（通过 `data-service.ts`）
-**展示学生**：当前固定展示 S001（演示模式）
+**导航配置**：底部导航 Tab "首页"，无返回按钮
 
-**页面布局（移动端单列 → 桌面端 5 列网格）**：
-- PageHeader：标题"体质画像" + 副标题"学生A · 高二下 · 2025春季"
-- 核心指标区（lg:grid-cols-3）：
-  - 综合评分卡（col-span-1）：4xl 大字 + "分" + BMI 状态
-  - 本期洞察卡（col-span-2）：AI 风格评语 + 优势/待提升标签
-- 图表区（lg:grid-cols-5）：
-  - 体质雷达图（col-span-3）：5 维（速度/力量/耐力/柔韧/身体形态），实线=个人，虚线=班级均值
-  - 趋势图+AI 入口（col-span-2）：50 米跑趋势折线图 + AI 指导入口卡片
-- 优势/待提升双列卡片（sm:grid-cols-2）
+**页面布局（移动端单列，max-w-lg）**：
+- **DashboardHero**：动态问候 + 姓名 + 评分等级 + 状态一句话 + "开始记录"大按钮
+- **状态简卡**（3列）：综合评分 / BMI 状态 / 待提升项目数
+- **最近记录摘要**：最近一次体测的项目名 + 成绩 badge
+- **本周关注**：最弱维度的轻量提示
+- **快捷入口**（2列）：查看体质画像 → `/portrait` · 查看 AI 指导 → `/ai-guide`
 
-**数据计算**：
-- 综合评分 = 所有项目得分的平均值（Math.round）
-- 雷达图数据 = 从 `latestRecord.items` 中提取对应项目的 score
-- 趋势数据 = 从 `allRecords` 中提取 50m_run 的历史值（最多 3 条）
+> 📌 首页不展示雷达图、趋势图等完整数据分析，这些内容已迁移到 `/portrait`。
 
-**空状态处理**：
-- 无学生或无记录时显示 EmptyState + 链接到 `/record`
+### 5.2a 体质画像页 `/portrait`（v0.4.2 新增）
+
+**组件**：`src/app/(student)/portrait/page.tsx`（Server Component）
+**数据源**：Prisma 数据库（通过 `data-service.ts`）
+**导航配置**：底部导航 Tab "画像"，无返回按钮
+
+**页面布局**：
+- PageHeader：标题"体质画像" + 副标题"学生A · 年级 · 学期"
+- 核心指标区（lg:grid-cols-3）：综合评分卡 + 本期洞察卡
+- 体质雷达图（5维，个人 vs 班级均值）
+- 50米跑趋势图（≥2条记录时显示）
+- 优势/待提升项目双列卡片
+- 底部"记录新数据"按钮 → `/record`
 
 ### 5.3 引导式信息填写 `/onboarding`
 

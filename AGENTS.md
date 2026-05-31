@@ -55,6 +55,23 @@
    - 新增页面功能 → 更新 `PROJECT_HANDOFF.md` §5/§6 功能详解 + §14 完成度
 4. 提交前运行 `npm run lint`（零警告）
 
+### 导航规则（v0.4.2+）
+
+**学生端底部导航**：
+- 4 个入口：`/dashboard`(首页) / `/portrait`(画像) / `/ai-guide`(AI指导) / `/profile`(我的)
+- `/record` 不在底部导航中，只能通过首页 CTA 或画像页入口进入
+- 主 Tab 页（dashboard/portrait/ai-guide/profile）不显示 PageHeader 的 backHref
+- 详情/流程页（record, teacher/students/[id] 等）可显示返回按钮
+
+**教师端导航**：
+- 5 个入口：`/teacher`(总览) / `/teacher/class`(班级) / `/teacher/report`(报告) / `/teacher/review`(审核) / `/teacher/profile`(我的)
+- 桌面端使用 DesktopSidebar，移动端使用 IosLiquidNav
+
+**导航高亮规则**：
+- 仅当前路由对应的导航项高亮
+- 使用 `pathname.startsWith(href)` 判断（首页 `/teacher` 用 `===`）
+- 未选中项统一灰色 `text-muted-foreground/60`
+
 ### 禁止操作（硬性红线）
 - ❌ 不得删除文件后不更新文档
 - ❌ 不得修改 `.env.local` 中的 API Key
@@ -64,6 +81,7 @@
 - ❌ 不得在 AI prompt 或 UI 中使用医学化表达（"诊断""治疗""处方""肥胖""差"）
 - ❌ 不得同时运行 `npm run build` 和 `npm run dev`（会损坏 `.next` 缓存）
 - ❌ 不得删除 `.claude/skills/` 下的任何 Skill 文件
+- ❌ 不得在底部导航中添加超过 5 个 Tab 入口（学生端 4，教师端 5）
 
 ---
 
