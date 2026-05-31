@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { calculateRecordCompleteness } from "@/lib/scoring";
-import { Clock, GraduationCap, Dumbbell, Sparkles, BarChart3, PlusCircle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, GraduationCap, Dumbbell, Sparkles, BarChart3, PlusCircle, Trash2, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import Link from "next/link";
+import { RecordEditDialog } from "@/components/features/record-edit-dialog";
 import type { FitnessRecord } from "@/lib/types";
 
 function itemName(id: string) { return FITNESS_ITEMS.find(f => f.id === id)?.name ?? id; }
@@ -33,6 +34,7 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
   const [dailyMonthFilter, setDailyMonthFilter] = useState<string>("全部月份");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [editingRecord, setEditingRecord] = useState<FitnessRecord | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [localRecords, setLocalRecords] = useState(records);
 
@@ -178,15 +180,21 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
                       <Link href="/portrait"><Button variant="outline" size="sm" className="h-8 gap-1 text-xs"><BarChart3 className="h-3.5 w-3.5" />画像</Button></Link>
                       <Link href="/ai-guide"><Button variant="outline" size="sm" className="h-8 gap-1 text-xs"><Sparkles className="h-3.5 w-3.5" />AI分析</Button></Link>
 
+                      {/* 编辑按钮 */}
+                      <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs ml-auto"
+                        onClick={() => setEditingRecord(record)} aria-label={isDaily ? "编辑记录" : "申请修改"}>
+                        <Pencil className="h-3 w-3" />{isDaily ? "编辑" : "申请修改"}
+                      </Button>
+
                       {isDaily && confirmId === record.id ? (
-                        <div className="flex gap-1 ml-auto">
+                        <div className="flex gap-1">
                           <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => handleDelete(record.id)} disabled={deletingId === record.id}>
                             {deletingId === record.id ? "删除中..." : "确认删除"}
                           </Button>
                           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setConfirmId(null)}>取消</Button>
                         </div>
                       ) : isDaily ? (
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-auto text-muted-foreground hover:text-destructive"
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                           onClick={() => setConfirmId(record.id)} aria-label="删除这条日常训练记录">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -203,6 +211,15 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
       <div className="flex justify-center pt-2">
         <Link href="/record"><Button variant="outline" size="sm" className="gap-1"><PlusCircle className="h-4 w-4" />新增记录</Button></Link>
       </div>
+
+      {/* 编辑弹窗 */}
+      {editingRecord && (
+        <RecordEditDialog
+          record={editingRecord}
+          onClose={() => setEditingRecord(null)}
+          onSaved={() => { setEditingRecord(null); router.refresh(); }}
+        />
+      )}
     </div>
   );
 }
