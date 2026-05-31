@@ -874,10 +874,10 @@ function BatchHistorySection({
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id); }}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
                       aria-label="删除报告"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -890,8 +890,10 @@ function BatchHistorySection({
       {confirmDeleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmDeleteId(null)}>
           <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确认删除</p>
-            <p className="mt-2 text-sm text-muted-foreground">删除后将无法恢复。对应审核记录也会同步删除。</p>
+            <p className="text-base font-semibold">确定删除这份 AI 报告吗？</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              此操作不会删除原始体测或训练记录，但删除后无法从历史报告中查看。
+            </p>
             <div className="mt-5 flex gap-3">
               <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmDeleteId(null)} disabled={deleting}>取消</Button>
               <Button variant="destructive" className="h-11 flex-1" onClick={() => handleDelete(confirmDeleteId)} disabled={deleting}>

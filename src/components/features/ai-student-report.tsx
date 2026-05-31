@@ -314,12 +314,18 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
       const res = await fetch(`/api/reports/${reportId}`, { method: "DELETE" });
       if (res.ok) {
         setDeleteConfirmId(null);
+        // If deleting the currently viewed report, return to center
+        if (viewingReport?.id === reportId) {
+          setViewingReport(null);
+          setViewingItemId(null);
+          setSelectedBatchId(null);
+        }
         router.refresh();
       }
     } finally {
       setDeleting(false);
     }
-  }, [router]);
+  }, [router, viewingReport]);
 
   // 监听底部导航 re-click 事件，重置报告详情视图
   useEffect(() => {
@@ -599,9 +605,9 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDeleteConfirmId(null)}>
           <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确认删除</p>
+            <p className="text-base font-semibold">确定删除这份 AI 报告吗？</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              删除后将无法恢复。该报告对应的教师审核记录也会同步删除。
+              此操作不会删除原始体测或训练记录，但删除后无法从历史报告中查看。
             </p>
             <div className="mt-5 flex gap-3">
               <Button
