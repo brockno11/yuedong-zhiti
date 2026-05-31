@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import type { FitnessRecord } from "@/lib/types";
 
@@ -62,9 +61,9 @@ export function RecordEditDialog({ record, onClose, onSaved }: RecordEditDialogP
           <h3 className="text-base font-semibold">
             {isOfficial ? "申请修改正式体测" : "编辑日常训练记录"}
           </h3>
-          <Badge variant={isOfficial ? "excellent" : "secondary"} className="text-[10px]">
-            {isOfficial ? "正式体测" : "日常训练"}
-          </Badge>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-muted text-muted-foreground" aria-label="关闭">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
 
         {isOfficial && (
