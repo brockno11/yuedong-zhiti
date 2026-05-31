@@ -24,7 +24,7 @@ import {
 } from "@/lib/server/db-mappers";
 
 const DEFAULT_CLASS_ID = "class-2025-spring-02-01";
-const DEFAULT_SEMESTER = "高二下 · 2025春季";
+const DEFAULT_SEMESTER = "高二下 · 2026春季";
 
 type LoginInput = {
   role: "student" | "teacher";

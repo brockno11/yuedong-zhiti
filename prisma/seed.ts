@@ -40,14 +40,14 @@ async function main() {
 
   await prisma.assessmentBatch.upsert({
     where: { id: OFFICIAL_BATCH_ID },
-    update: { name: "2025春季学期首测", academicYear: "2024-2025", semester: "春季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
-    create: { id: OFFICIAL_BATCH_ID, name: "2025春季学期首测", academicYear: "2024-2025", semester: "春季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
+    update: { name: "2026春季学期首测", academicYear: "2025-2026", semester: "春季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
+    create: { id: OFFICIAL_BATCH_ID, name: "2026春季学期首测", academicYear: "2025-2026", semester: "春季", round: 1, type: "official", classId: CLASS_ID, status: "archived" },
   });
 
   await prisma.assessmentBatch.upsert({
     where: { id: ACTIVE_BATCH_ID },
-    update: { name: "2025春季日常训练", academicYear: "2024-2025", semester: "春季", round: 1, type: "daily", classId: CLASS_ID, status: "active" },
-    create: { id: ACTIVE_BATCH_ID, name: "2025春季日常训练", academicYear: "2024-2025", semester: "春季", round: 1, type: "daily", classId: CLASS_ID, status: "active" },
+    update: { name: "2026春季日常训练", academicYear: "2025-2026", semester: "春季", round: 1, type: "daily", classId: CLASS_ID, status: "active" },
+    create: { id: ACTIVE_BATCH_ID, name: "2026春季日常训练", academicYear: "2025-2026", semester: "春季", round: 1, type: "daily", classId: CLASS_ID, status: "active" },
   });
 
   await prisma.userAccount.deleteMany({
@@ -186,7 +186,7 @@ async function main() {
   await prisma.fitnessRecord.upsert({
     where: { id: PARTIAL_RECORD_ID_1 },
     update: {
-      studentId: "S018", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      studentId: "S018", date: new Date("2026-03-15T10:00:00Z"), semester: "高二下 · 2026春季",
       batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
       fatigueLevel: 4, recoveryStatus: "normal", hasSoreness: false, sorenessAreasJson: "[]", hasDiscomfort: false, discomfortNotes: "",
       items: {
@@ -198,7 +198,7 @@ async function main() {
       },
     },
     create: {
-      id: PARTIAL_RECORD_ID_1, studentId: "S018", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      id: PARTIAL_RECORD_ID_1, studentId: "S018", date: new Date("2026-03-15T10:00:00Z"), semester: "高二下 · 2026春季",
       batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
       fatigueLevel: 4, recoveryStatus: "normal", hasSoreness: false, sorenessAreasJson: "[]", hasDiscomfort: false, discomfortNotes: "",
       items: {
@@ -215,7 +215,7 @@ async function main() {
   await prisma.fitnessRecord.upsert({
     where: { id: PARTIAL_RECORD_ID_2 },
     update: {
-      studentId: "S019", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      studentId: "S019", date: new Date("2026-03-15T10:00:00Z"), semester: "高二下 · 2026春季",
       batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
       fatigueLevel: 6, recoveryStatus: "quick", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部"]), hasDiscomfort: false, discomfortNotes: "",
       items: {
@@ -227,7 +227,7 @@ async function main() {
       },
     },
     create: {
-      id: PARTIAL_RECORD_ID_2, studentId: "S019", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      id: PARTIAL_RECORD_ID_2, studentId: "S019", date: new Date("2026-03-15T10:00:00Z"), semester: "高二下 · 2026春季",
       batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
       fatigueLevel: 6, recoveryStatus: "quick", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部"]), hasDiscomfort: false, discomfortNotes: "",
       items: {
@@ -239,6 +239,19 @@ async function main() {
     },
   });
 
+  // S001 日常训练记录（2026年数据）
+  for (const dr of [
+    { id: "R-D01", date: "2026-05-15T08:00:00Z", fatigue: 7, recovery: "normal" as const, soreness: true, items: [{ id: "R-D01-50m_run", itemId: "50m_run" as const, value: 7.6, score: 88, grade: "good" as const }, { id: "R-D01-1000m_run", itemId: "1000m_run" as const, value: 242, score: 78, grade: "good" as const }] },
+    { id: "R-D02", date: "2026-05-22T07:30:00Z", fatigue: 5, recovery: "quick" as const, soreness: false, items: [{ id: "R-D02-50m_run", itemId: "50m_run" as const, value: 7.4, score: 90, grade: "excellent" as const }] },
+    { id: "R-D03", date: "2026-06-01T08:15:00Z", fatigue: 4, recovery: "quick" as const, soreness: false, items: [{ id: "R-D03-pull_up", itemId: "pull_up" as const, value: 8, score: 82, grade: "good" as const }, { id: "R-D03-sit_and_reach", itemId: "sit_and_reach" as const, value: 14, score: 78, grade: "good" as const }] },
+  ]) {
+    await prisma.fitnessRecord.upsert({
+      where: { id: dr.id },
+      update: { studentId: "S001", date: new Date(dr.date), semester: "高二下 · 2026春季", batchId: ACTIVE_BATCH_ID, recordType: "daily_training", fatigueLevel: dr.fatigue, recoveryStatus: dr.recovery, hasSoreness: dr.soreness, sorenessAreasJson: "[]", hasDiscomfort: false, discomfortNotes: "", items: { deleteMany: {}, create: dr.items } },
+      create: { id: dr.id, studentId: "S001", date: new Date(dr.date), semester: "高二下 · 2026春季", batchId: ACTIVE_BATCH_ID, recordType: "daily_training", fatigueLevel: dr.fatigue, recoveryStatus: dr.recovery, hasSoreness: dr.soreness, sorenessAreasJson: "[]", hasDiscomfort: false, discomfortNotes: "", items: { create: dr.items } },
+    });
+  }
+
   await prisma.aIReport.upsert({
     where: { id: mockAIStudentReport.id },
     update: {
@@ -249,8 +262,8 @@ async function main() {
       status: "pending",
       version: mockAIStudentReport.version,
       sourceRecordId: "R001",
-      sourceRecordDate: new Date("2025-03-15T10:00:00Z"),
-      sourceSummary: "高二下 · 2025春季综合体测记录",
+      sourceRecordDate: new Date("2026-03-15T10:00:00Z"),
+      sourceSummary: "高二下 · 2026春季综合体测记录",
       generatedAt: new Date(mockAIStudentReport.generatedAt),
     },
     create: {
@@ -262,8 +275,8 @@ async function main() {
       status: "pending",
       version: mockAIStudentReport.version,
       sourceRecordId: "R001",
-      sourceRecordDate: new Date("2025-03-15T10:00:00Z"),
-      sourceSummary: "高二下 · 2025春季综合体测记录",
+      sourceRecordDate: new Date("2026-03-15T10:00:00Z"),
+      sourceSummary: "高二下 · 2026春季综合体测记录",
       generatedAt: new Date(mockAIStudentReport.generatedAt),
     },
   });
@@ -352,7 +365,7 @@ function createRecordForStudent(
     id: `R${String(100 + index).padStart(3, "0")}`,
     studentId,
     date: new Date(Date.UTC(2025, 2, 16, 8, index * 6)).toISOString(),
-    semester: `${grade}下 · 2025春季`,
+    semester: `${grade}下 · 2026春季`,
     batchId: undefined,
     recordType: "official_test" as const,
     items,

@@ -5,8 +5,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
   {
     id: "R001",
     studentId: "S001",
-    date: "2025-03-15T10:00:00Z",
-    semester: "高二下 · 2025春季",
+    date: "2026-03-15T10:00:00Z",
+    semester: "高二下 · 2026春季",
     batchId: undefined,
     recordType: "official_test" as const,
     items: [
@@ -29,8 +29,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
   {
     id: "R002",
     studentId: "S002",
-    date: "2025-03-15T10:15:00Z",
-    semester: "高二下 · 2025春季",
+    date: "2026-03-15T10:15:00Z",
+    semester: "高二下 · 2026春季",
     batchId: undefined,
     recordType: "official_test" as const,
     items: [
@@ -53,8 +53,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
   {
     id: "R003",
     studentId: "S003",
-    date: "2025-03-15T10:30:00Z",
-    semester: "高二下 · 2025春季",
+    date: "2026-03-15T10:30:00Z",
+    semester: "高二下 · 2026春季",
     batchId: undefined,
     recordType: "official_test" as const,
     items: [
@@ -77,8 +77,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
   {
     id: "R004",
     studentId: "S004",
-    date: "2025-03-15T10:45:00Z",
-    semester: "高二下 · 2025春季",
+    date: "2026-03-15T10:45:00Z",
+    semester: "高二下 · 2026春季",
     batchId: undefined,
     recordType: "official_test" as const,
     items: [
@@ -101,8 +101,8 @@ export const mockFitnessRecords: FitnessRecord[] = [
   {
     id: "R005",
     studentId: "S005",
-    date: "2025-03-15T11:00:00Z",
-    semester: "高二下 · 2025春季",
+    date: "2026-03-15T11:00:00Z",
+    semester: "高二下 · 2026春季",
     batchId: undefined,
     recordType: "official_test" as const,
     items: [
@@ -126,7 +126,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R006",
     studentId: "S001",
     date: "2024-10-10T10:00:00Z",
-    semester: "高二上 · 2024秋季",
+    semester: "高二上 · 2025秋季",
     batchId: undefined,
     recordType: "official_test" as const,
     items: [
@@ -150,7 +150,7 @@ export const mockFitnessRecords: FitnessRecord[] = [
     id: "R007",
     studentId: "S002",
     date: "2024-10-10T10:15:00Z",
-    semester: "高二上 · 2024秋季",
+    semester: "高二上 · 2025秋季",
     batchId: undefined,
     recordType: "official_test" as const,
     items: [
