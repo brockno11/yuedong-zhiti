@@ -10,8 +10,8 @@ import { calculateRecordCompleteness } from "@/lib/scoring";
 import type { StudentReportHistoryItem } from "@/lib/server/db-mappers";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import {
-  Brain, Sparkles, Target, ShieldCheck, Clock, CheckCircle2,
-  AlertTriangle, History, ChevronDown, ChevronUp, PlusCircle, BarChart3, TrendingUp, TrendingDown, Minus,
+  Brain, Sparkles, Target, ShieldCheck, Clock, CheckCircle2, AlertTriangle,
+  History, ChevronDown, ChevronUp, PlusCircle, TrendingUp, TrendingDown, Minus, Dumbbell, GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
 import type { AIStudentReport, FitnessRecord, StudentProfile } from "@/lib/types";
@@ -19,68 +19,28 @@ import type { AIStudentReport, FitnessRecord, StudentProfile } from "@/lib/types
 const inFlightRequests = new Map<string, Promise<{ data: unknown; mode: string; fallback: boolean }>>();
 const CLIENT_AI_TIMEOUT_MS = 35000;
 
-interface AIStudentReportProps {
-  studentId?: string;
-  student: StudentProfile | null;
-  records: FitnessRecord[];
-  reportHistory: StudentReportHistoryItem[];
-}
+interface AIStudentReportProps { studentId?: string; student: StudentProfile | null; records: FitnessRecord[]; reportHistory: StudentReportHistoryItem[]; }
 
-const MALE_ITEMS = ["vital_capacity", "50m_run", "standing_long_jump", "sit_and_reach", "pull_up", "1000m_run"];
-const FEMALE_ITEMS = ["vital_capacity", "50m_run", "standing_long_jump", "sit_and_reach", "sit_up", "800m_run"];
+const MALE_ITEMS = ["vital_capacity","50m_run","standing_long_jump","sit_and_reach","pull_up","1000m_run"];
+const FEMALE_ITEMS = ["vital_capacity","50m_run","standing_long_jump","sit_and_reach","sit_up","800m_run"];
 
 function itemName(id: string) { return FITNESS_ITEMS.find(f => f.id === id)?.name ?? id; }
-
-function findLatestItemReport(history: StudentReportHistoryItem[], itemId: string) {
-  return history.find(h => {
-    if (!h.sourceSummary) return false;
-    return h.sourceSummary.includes(itemName(itemId)) || h.sourceSummary.includes(itemId);
-  }) ?? null;
-}
-
-function findLastNItemRecords(records: FitnessRecord[], itemId: string, n: number) {
-  return records.filter(r => r.items.some(i => i.itemId === itemId)).slice(0, n);
-}
-
-function itemTrendLabel(values: number[], higherIsBetter: boolean) {
-  if (values.length < 2) return null;
-  const [latest, prev] = values;
-  if (latest === prev) return { label: "基本稳定", icon: Minus };
-  const improved = higherIsBetter ? latest > prev : latest < prev;
-  return improved ? { label: "提升中", icon: TrendingUp } : { label: "需关注", icon: TrendingDown };
-}
-
-function reportTypeLabel(t?: string) {
-  if (t === "item_report") return "单项专项";
-  if (t === "record_report") return "本次记录分析";
-  if (t === "batch_report") return "综合体质画像";
-  return "";
-}
-
-function formatDisplayTime(value: string | null): string {
-  if (!value) return "";
-  const d = new Date(value); if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
+function findLatestItemReport(history: StudentReportHistoryItem[], itemId: string) { return history.find(h => h.sourceSummary?.includes(itemName(itemId)) || h.sourceSummary?.includes(itemId)) ?? null; }
+function reportTypeLabel(t?: string) { if (t === "item_report") return "专项评估"; if (t === "record_report") return "记录分析"; if (t === "batch_report") return "正式体测分析"; return ""; }
+function formatTime(v: string | null): string { if (!v) return ""; const d = new Date(v); if (Number.isNaN(d.getTime())) return v; return d.toLocaleString("zh-CN",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+function itemTrendLabel(values: number[], higher: boolean) { if (values.length < 2) return null; const [l,p] = values; if (l===p) return {label:"基本稳定",icon:Minus}; return higher ? (l>p?{label:"提升中",icon:TrendingUp}:{label:"需关注",icon:TrendingDown}) : (l<p?{label:"提升中",icon:TrendingUp}:{label:"需关注",icon:TrendingDown}); }
 
 // ===== 主组件 =====
 export function AIStudentReportView({ studentId, student, records, reportHistory }: AIStudentReportProps) {
   const latestRecord = records[0] ?? null;
-  const genderItems: readonly string[] = student?.gender === "female" ? FEMALE_ITEMS : MALE_ITEMS;
+  const genderItems = student?.gender === "female" ? FEMALE_ITEMS : MALE_ITEMS;
+  const officialRecords = useMemo(() => records.filter(r => r.recordType !== "daily_training"), [records]);
+  const dailyRecords = useMemo(() => records.filter(r => r.recordType === "daily_training"), [records]);
+  const daily7d = useMemo(() => dailyRecords.filter(r => (Date.now()-new Date(r.date).getTime()) < 7*86400000).length, [dailyRecords]);
+  const daily30d = useMemo(() => dailyRecords.filter(r => (Date.now()-new Date(r.date).getTime()) < 30*86400000).length, [dailyRecords]);
+  const batchItems = useMemo(() => { const s=new Set<string>(); for(const r of officialRecords) for(const i of r.items) s.add(i.itemId); return Array.from(s); }, [officialRecords]);
+  const completeness = useMemo(() => calculateRecordCompleteness(batchItems, student?.gender ?? "male"), [batchItems, student?.gender]);
 
-  // 所有已录项目的聚合（同一批次所有记录的去重合并）
-  const batchItems = useMemo(() => {
-    const seen = new Set<string>();
-    const allItemIds: string[] = [];
-    for (const r of records) for (const i of r.items) { if (!seen.has(i.itemId)) { seen.add(i.itemId); allItemIds.push(i.itemId); } }
-    return allItemIds;
-  }, [records]);
-  const batchCompleteness = useMemo(() =>
-    calculateRecordCompleteness(batchItems, student?.gender ?? "male"),
-    [batchItems, student?.gender]);
-  const canGenBatch = batchCompleteness.completionRate >= 70;
-
-  // 状态
   const [viewingReport, setViewingReport] = useState<AIStudentReport | null>(null);
   const [viewingItemId, setViewingItemId] = useState<string | null>(null);
   const [status, setStatus] = useState<AIStatus>("idle");
@@ -89,249 +49,122 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
   const [historyOpen, setHistoryOpen] = useState(false);
   const mountedRef = useRef(true);
 
-  // ===== 生成报告 =====
   const generateReport = useCallback(async (opts: { itemId?: string; reportType?: string }) => {
     if (!student || !latestRecord) return;
     const targetId = opts.itemId ?? null;
-    setStatus("analyzing");
-    setGeneratingItemId(targetId);
-    mountedRef.current = true;
-
-    const cacheKeyParts = [studentId, opts.reportType ?? "overall"];
-    if (targetId) cacheKeyParts.push(targetId);
-    const cacheKey = cacheKeyParts.join("-");
-
-    if (inFlightRequests.has(cacheKey)) {
-      try {
-        const result = await inFlightRequests.get(cacheKey)!;
-        if (mountedRef.current) { setViewingReport(result.data as AIStudentReport); setViewingItemId(targetId); setStatus("complete"); }
-      } catch { if (mountedRef.current) setStatus("fallback"); }
-      setGeneratingItemId(null);
-      return;
-    }
-
-    const requestPromise = (async () => {
-      const sourceSummary = buildRecordSummary(latestRecord, targetId);
-      const ctrl = new AbortController();
-      const tid = window.setTimeout(() => ctrl.abort(), CLIENT_AI_TIMEOUT_MS);
-      const body: Record<string, unknown> = {
-        type: "student-report", studentId,
-        sourceRecordId: latestRecord.id, sourceRecordDate: latestRecord.date, sourceSummary,
-        studentData: {
-          student, currentRecord: latestRecord, previousRecords: records.slice(1, 4),
-          reportType: opts.reportType ?? (latestRecord.items.length <= 1 ? "item_report" : "record_report"),
-          targetItemId: targetId,
-          completeness: batchCompleteness ? { recordedCount: batchCompleteness.recordedCount, expectedCount: batchCompleteness.expectedCount, completionRate: batchCompleteness.completionRate } : undefined,
-        },
-      };
-      const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal, body: JSON.stringify(body) }).finally(() => window.clearTimeout(tid));
+    setStatus("analyzing"); setGeneratingItemId(targetId); mountedRef.current = true;
+    const cacheKey = [studentId, opts.reportType ?? "overall", targetId].join("-");
+    if (inFlightRequests.has(cacheKey)) { try { const r = await inFlightRequests.get(cacheKey)!; if (mountedRef.current) { setViewingReport(r.data as AIStudentReport); setViewingItemId(targetId); setStatus("complete"); } } catch { if (mountedRef.current) setStatus("fallback"); } setGeneratingItemId(null); return; }
+    const rp = (async () => {
+      const ss = `AI分析 · ${formatTime(latestRecord.date)}`;
+      const ctrl = new AbortController(); const tid = window.setTimeout(() => ctrl.abort(), CLIENT_AI_TIMEOUT_MS);
+      const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal, body: JSON.stringify({
+        type: "student-report", studentId, sourceRecordId: latestRecord.id, sourceRecordDate: latestRecord.date, sourceSummary: ss,
+        studentData: { student, currentRecord: latestRecord, previousRecords: records.slice(1,4), reportType: opts.reportType || (latestRecord.items.length <= 1 ? "item_report" : "record_report"), targetItemId: targetId, analysisScope: opts.reportType === "batch_report" ? "formal_overall" : targetId ? "item_assessment" : "record_report", completeness: completeness ? { recordedCount: completeness.recordedCount, expectedCount: completeness.expectedCount, completionRate: completeness.completionRate } : undefined },
+      }) }).finally(() => window.clearTimeout(tid));
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       return { data: await res.json() as AIStudentReport, mode: "ai" as const, fallback: false };
     })();
-
-    inFlightRequests.set(cacheKey, requestPromise);
-    try {
-      const result = await requestPromise;
-      inFlightRequests.delete(cacheKey);
-      if (mountedRef.current) { setViewingReport(result.data); setViewingItemId(targetId); setMode(result.mode); setStatus("complete"); }
-    } catch {
-      inFlightRequests.delete(cacheKey);
-      if (mountedRef.current) { setViewingReport(mockAIStudentReport); setMode("fallback"); setStatus("fallback"); }
-    }
+    inFlightRequests.set(cacheKey, rp);
+    try { const r = await rp; inFlightRequests.delete(cacheKey); if (mountedRef.current) { setViewingReport(r.data); setViewingItemId(targetId); setMode(r.mode); setStatus("complete"); } }
+    catch { inFlightRequests.delete(cacheKey); if (mountedRef.current) { setViewingReport(mockAIStudentReport); setMode("fallback"); setStatus("fallback"); } }
     setGeneratingItemId(null);
-  }, [studentId, student, latestRecord, records, batchCompleteness]);
+  }, [studentId, student, latestRecord, records, completeness]);
 
-  // ===== 点击项目卡片 =====
-  const handleItemClick = useCallback((itemId: string) => {
-    const existing = findLatestItemReport(reportHistory, itemId);
-    if (existing) {
-      // 已有报告 → 直接查看，不调用 AI
-      setViewingReport(existing.report);
-      setViewingItemId(itemId);
-      setMode(existing.mode === "ai" ? "ai" : "mock");
-      setStatus("complete");
-      return;
-    }
-    // 无报告 → 生成
-    generateReport({ itemId, reportType: "item_report" });
-  }, [reportHistory, generateReport]);
+  const handleItemClick = useCallback((itemId: string) => { const e = findLatestItemReport(reportHistory, itemId); if (e) { setViewingReport(e.report); setViewingItemId(itemId); setMode(e.mode==="ai"?"ai":"mock"); setStatus("complete"); } else generateReport({itemId, reportType:"item_report"}); }, [reportHistory, generateReport]);
 
-  // ===== 生成中 =====
-  if (status === "analyzing") {
-    const genLabel = generatingItemId ? `正在生成 ${itemName(generatingItemId)} 专项报告` : "正在分析体测数据";
-    return <AIGenerationStatus status="analyzing" mode={mode} subjectLabel={genLabel} />;
-  }
-
-  // ===== 无记录 =====
-  if (!latestRecord) {
-    return (
-      <Card className="rounded-xl shadow-sm"><CardContent className="p-8 text-center space-y-3">
-        <Brain className="mx-auto h-10 w-10 text-muted-foreground/40" />
-        <p className="text-base font-semibold">暂无可分析数据</p>
-        <p className="text-sm text-muted-foreground">请先完成一次体测记录，再使用 AI 运动指导。</p>
-        <Link href="/record"><Button className="gap-1.5"><PlusCircle className="h-4 w-4" />去记录体测</Button></Link>
-      </CardContent></Card>
-    );
-  }
-
-  // ===== 报告详情 =====
+  if (status === "analyzing") return <AIGenerationStatus status="analyzing" mode={mode} subjectLabel={generatingItemId ? `正在生成 ${itemName(generatingItemId)} 专项评估` : "正在分析"} />;
+  if (!latestRecord) return (<Card className="rounded-xl shadow-sm"><CardContent className="p-8 text-center space-y-3"><Brain className="mx-auto h-10 w-10 text-muted-foreground/40" /><p className="text-base font-semibold">暂无可分析数据</p><p className="text-sm text-muted-foreground">请先完成一次体测记录</p><Link href="/record"><Button className="gap-1.5"><PlusCircle className="h-4 w-4" />去记录体测</Button></Link></CardContent></Card>);
   if (viewingReport) {
-    const detailLabel = viewingItemId ? `${itemName(viewingItemId)} 专项报告` : (viewingReport.reportType ? reportTypeLabel(viewingReport.reportType) : "AI 报告");
-    return (
-      <div className="space-y-5">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-1 h-8" onClick={() => { setViewingReport(null); setViewingItemId(null); }}>
-            ← 返回指导中心
-          </Button>
-          <Badge variant="excellent" className="text-[10px]">{detailLabel}</Badge>
-          {mode && <Badge variant={mode === "ai" ? "excellent" : "secondary"} className="text-[10px]">{mode === "ai" ? "AI 生成" : "示例数据"}</Badge>}
-        </div>
-        <ReportHero report={viewingReport} mode={mode} />
-        {batchCompleteness.isPartial && (
-          <Card className="rounded-xl border-amber-200 bg-amber-50/50 shadow-sm"><CardContent className="p-4 space-y-2">
-            <p className="text-sm font-semibold text-amber-800">局部分析</p>
-            <p className="text-xs text-amber-700">本报告基于已录入的 {batchCompleteness.recordedCount} 个项目生成，未录入项目暂不评价。</p>
-          </CardContent></Card>
-        )}
-        <ReportContent report={viewingReport} />
-        <div className="h-4" />
-      </div>
-    );
+    const detailLabel = viewingItemId ? `${itemName(viewingItemId)} 专项评估` : (viewingReport.reportType ? reportTypeLabel(viewingReport.reportType) : "AI 报告");
+    return (<div className="space-y-5"><div className="flex items-center gap-2"><Button variant="ghost" size="sm" className="gap-1 h-8" onClick={() => { setViewingReport(null); setViewingItemId(null); }}>← 返回指导中心</Button><Badge variant="excellent" className="text-[10px]">{detailLabel}</Badge>{mode && <Badge variant={mode==="ai"?"excellent":"secondary"} className="text-[10px]">{mode==="ai"?"AI 生成":"示例数据"}</Badge>}</div><ReportHero report={viewingReport} mode={mode} viewingItemId={viewingItemId} /><ReportContent report={viewingReport} viewingItemId={viewingItemId} dailyRecords={dailyRecords} /><div className="h-4" /></div>);
   }
 
   // ===== 指导中心 =====
-  const centerLabel = batchCompleteness.isPartial ? `已录 ${batchCompleteness.recordedCount}/${batchCompleteness.expectedCount} 项` : "数据完整";
-
   return (
     <div className="space-y-5">
-      {/* ===== 1. 整体体质分析卡 ===== */}
+      {/* ===== 1. 数据状态区 ===== */}
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2"><GraduationCap className="h-4 w-4 text-primary" /><span className="font-medium">正式体测</span><Badge variant={completeness.isComplete?"excellent":"pass"} className="text-[10px]">{completeness.recordedCount}/{completeness.expectedCount} 项</Badge></div>
+          <div className="w-px h-5 bg-border" />
+          <div className="flex items-center gap-2"><Dumbbell className="h-4 w-4 text-blue-500" /><span className="font-medium">日常训练</span><Badge variant="secondary" className="text-[10px]">近7天 {daily7d} 次</Badge></div>
+          <p className="ml-auto text-[10px] text-muted-foreground">AI 生成内容需经体育教师审核后使用</p>
+        </div>
+      </div>
+
+      {/* ===== 2. 正式体测分析 ===== */}
       <Card className="rounded-xl border-primary/20 bg-primary/5 shadow-sm">
         <CardContent className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            <span className="text-base font-semibold">整体体质分析</span>
-            <Badge variant={canGenBatch ? "excellent" : "pass"} className="text-[10px] ml-auto">{centerLabel}</Badge>
-          </div>
-          {!canGenBatch ? (
-            <>
-              <p className="text-sm text-muted-foreground">当前批次数据完整度 {batchCompleteness.recordedCount}/{batchCompleteness.expectedCount}，尚不足以生成完整综合体质画像。建议先查看已录项目专项分析或补充体测数据。</p>
-              <Link href="/record"><Button variant="outline" size="sm" className="gap-1"><PlusCircle className="h-3.5 w-3.5" />补充体测项目</Button></Link>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">数据完整度达到 {batchCompleteness.completionRate}%，可生成综合体质画像。</p>
-              <Button size="sm" className="gap-1" onClick={() => generateReport({ reportType: "batch_report" })}><Sparkles className="h-3.5 w-3.5" />生成整体分析</Button>
-            </>
-          )}
+          <div className="flex items-center gap-2"><Brain className="h-5 w-5 text-primary" /><span className="text-base font-semibold">正式体测分析</span></div>
+          <p className="text-sm text-muted-foreground">基于当前正式体测批次生成体质画像、薄弱项判断与训练参考。</p>
+          {completeness.recordedCount > 0 ? (
+            <div className="flex gap-2">
+              <Button size="sm" className="gap-1" onClick={() => generateReport({ reportType: "batch_report" })}><Sparkles className="h-3.5 w-3.5" />生成正式体测分析</Button>
+              {reportHistory.filter(h => (h.report as AIStudentReport)?.reportType === "batch_report").length > 0 && (
+                <Button size="sm" variant="ghost" onClick={() => { const r = reportHistory.find(h => (h.report as AIStudentReport)?.reportType === "batch_report"); if (r) { setViewingReport(r.report); setMode(r.mode==="ai"?"ai":"mock"); setStatus("complete"); } }}>查看已有分析</Button>
+              )}
+            </div>
+          ) : <p className="text-xs text-muted-foreground">暂无正式体测数据</p>}
         </CardContent>
       </Card>
 
-      {/* ===== 2. 专项提升卡片网格 ===== */}
+      {/* ===== 3. 专项评估 ===== */}
       <div>
-        <p className="text-sm font-semibold mb-3 flex items-center gap-1.5"><Target className="h-4 w-4 text-primary" />专项提升</p>
+        <p className="text-sm font-semibold mb-3 flex items-center gap-1.5"><Target className="h-4 w-4 text-primary" />专项评估</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {genderItems.map(itemId => {
-            const def = FITNESS_ITEMS.find(f => f.id === itemId);
-            if (!def) return null;
-            const latestItemRecord = records.find(r => r.items.some(i => i.itemId === itemId));
-            const latestItem = latestItemRecord?.items.find(i => i.itemId === itemId);
-            const existingReport = findLatestItemReport(reportHistory, itemId);
-            const hasReport = !!existingReport;
+            const def = FITNESS_ITEMS.find(f => f.id === itemId); if (!def) return null;
+            const officialItem = officialRecords.find(r => r.items.some(i => i.itemId === itemId))?.items.find(i => i.itemId === itemId);
+            const relatedDaily = dailyRecords.filter(r => r.items.some(i => i.itemId === itemId)).length;
+            const hasReport = findLatestItemReport(reportHistory, itemId);
             const generating = generatingItemId === itemId;
-
-            // 最近几次该项目的成绩趋势
-            const itemRecords = findLastNItemRecords(records, itemId, 3);
-            const itemValues = itemRecords.map(r => r.items.find(i => i.itemId === itemId)!.value);
-            const trend = itemTrendLabel(itemValues, def.higherIsBetter ?? true);
+            const itemRecs = records.filter(r => r.items.some(i => i.itemId === itemId));
+            const vals = itemRecs.map(r => r.items.find(i => i.itemId === itemId)!.score);
+            const trend = itemTrendLabel(vals, def.higherIsBetter ?? true);
 
             return (
-              <Card key={itemId} className="rounded-xl shadow-sm">
-                <CardContent className="p-3.5 space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-lg">{def.icon}</span>
-                    <p className="text-xs font-semibold truncate">{def.name}</p>
-                  </div>
-
-                  {!latestItem ? (
-                    <>
-                      <p className="text-[11px] text-muted-foreground">暂无数据</p>
-                      <Link href="/record"><Button variant="outline" size="sm" className="w-full h-7 text-xs gap-1"><PlusCircle className="h-3 w-3" />去记录</Button></Link>
-                    </>
-                  ) : generating ? (
-                    <div className="text-center py-2"><p className="text-[11px] text-muted-foreground animate-pulse">生成中...</p></div>
-                  ) : hasReport ? (
-                    <>
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant={latestItem.grade === "excellent" || latestItem.grade === "good" ? "excellent" : "pass"} className="text-[10px]">{latestItem.score}分</Badge>
-                        {existingReport.status === "approved" && <Badge variant="excellent" className="text-[9px] py-0">已审核</Badge>}
-                      </div>
-                      {trend && <p className="text-[10px] text-muted-foreground flex items-center gap-0.5"><trend.icon className="h-3 w-3" />{trend.label}</p>}
-                      <Button size="sm" className="w-full h-7 text-xs gap-1" onClick={() => { setViewingReport(existingReport.report); setViewingItemId(itemId); setMode(existingReport.mode === "ai" ? "ai" : "mock"); setStatus("complete"); }}>
-                        <BarChart3 className="h-3 w-3" />查看专项报告
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Badge variant={latestItem.grade === "excellent" || latestItem.grade === "good" ? "excellent" : "pass"} className="text-[10px]">{latestItem.score}分</Badge>
-                      {trend && <p className="text-[10px] text-muted-foreground flex items-center gap-0.5"><trend.icon className="h-3 w-3" />{trend.label}</p>}
-                      <Button size="sm" className="w-full h-7 text-xs gap-1" onClick={() => handleItemClick(itemId)} disabled={generating}>
-                        <Sparkles className="h-3 w-3" />生成专项报告
-                      </Button>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+              <Card key={itemId} className="rounded-xl shadow-sm"><CardContent className="p-3.5 space-y-2">
+                <div className="flex items-center gap-1.5"><span className="text-lg">{def.icon}</span><p className="text-xs font-semibold truncate">{def.name}</p></div>
+                {!officialItem ? (
+                  <><p className="text-[11px] text-muted-foreground">暂无正式体测成绩</p>{relatedDaily>0 && <p className="text-[10px] text-muted-foreground">相关训练 {relatedDaily} 次</p>}</>
+                ) : generating ? <p className="text-[11px] text-muted-foreground animate-pulse">生成中...</p> : (
+                  <>
+                    <div className="flex items-center gap-1.5"><Badge variant={officialItem.grade==="excellent"||officialItem.grade==="good"?"excellent":"pass"} className="text-[10px]">{officialItem.score}分</Badge>{relatedDaily>0 && <span className="text-[10px] text-muted-foreground">训练 {relatedDaily}次</span>}</div>
+                    {trend && <p className="text-[10px] text-muted-foreground flex items-center gap-0.5"><trend.icon className="h-3 w-3" />{trend.label}</p>}
+                    <Button size="sm" className="w-full h-7 text-xs gap-1" onClick={() => hasReport ? (setViewingReport(hasReport.report), setViewingItemId(itemId), setMode(hasReport.mode==="ai"?"ai":"mock"), setStatus("complete")) : handleItemClick(itemId)} disabled={generating}>
+                      <Sparkles className="h-3 w-3" />{hasReport ? "查看专项评估" : "生成专项评估"}
+                    </Button>
+                  </>
+                )}
+              </CardContent></Card>
             );
           })}
         </div>
       </div>
 
-      {/* ===== 3. 本次记录分析 ===== */}
-      {latestRecord.items.length >= 2 && (
-        <Card className="rounded-xl shadow-sm"><CardContent className="p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-primary" /><span className="text-sm font-semibold">本次记录分析</span>
-            <Badge variant="secondary" className="text-[10px] ml-auto">{latestRecord.items.length} 项</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">{latestRecord.batchName ?? latestRecord.semester} · {formatDisplayTime(latestRecord.date)}</p>
-          <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-            {latestRecord.items.map(i => <span key={i.itemId}>{itemName(i.itemId)}</span>).reduce((acc, el) => acc.length === 0 ? [el] : [...acc, <span key="sep" className="mx-0.5">·</span>, el] as React.ReactNode[], [] as React.ReactNode[])}
-          </div>
-          <Button size="sm" className="w-full gap-1 h-8" onClick={() => generateReport({ reportType: "record_report" })}><Sparkles className="h-3.5 w-3.5" />生成本次记录分析</Button>
-        </CardContent></Card>
-      )}
+      {/* ===== 4. 训练观察与下一步建议 ===== */}
+      <Card className="rounded-xl shadow-sm"><CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2"><Dumbbell className="h-4 w-4 text-blue-500" /><span className="text-sm font-semibold">训练观察与下一步建议</span></div>
+        <div className="grid grid-cols-2 gap-2 text-center text-xs">
+          <div className="rounded-lg bg-muted/30 p-2"><p className="font-bold text-lg">{daily7d}</p><p className="text-muted-foreground">近7天训练</p></div>
+          <div className="rounded-lg bg-muted/30 p-2"><p className="font-bold text-lg">{daily30d}</p><p className="text-muted-foreground">近30天训练</p></div>
+        </div>
+        {dailyRecords.length > 0 ? (
+          <p className="text-xs text-muted-foreground">训练节奏：{daily30d >= 8 ? "稳定" : daily30d >= 3 ? "适中" : "偏少"} · 最近训练：{dailyRecords[0] ? new Date(dailyRecords[0].date).toLocaleDateString("zh-CN") : "—"} · {dailyRecords[0]?.items.map(i => itemName(i.itemId)).join("、") || "—"}</p>
+        ) : <p className="text-xs text-muted-foreground">暂无日常训练记录</p>}
+        <p className="text-[10px] text-muted-foreground">日常训练数据用于观察训练过程，不参与正式体测评分</p>
+      </CardContent></Card>
 
-      {/* ===== 4. 历史报告 ===== */}
+      {/* ===== 5. 历史报告 ===== */}
       {reportHistory.length > 0 && (
         <Card className="rounded-xl shadow-sm">
-          <button type="button" onClick={() => setHistoryOpen(!historyOpen)} className="w-full flex items-center justify-between p-4 text-left">
-            <div className="flex items-center gap-2"><History className="h-4 w-4 text-primary" /><span className="text-sm font-semibold">历史报告</span><Badge variant="secondary" className="text-[10px]">{reportHistory.length} 份</Badge></div>
-            {historyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-          {historyOpen && (
-            <CardContent className="pt-0 space-y-2">
-              {reportHistory.map((item) => {
-                const rType = (item.report as AIStudentReport)?.reportType;
-                return (
-                  <button key={item.id} type="button" onClick={() => { setViewingReport(item.report); setViewingItemId(null); }}
-                    className="w-full rounded-xl border p-3 text-left hover:bg-accent">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-semibold truncate">{item.sourceSummary ?? "AI 报告"}</p>
-                          {rType && <Badge variant="outline" className="text-[9px]">{reportTypeLabel(rType)}</Badge>}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{formatDisplayTime(item.generatedAt)}</p>
-                      </div>
-                      <Badge variant={item.status === "approved" ? "excellent" : item.status === "rejected" ? "improve" : "pass"} className="text-[9px] shrink-0">
-                        {item.status === "approved" ? "已审核" : item.status === "rejected" ? "已退回" : "待审核"}
-                      </Badge>
-                    </div>
-                  </button>
-                );
-              })}
-            </CardContent>
-          )}
+          <button type="button" onClick={() => setHistoryOpen(!historyOpen)} className="w-full flex items-center justify-between p-4 text-left"><div className="flex items-center gap-2"><History className="h-4 w-4 text-primary" /><span className="text-sm font-semibold">历史报告</span><Badge variant="secondary" className="text-[10px]">{reportHistory.length} 份</Badge></div>{historyOpen?<ChevronUp className="h-4 w-4"/>:<ChevronDown className="h-4 w-4"/>}</button>
+          {historyOpen && <CardContent className="pt-0 space-y-2">{reportHistory.map(item => { const rType = (item.report as AIStudentReport)?.reportType; return (
+            <button key={item.id} type="button" onClick={() => { setViewingReport(item.report); setViewingItemId(null); }} className="w-full rounded-xl border p-3 text-left hover:bg-accent">
+              <div className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="text-xs font-semibold truncate">{item.sourceSummary ?? "AI 报告"}</p>{rType && <Badge variant="outline" className="text-[9px]">{reportTypeLabel(rType)}</Badge>}</div><p className="text-[11px] text-muted-foreground mt-0.5">{formatTime(item.generatedAt)}</p></div><Badge variant={item.status==="approved"?"excellent":item.status==="rejected"?"improve":"pass"} className="text-[9px] shrink-0">{item.status==="approved"?"已审核":item.status==="rejected"?"已退回":"待审核"}</Badge></div>
+            </button>
+          )})}</CardContent>}
         </Card>
       )}
 
@@ -341,72 +174,45 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
 }
 
 // ===== 报告详情子组件 =====
-function ReportHero({ report, mode }: { report: AIStudentReport; mode?: string }) {
+function ReportHero({ report, mode, viewingItemId }: { report: AIStudentReport; mode?: string; viewingItemId: string | null; dataStatus?: unknown }) {
   const profile = report.fitnessProfile;
-  const reviewStatus = report.status || "pending_review";
-  const ReviewIcon = reviewStatus === "approved" ? CheckCircle2 : reviewStatus === "rejected" ? AlertTriangle : Clock;
-  const topGoal = report.trainingPlan[0]?.exercises[0];
+  const rs = report.status || "pending_review";
+  const RI = rs === "approved" ? CheckCircle2 : rs === "rejected" ? AlertTriangle : Clock;
   return (
     <div className="rounded-2xl bg-gradient-to-br from-primary/5 via-primary/3 to-transparent border border-primary/10 p-5 sm:p-6 space-y-3">
-      <div className="flex items-center gap-2">
-        <ReviewIcon className={`h-5 w-5 ${reviewStatus === "approved" ? "text-level-excellent" : "text-muted-foreground"}`} />
-        <span className="text-sm font-semibold">{reviewStatus === "approved" ? "教师已审核" : reviewStatus === "rejected" ? "已退回" : "待教师审核"}</span>
-        {report.reportType && <Badge variant="excellent" className="text-[10px] ml-auto">{reportTypeLabel(report.reportType)}</Badge>}
-        {mode && <Badge variant={mode === "ai" ? "excellent" : "secondary"} className="text-[10px]">{mode === "ai" ? "AI 生成" : "示例数据"}</Badge>}
-      </div>
+      <div className="flex items-center gap-2"><RI className={`h-5 w-5 ${rs==="approved"?"text-level-excellent":"text-muted-foreground"}`} /><span className="text-sm font-semibold">{rs==="approved"?"教师已审核":rs==="rejected"?"已退回":"待教师审核"}</span>{report.reportType && <Badge variant="excellent" className="text-[10px] ml-auto">{reportTypeLabel(report.reportType)}</Badge>}{mode && <Badge variant={mode==="ai"?"excellent":"secondary"} className="text-[10px]">{mode==="ai"?"AI 生成":"示例数据"}</Badge>}</div>
       <p className="text-base font-semibold leading-relaxed">{profile.summary}</p>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl bg-background/60 p-3 text-center"><p className="text-2xl font-bold tabular-nums">{profile.overallScore}</p><p className="text-xs text-muted-foreground">参考评分</p></div>
-        {topGoal && <div className="rounded-xl bg-background/60 p-3 sm:col-span-2"><p className="text-xs text-muted-foreground">优先目标</p><p className="text-sm font-semibold mt-0.5">{topGoal.name}</p><p className="text-xs text-muted-foreground mt-0.5">{topGoal.frequency} · {topGoal.duration}</p></div>}
-      </div>
+      {viewingItemId && <p className="text-xs text-muted-foreground">来源：正式体测 · {itemName(viewingItemId)} | 日常训练用于辅助观察，不参与评分</p>}
     </div>
   );
 }
 
-function ReportContent({ report }: { report: AIStudentReport }) {
-  const reviewStatus = report.status || "pending_review";
-  const ReviewIcon = reviewStatus === "approved" ? CheckCircle2 : reviewStatus === "rejected" ? AlertTriangle : Clock;
+function ReportContent({ report, viewingItemId, dailyRecords }: { report: AIStudentReport; viewingItemId: string | null; dailyRecords: FitnessRecord[] }) {
+  const rs = report.status || "pending_review";
+  const RI = rs === "approved" ? CheckCircle2 : rs === "rejected" ? AlertTriangle : Clock;
+  const relatedDaily = viewingItemId ? dailyRecords.filter(r => r.items.some(i => i.itemId === viewingItemId)) : dailyRecords;
   return (
     <>
+      {viewingItemId && (
+        <Card className="rounded-xl border shadow-sm"><CardHeader className="pb-2"><CardTitle className="text-base">训练观察</CardTitle></CardHeader><CardContent className="space-y-2 text-xs text-muted-foreground">
+          <p>相关日常训练：{relatedDaily.length} 次</p>
+          {relatedDaily.length > 0 && <p>最近训练：{new Date(relatedDaily[0].date).toLocaleDateString("zh-CN")} · {relatedDaily[0].items.map(i => itemName(i.itemId)).join("、")}</p>}
+          <p className="text-[10px]">日常训练数据用于观察训练过程，不参与正式体测评分</p>
+        </CardContent></Card>
+      )}
       {report.trainingPlan.length > 0 && (
-        <Card className="rounded-xl shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base">本周训练计划</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {report.trainingPlan.slice(0, 1).map((week) => (
-              <div key={week.weekNumber}>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">第 {week.weekNumber} 周 · {week.focus}</p>
-                <div className="grid gap-2 sm:grid-cols-2">{week.exercises.slice(0, 4).map((ex, j) => (
-                  <div key={j} className="rounded-xl border p-3"><p className="text-xs font-semibold">{ex.name}</p><p className="text-[10px] text-muted-foreground mt-1">{ex.frequency} · {ex.duration}</p>{ex.notes && <p className="text-[10px] text-muted-foreground mt-1">⚠ {ex.notes}</p>}</div>
-                ))}</div>
-                {week.recoveryAdvice && <p className="text-[11px] text-muted-foreground mt-3">{week.recoveryAdvice}</p>}
-              </div>
-            ))}
-            <div className="rounded-lg bg-muted/30 p-3 flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-level-pass" />
-              <p className="text-xs text-muted-foreground">AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。</p>
-            </div>
-          </CardContent></Card>
+        <Card className="rounded-xl shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base">训练建议</CardTitle></CardHeader><CardContent className="space-y-4">
+          {report.trainingPlan.slice(0, 1).map(w => <div key={w.weekNumber}><p className="text-xs font-semibold text-muted-foreground mb-2">第 {w.weekNumber} 周 · {w.focus}</p><div className="grid gap-2 sm:grid-cols-2">{w.exercises.slice(0,4).map((ex,j) => <div key={j} className="rounded-xl border p-3"><p className="text-xs font-semibold">{ex.name}</p><p className="text-[10px] text-muted-foreground mt-1">{ex.frequency} · {ex.duration}</p>{ex.notes && <p className="text-[10px] text-muted-foreground mt-1">⚠ {ex.notes}</p>}</div>)}</div>{w.recoveryAdvice && <p className="text-[11px] text-muted-foreground mt-3">{w.recoveryAdvice}</p>}</div>)}
+          <div className="rounded-lg bg-muted/30 p-3 flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-level-pass" /><p className="text-xs text-muted-foreground">AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。</p></div>
+        </CardContent></Card>
       )}
       {report.weaknessAnalysis.length > 0 && (
-        <Card className="rounded-xl shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Target className="h-5 w-5 text-primary" />已录项目分析</CardTitle></CardHeader>
-          <CardContent className="space-y-3">{report.weaknessAnalysis.slice(0, 3).map((w, i) => (
-            <div key={i} className="rounded-xl border p-3.5"><div className="flex items-center gap-2 mb-1"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span><p className="text-sm font-semibold">{w.item}</p><Badge variant="outline" className="text-[10px]">{w.currentLevel}</Badge></div><p className="text-xs text-muted-foreground">{w.possibleCauses[0]}</p><p className="text-xs text-primary mt-1"><Sparkles className="h-3 w-3 inline" /> {w.improvementPotential}</p></div>
-          ))}</CardContent></Card>
+        <Card className="rounded-xl shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Target className="h-5 w-5 text-primary" />体测分析</CardTitle></CardHeader><CardContent className="space-y-3">{report.weaknessAnalysis.slice(0,3).map((w,i) => <div key={i} className="rounded-xl border p-3.5"><div className="flex items-center gap-2 mb-1"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i+1}</span><p className="text-sm font-semibold">{w.item}</p><Badge variant="outline" className="text-[10px]">{w.currentLevel}</Badge></div><p className="text-xs text-muted-foreground">{w.possibleCauses[0]}</p><p className="text-xs text-primary mt-1"><Sparkles className="h-3 w-3 inline" />{w.improvementPotential}</p></div>)}</CardContent></Card>
       )}
       {report.safetyReminders.length > 0 && (
-        <Card className="rounded-xl shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-level-good" />恢复与安全提醒</CardTitle></CardHeader>
-          <CardContent className="space-y-2">{report.safetyReminders.slice(0, 4).map((r, i) => <div key={i} className="flex items-start gap-2"><span className="text-xs text-muted-foreground mt-0.5">{i + 1}.</span><p className="text-sm text-muted-foreground">{r}</p></div>)}</CardContent></Card>
+        <Card className="rounded-xl shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-level-good" />恢复与安全提醒</CardTitle></CardHeader><CardContent className="space-y-2">{report.safetyReminders.slice(0,4).map((r,i) => <div key={i} className="flex items-start gap-2"><span className="text-xs text-muted-foreground mt-0.5">{i+1}.</span><p className="text-sm text-muted-foreground">{r}</p></div>)}</CardContent></Card>
       )}
-      <Card className="rounded-xl shadow-sm"><CardContent className="flex items-center gap-3 p-4">
-        <ReviewIcon className={`h-5 w-5 shrink-0 ${reviewStatus === "approved" ? "text-level-excellent" : "text-muted-foreground"}`} />
-        <div><p className="text-sm font-medium">{reviewStatus === "approved" ? "体育教师已审核通过，可在教师指导下实施" : reviewStatus === "rejected" ? "该报告暂未通过教师审核" : "等待体育教师审核"}</p><p className="text-xs text-muted-foreground mt-0.5">AI 生成，需经体育教师审核后使用。</p></div>
-      </CardContent></Card>
+      <Card className="rounded-xl shadow-sm"><CardContent className="flex items-center gap-3 p-4"><RI className={`h-5 w-5 shrink-0 ${rs==="approved"?"text-level-excellent":"text-muted-foreground"}`} /><div><p className="text-sm font-medium">{rs==="approved"?"体育教师已审核通过":rs==="rejected"?"该报告暂未通过教师审核":"等待体育教师审核"}</p><p className="text-xs text-muted-foreground mt-0.5">AI 生成，需经体育教师审核后使用。</p></div></CardContent></Card>
     </>
   );
-}
-
-function buildRecordSummary(record: FitnessRecord, targetItemId?: string | null): string {
-  const items = targetItemId ? record.items.filter(i => i.itemId === targetItemId) : record.items;
-  const names = items.slice(0, 3).map(i => itemName(i.itemId)).join("、");
-  const more = items.length > 3 ? "等" : "";
-  return `${formatDisplayTime(record.date)} · ${names}${more}`;
 }
