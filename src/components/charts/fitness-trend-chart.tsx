@@ -21,8 +21,8 @@ export function FitnessTrendChart({ data, dailyData, height = 280, unit = "", cl
     ? [...data.map(d => ({ ...d, type: "正式体测" })), ...dailyData.map(d => ({ ...d, type: "日常训练" }))]
     : data;
 
-  if (data.length < 2) {
-    return (<div className={cn("flex items-center justify-center rounded-2xl bg-muted/30", className)} style={{ height }}><p className="text-sm text-muted-foreground">数据不足，暂无趋势可供展示</p></div>);
+  if (data.length < 1) {
+    return (<div className={cn("flex items-center justify-center rounded-2xl bg-muted/30", className)} style={{ height }}><p className="text-sm text-muted-foreground">暂无数据</p></div>);
   }
 
   return (

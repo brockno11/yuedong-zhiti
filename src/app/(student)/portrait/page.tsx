@@ -76,14 +76,19 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
   const radarWithData = allRadarData.filter(d => d.score !== null);
   const sportDimsWithData = allRadarData.filter(d => d.score !== null && d.dimension !== "身体形态");
 
-  // 趋势
+  // 趋势（使用实际记录日期，非学期标签）
+  function fmtDate(d: string) { const dt = new Date(d); return `${dt.getMonth()+1}/${dt.getDate()}`; }
   const trendOptions: { key: string; label: string; data: { date: string; value: number; grade: string }[]; unit: string }[] = [];
-  const compositeData = officialRecords.slice(0, 8).reverse().map(r => ({ date: r.semester, value: Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length), grade: gradeLabel(Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length)) }));
-  if (compositeData.length >= 2) trendOptions.push({ key: "__comp__", label: "综合", data: compositeData, unit: "分" });
+  // 综合趋势：每条正式体测记录 = 一个数据点
+  const compositeData = [...officialRecords].reverse().map(r => ({ date: fmtDate(r.date), value: Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length), grade: "" }));
+  if (compositeData.length >= 1) trendOptions.push({ key: "__comp__", label: "综合", data: compositeData, unit: "分" });
   for (const d of dimDefs.filter(d => d.itemId !== "__body_ref__")) {
-    const itemRecs = officialRecords.filter(r => r.items.some(i => i.itemId === d.itemId)).slice(0, 8).reverse();
-    if (itemRecs.length >= 2) trendOptions.push({ key: d.itemId, label: d.dimension, data: itemRecs.map(r => { const it = r.items.find(i => i.itemId === d.itemId)!; return { date: r.semester, value: it.score, grade: it.grade }; }), unit: "分" });
+    const itemRecs = [...officialRecords].reverse().filter(r => r.items.some(i => i.itemId === d.itemId));
+    if (itemRecs.length >= 1) trendOptions.push({ key: d.itemId, label: d.dimension, data: itemRecs.map(r => { const it = r.items.find(i => i.itemId === d.itemId)!; return { date: fmtDate(r.date), value: it.score, grade: it.grade }; }), unit: "分" });
   }
+
+  // 日常训练数据点（每条日常训练 = 一个数据点）
+  const dailyTrendData = [...dailyRecords].reverse().map(r => ({ date: fmtDate(r.date), value: r.items.length > 0 ? Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length) : 0, grade: "" }));
 
   // 优势/待提升
   const strengths = officialItems.filter(i => i.grade === "excellent" || i.grade === "good").sort((a, b) => b.score - a.score).slice(0, 3);
@@ -178,7 +183,7 @@ export default async function PortraitPage({ searchParams }: { searchParams?: { 
         </CardContent></Card>
 
       {/* 趋势图（正式体测 + 日常训练） */}
-      <PortraitTrendSection options={trendOptions} dailyData={dailyRecords.slice(0, 12).reverse().map(r => ({ date: r.semester || new Date(r.date).toISOString().slice(0, 7), value: Math.round(r.items.reduce((s, i) => s + i.score, 0) / r.items.length), grade: "good" }))} />
+      <PortraitTrendSection options={trendOptions} dailyData={dailyTrendData} />
 
       {/* 优势/待提升 */}
       <div className="grid gap-4 sm:grid-cols-2">

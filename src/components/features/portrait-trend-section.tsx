@@ -17,7 +17,7 @@ export function PortraitTrendSection({ options, dailyData }: {
 }) {
   const [active, setActive] = useState(options[0]?.key ?? "");
   const current = options.find(o => o.key === active) ?? options[0];
-  if (!current || current.data.length < 2) return null;
+  if (!current || current.data.length < 1) return null;
 
   return (
     <Card className="rounded-xl border shadow-sm">
