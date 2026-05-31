@@ -2,7 +2,7 @@
 
 > 本文档说明本项目内所有 Skills 的清单、路径、作用和推荐使用场景。适用于 Claude Code 和 Codex 两个 AI Agent 协作开发。
 >
-> 项目阶段：MVP 0.6.0 | 路由：22 个 | API：14 个 | 数据库表：7 个（+AssessmentBatch）| 演示脚本 ✅ | 验证清单 ✅ | 部署指南 ✅
+> 项目阶段：MVP 0.7.0 | 路由：22 个 | API：14 个 | 数据库表：7 个（+AssessmentBatch）| 演示脚本 ✅ | 验证清单 ✅ | 部署指南 ✅
 
 ---
 
