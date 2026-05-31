@@ -5,8 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FitnessRadarChart } from "@/components/charts/fitness-radar-chart";
 import { FitnessTrendChart } from "@/components/charts/fitness-trend-chart";
 import { EmptyState } from "@/components/features/empty-state";
-import { getLatestRecord, getRecordsByStudentId } from "@/lib/data/mock-fitness-records";
-import { getStudentById } from "@/lib/data/mock-students";
+import { getFitnessRecords, getLatestFitnessRecord, getStudentProfile } from "@/lib/server/data-service";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import type { RadarChartDataPoint, TrendChartDataPoint } from "@/lib/types";
 import {
@@ -20,10 +19,10 @@ import Link from "next/link";
 
 const DEMO_STUDENT_ID = "S001";
 
-export default function DashboardPage() {
-  const student = getStudentById(DEMO_STUDENT_ID);
-  const latestRecord = getLatestRecord(DEMO_STUDENT_ID);
-  const allRecords = getRecordsByStudentId(DEMO_STUDENT_ID);
+export default async function DashboardPage() {
+  const student = await getStudentProfile(DEMO_STUDENT_ID);
+  const latestRecord = await getLatestFitnessRecord(DEMO_STUDENT_ID);
+  const allRecords = await getFitnessRecords(DEMO_STUDENT_ID);
 
   if (!student || !latestRecord) {
     return (
@@ -231,3 +230,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+export const dynamic = "force-dynamic";

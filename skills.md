@@ -270,6 +270,16 @@ Codex 应将 Skills 视为**设计规范文档**而非可执行代码：
 | Senior QA | 测试策略 | 用于补充多端验证清单、路由烟测、AI 回退验证和 E2E 验收 |
 | Security Best Practices | 安全检查 | 用于确认 API Key、学生隐私和 AI 安全标注 |
 
+### 本轮 SQLite 后端落地使用的全局 Skills
+
+| Skill | 用途 | 本项目中的使用方式 |
+|-------|------|------------------|
+| Fullstack Dev | 全栈架构与前后端集成 | 采用 Next.js 单体 API Routes + Prisma 服务层，明确数据库、API、登录与错误处理边界 |
+| API Designer | REST API 资源建模 | 设计 `/api/auth/login`、`/api/students`、`/api/fitness-records`、`/api/class-summary`、`/api/reviews` 等资源接口 |
+| Senior QA | 验证策略 | 制定并执行 Prisma、typecheck、lint、build、API 烟测与审核持久化验证 |
+| react-nextjs-development | App Router 开发流程 | 保持 `page.tsx` 为 Server Component，交互逻辑下沉到 Client 叶子组件 |
+| create-implementation-plan | 实现计划 | 按“存档 → 数据库 → API → 前端整合 → 文档 → 验证”阶段推进 |
+
 如果协作 Agent 没有上述 skills，可先通过 `npx skills find "<关键词>"` 搜索，再按需安装到自己的 skills 环境中。
 
 ### 全局 Skills 参考文档

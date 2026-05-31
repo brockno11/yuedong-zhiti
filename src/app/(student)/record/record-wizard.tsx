@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FITNESS_ITEMS } from "@/lib/constants";
-import { saveRecord } from "@/lib/demo-store";
 import { RecordProjectSelect } from "@/components/features/record-project-select";
 import { RecordScoreInput } from "@/components/features/record-score-input";
 import { RecordFeelingStep } from "@/components/features/record-feeling-step";
@@ -28,6 +27,7 @@ export function RecordWizard() {
     hasDiscomfort: false,
     discomfortNotes: "",
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const hasPhysicalItems = selectedItems.some((id) => {
     const item = FITNESS_ITEMS.find((i) => i.id === id);
@@ -75,16 +75,38 @@ export function RecordWizard() {
     }
   };
 
-  const handleComplete = () => {
-    // 保存到 localStorage
-    saveRecord({
-      id: `rec-${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-      selectedItems,
-      scores,
-      feelings: feelings as Record<FitnessItemId, BodyFeeling>,
-      overallDiscomfort,
+  const handleComplete = async () => {
+    setIsSaving(true);
+    const rawLogin = localStorage.getItem("demo_login");
+    const login = rawLogin ? JSON.parse(rawLogin) as { studentId?: string; username?: string } : null;
+    const firstFeeling = Object.values(feelings)[0];
+
+    const response = await fetch("/api/fitness-records", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentId: login?.studentId ?? login?.username ?? "S001",
+        items: selectedItems.map((itemId) => ({
+          itemId,
+          value: scores[itemId],
+        })),
+        bodyFeeling: {
+          fatigueLevel: firstFeeling?.fatigueLevel ?? 3,
+          recoveryStatus: firstFeeling?.recoveryStatus ?? "normal",
+          hasSoreness: firstFeeling?.hasSoreness ?? false,
+          sorenessAreas: firstFeeling?.sorenessAreas ?? [],
+          hasDiscomfort: overallDiscomfort.hasDiscomfort || (firstFeeling?.hasDiscomfort ?? false),
+          discomfortNotes: overallDiscomfort.discomfortNotes || firstFeeling?.discomfortNotes || "",
+        },
+      }),
     });
+
+    if (!response.ok) {
+      setIsSaving(false);
+      return;
+    }
+
+    localStorage.removeItem("ai_analysis_cache");
     router.push("/dashboard");
   };
 
@@ -161,6 +183,11 @@ export function RecordWizard() {
               hasPhysicalItems={hasPhysicalItems}
               onViewDashboard={handleComplete}
             />
+            {isSaving && (
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                正在保存到本地数据库...
+              </p>
+            )}
           </CardContent>
         ) : null}
       </Card>

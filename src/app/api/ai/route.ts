@@ -26,6 +26,8 @@ const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 12000)
 
 // Mock 报告（从数据层导入）
 import { mockAIStudentReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";
+import { upsertAIReportForReview } from "@/lib/server/data-service";
+import type { AIClassReport, AIStudentReport } from "@/lib/types";
 
 function isAIEnabled(): boolean {
   return !!DEEPSEEK_API_KEY && DEEPSEEK_API_KEY.startsWith("sk-");
@@ -49,18 +51,23 @@ export async function POST(request: NextRequest) {
       console.log("[AI API] Mock 模式 — 未配置 DEEPSEEK_API_KEY");
 
       if (type === "student-report") {
-        return NextResponse.json({
+        const report = {
           ...mockAIStudentReport,
+          studentId: body.studentId ?? mockAIStudentReport.studentId,
           generatedAt: new Date().toISOString(),
           _mode: "mock" as const,
-        } satisfies APIResponseMeta & typeof mockAIStudentReport);
+        } satisfies APIResponseMeta & typeof mockAIStudentReport;
+        await upsertAIReportForReview("student", report, "mock", { studentId: report.studentId });
+        return NextResponse.json(report);
       }
 
-      return NextResponse.json({
+      const report = {
         ...mockAIClassReport,
         generatedAt: new Date().toISOString(),
         _mode: "mock" as const,
-      } satisfies APIResponseMeta & typeof mockAIClassReport);
+      } satisfies APIResponseMeta & typeof mockAIClassReport;
+      await upsertAIReportForReview("class", report, "mock");
+      return NextResponse.json(report);
     }
 
     // ===== 真实 AI 模式 =====
@@ -103,39 +110,63 @@ export async function POST(request: NextRequest) {
       console.error("[AI API] DeepSeek 调用失败:", response.status, errorText);
 
       // 失败时回退到 mock
-      return NextResponse.json({
+      const report = {
         ...(type === "student-report" ? mockAIStudentReport : mockAIClassReport),
+        ...(type === "student-report" ? { studentId: body.studentId ?? mockAIStudentReport.studentId } : {}),
         generatedAt: new Date().toISOString(),
         _mode: "mock" as const,
         _fallback: true,
         _error: `AI 服务暂不可用（${response.status}）`,
-      } satisfies APIResponseMeta & Record<string, unknown>);
+      } satisfies APIResponseMeta & Record<string, unknown>;
+      await persistAIResult(type, report);
+      return NextResponse.json(report);
     }
 
     const data = await response.json();
     const aiContent: string = data.choices?.[0]?.message?.content || "";
+    const parsed = tryParseAIResponse(aiContent, type);
+    const report = type === "student-report"
+      ? {
+          ...mockAIStudentReport,
+          ...parsed,
+          id: `AI-S-${body.studentId ?? "001"}`,
+          studentId: body.studentId ?? mockAIStudentReport.studentId,
+          generatedAt: new Date().toISOString(),
+          version: mockAIStudentReport.version + 1,
+          status: "pending_review" as const,
+          _mode: "ai" as const,
+          _model: DEEPSEEK_MODEL,
+          content: aiContent,
+        }
+      : {
+          ...mockAIClassReport,
+          ...parsed,
+          id: "AI-C-001",
+          generatedAt: new Date().toISOString(),
+          version: mockAIClassReport.version + 1,
+          status: "pending_review" as const,
+          _mode: "ai" as const,
+          _model: DEEPSEEK_MODEL,
+          content: aiContent,
+        };
 
-    return NextResponse.json({
-      id: `AI-${Date.now()}`,
-      type,
-      generatedAt: new Date().toISOString(),
-      _mode: "ai" as const,
-      _model: DEEPSEEK_MODEL,
-      content: aiContent,
-      ...tryParseAIResponse(aiContent, type),
-    });
+    await persistAIResult(type, report);
+    return NextResponse.json(report);
   } catch (error) {
     console.error("[AI API] 错误:", error);
 
     // 异常时返回 mock
     const fallbackType = body?.type === "class-report" ? "class" : "student";
-    return NextResponse.json({
+    const report = {
       ...(fallbackType === "class" ? mockAIClassReport : mockAIStudentReport),
+      ...(fallbackType === "student" ? { studentId: body.studentId ?? mockAIStudentReport.studentId } : {}),
       generatedAt: new Date().toISOString(),
       _mode: "mock" as const,
       _fallback: true,
       _error: error instanceof Error ? error.message : "未知错误",
-    } satisfies APIResponseMeta & Record<string, unknown>);
+    } satisfies APIResponseMeta & Record<string, unknown>;
+    await persistAIResult(body?.type ?? "student-report", report);
+    return NextResponse.json(report);
   }
 }
 
@@ -203,4 +234,21 @@ function tryParseAIResponse(content: string, _type: string): Record<string, unkn
     // 无法解析，返回原始内容
   }
   return { rawContent: content };
+}
+
+async function persistAIResult(
+  type: AIRequest["type"],
+  report: APIResponseMeta & Record<string, unknown>
+) {
+  if (type === "student-report") {
+    await upsertAIReportForReview(
+      "student",
+      report as unknown as AIStudentReport,
+      report._mode,
+      { studentId: typeof report.studentId === "string" ? report.studentId : undefined }
+    );
+    return;
+  }
+
+  await upsertAIReportForReview("class", report as unknown as AIClassReport, report._mode);
 }

@@ -63,6 +63,7 @@
 | 表单 | react-hook-form + zod |
 | 图标 | lucide-react |
 | AI | DeepSeek API（支持 Mock 回退） |
+| 本地数据库 | Prisma ORM + SQLite（演示数据持久化） |
 | 质量验证 | TypeScript typecheck + ESLint + Next build + 浏览器响应式走查 |
 
 ---
@@ -77,7 +78,12 @@
 # 1. 安装依赖
 npm install
 
-# 2. 启动开发服务器
+# 2. 初始化本地 SQLite 数据库
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+
+# 3. 启动开发服务器
 npm run dev
 
 # 学生端：http://localhost:3000
@@ -91,13 +97,17 @@ cp .env.example .env.local
 # 编辑 .env.local 填入 DeepSeek API Key
 # 不配置则自动使用 Mock 数据
 # 可选：AI_REQUEST_TIMEOUT_MS=12000 控制服务端 AI 超时回退
+# 本地数据库：DATABASE_URL="file:./dev.db"
 ```
 
 ```bash
 npm run build     # 生产构建
 npm run typecheck # 类型检查
 npm run lint      # 代码检查
+npm run db:studio # 打开 Prisma Studio 查看本地数据
 ```
+
+> 数据说明：当前运行时数据源已迁移到 SQLite，本地数据库文件位于 `prisma/dev.db`，不入库；`mock-*` 文件保留为 seed 数据来源。后续线上部署可沿用 Prisma schema 迁移到 MySQL/云数据库。
 
 > 开发提示：如果本地开发页面突然变成“裸 HTML 样式”或出现 `__webpack_modules__[moduleId] is not a function`，通常是 `.next` 开发缓存损坏。停止 dev server，删除 `.next`，再重新执行 `npm run dev` 即可恢复。
 

@@ -1,8 +1,11 @@
 // ===== 跃动智体 — 教师审核中心 =====
 import { PageHeader } from "@/components/layout/page-header";
 import { ReviewWorkflow } from "@/components/features/review-workflow";
+import { getReviewsWithReports } from "@/lib/server/data-service";
 
-export default function ReviewPage() {
+export default async function ReviewPage() {
+  const reviews = await getReviewsWithReports();
+
   return (
     <div className="content-breathing-room max-w-6xl space-y-5">
       <PageHeader
@@ -11,7 +14,9 @@ export default function ReviewPage() {
         backHref="/teacher"
       />
 
-      <ReviewWorkflow />
+      <ReviewWorkflow initialItems={reviews} />
     </div>
   );
 }
+
+export const dynamic = "force-dynamic";

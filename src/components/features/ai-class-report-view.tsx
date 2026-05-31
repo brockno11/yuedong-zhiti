@@ -1,13 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AIGenerationStatus, type AIStatus } from "@/components/features/ai-generation-status";
-import { mockAIClassReport, mockClassSummary, mockTeacherReviews } from "@/lib/data/mock-ai-reports";
-import { mockStudents } from "@/lib/data/mock-students";
-import { getLatestRecord } from "@/lib/data/mock-fitness-records";
 import {
   Target,
   Users,
@@ -21,80 +18,17 @@ import {
 import Link from "next/link";
 import type { AIClassReport } from "@/lib/types";
 
-const CLIENT_AI_TIMEOUT_MS = 15000;
-
 // ===== 主组件 =====
-export function AIClassReportView() {
-  const [report, setReport] = useState<AIClassReport | null>(null);
-  const [status, setStatus] = useState<AIStatus>("idle");
-  const [mode, setMode] = useState<"ai" | "mock" | "fallback" | undefined>();
-  const [errorMsg, setErrorMsg] = useState<string>("");
+interface AIClassReportViewProps {
+  initialReport: AIClassReport | null;
+  pendingReviewCount: number;
+}
 
-  const fetchReport = useCallback(async () => {
-    setStatus("analyzing");
-
-    try {
-      const records = mockStudents
-        .map((s) => getLatestRecord(s.id))
-        .filter(Boolean);
-
-      const classData = {
-        students: mockStudents,
-        records,
-        summary: mockClassSummary,
-      };
-
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), CLIENT_AI_TIMEOUT_MS);
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          type: "class-report",
-          classData,
-        }),
-      }).finally(() => window.clearTimeout(timeoutId));
-
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-
-      const data = await res.json();
-      setMode(data._fallback ? "fallback" : (data._mode as "ai" | "mock"));
-
-      const parsed = data.content
-        ? { ...mockAIClassReport, ...safeMergeClass(data) }
-        : data;
-
-      setReport(parsed as AIClassReport);
-      setStatus(data._fallback ? "fallback" : "complete");
-    } catch (err) {
-      console.error("Class report fetch failed:", err);
-      setReport(mockAIClassReport);
-      setMode("fallback");
-      setErrorMsg(err instanceof Error ? err.message : "未知错误");
-      setStatus("fallback");
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchReport();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (status !== "analyzing") return;
-
-    const profileTimer = window.setTimeout(() => {
-      setStatus((current) => current === "analyzing" ? "generating_profile" : current);
-    }, 900);
-    const planTimer = window.setTimeout(() => {
-      setStatus((current) => current === "generating_profile" ? "generating_plan" : current);
-    }, 1900);
-
-    return () => {
-      window.clearTimeout(profileTimer);
-      window.clearTimeout(planTimer);
-    };
-  }, [status]);
+export function AIClassReportView({ initialReport, pendingReviewCount }: AIClassReportViewProps) {
+  const [report] = useState<AIClassReport | null>(initialReport);
+  const [status] = useState<AIStatus>(initialReport ? "complete" : "fallback");
+  const [mode] = useState<"ai" | "mock" | "fallback" | undefined>(initialReport ? "mock" : "fallback");
+  const errorMsg = initialReport ? "" : "数据库中暂无班级报告，请先运行 seed 或生成报告。";
 
   // ---- 生成中 ----
   if (status === "analyzing" || status === "generating_profile" || status === "generating_plan") {
@@ -105,7 +39,7 @@ export function AIClassReportView() {
   if (status === "error" || status === "fallback") {
     return (
       <div className="space-y-4">
-        <AIGenerationStatus status={status} mode={mode} errorMessage={errorMsg} onRetry={fetchReport} />
+        <AIGenerationStatus status={status} mode={mode} errorMessage={errorMsg} />
         {report && <ReportContent report={report} mode={mode} />}
       </div>
     );
@@ -113,8 +47,6 @@ export function AIClassReportView() {
 
   // ---- 暂无报告 ----
   if (!report) return null;
-
-  const pendingCount = mockTeacherReviews.filter((r) => r.status === "pending").length;
 
   return (
     <div className="space-y-5">
@@ -129,9 +61,9 @@ export function AIClassReportView() {
         >
           <ClipboardCheck className="h-4 w-4" />
           前往审核中心 · 教师审核后推送
-          {pendingCount > 0 && (
+          {pendingReviewCount > 0 && (
             <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
-              {pendingCount} 份待审
+              {pendingReviewCount} 份待审
             </Badge>
           )}
           <ArrowRight className="h-4 w-4" />
@@ -360,18 +292,4 @@ function ReportContent({ report }: { report: AIClassReport; mode?: string }) {
       </Card>
     </>
   );
-}
-
-// ===== JSON 合并工具 =====
-function safeMergeClass(data: Record<string, unknown>): Record<string, unknown> {
-  try {
-    if (data.content && typeof data.content === "string") {
-      const jsonMatch = data.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-        return { ...mockAIClassReport, ...parsed };
-      }
-    }
-  } catch { /* ignore */ }
-  return {};
 }

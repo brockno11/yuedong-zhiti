@@ -45,6 +45,7 @@
 | 表单 | react-hook-form + zod | 7.54 / 3.24 | 类型安全表单验证 |
 | 图标 | lucide-react | 0.468 | 开源 SVG 图标库 |
 | AI 引擎 | DeepSeek V4 Flash | — | 已接入真实 API，支持 Mock 回退 |
+| 本地数据库 | Prisma ORM + SQLite | 6.19 / SQLite | 运行时权威数据源，Mock 数据仅作为 seed 来源 |
 | 状态管理 | React useState / useForm | — | MVP 阶段本地状态，无全局状态库 |
 | 包管理 | npm | 8+ | package-lock.json 锁定 |
 
@@ -70,6 +71,13 @@
 /teacher/profile           → 教师个人中心（含退出登录）
 
 /api/ai                    → AI API 路由（POST）
+/api/auth/login            → 演示账号登录（POST，数据库账号）
+/api/students              → 学生列表（GET，数据库）
+/api/students/[id]         → 学生详情 + 记录（GET，数据库）
+/api/fitness-records       → 体测记录读写（GET/POST，数据库）
+/api/class-summary         → 班级统计汇总（GET，数据库计算）
+/api/reviews               → 审核列表（GET，数据库）
+/api/reviews/[id]          → 审核状态更新（PATCH，数据库）
 ```
 
 ### 路由架构决策
@@ -224,6 +232,11 @@ API Key 仅在服务端 `process.env` 中，前端永不可见。
 | `src/lib/data/mock-ai-reports.ts` | Mock AI 报告数据（学生报告 + 班级报告 + 审核数据） |
 | `src/app/api/ai/route.ts` | AI API 路由（双模式切换入口，含超时回退） |
 
+### 7.4 AI 报告持久化
+- `/api/ai` 保留 DeepSeek / Mock 回退逻辑。
+- 生成或回退后的学生/班级报告会 upsert 到 `AIReport`。
+- 每份待审报告会创建或更新 `TeacherReview`，审核中心以数据库为唯一权威来源。
+
 ---
 
 ## 8. 数据模型
@@ -265,6 +278,19 @@ OnboardingData       — 引导步骤数据
 ### 8.3 体测数据合理范围（`src/lib/constants.ts`）
 
 所有体测数据均定义了 `PHYSICAL_RANGES`（min/max），用于前端输入校验和异常值检测。
+
+### 8.4 SQLite / Prisma 数据库模型
+
+| 模型 | 说明 |
+|------|------|
+| `ClassGroup` | 班级、年级、学期、教师关联 |
+| `UserAccount` | 演示账号，含角色、账号、展示名、学生/班级关联 |
+| `Student` | 匿名学生基础信息、BMI、运动目标、运动基础、健康关注信息 |
+| `FitnessRecord` / `FitnessRecordItem` | 体测记录与单项成绩，运动体感字段随记录保存 |
+| `AIReport` | 学生/班级 AI 报告内容、生成模式、状态、版本 |
+| `TeacherReview` | 教师审核状态、备注、修改记录、审核时间 |
+
+数组类字段在 SQLite 中以 JSON 字符串保存，便于后续迁移到 MySQL。
 
 ---
 
@@ -509,6 +535,18 @@ npm run build
 # 6. Lint
 npm run lint
 ```
+
+### 数据库命令
+
+```bash
+npm run db:generate   # 生成 Prisma Client
+npm run db:migrate    # 应用本地 SQLite migration
+npm run db:seed       # 从 mock 数据写入 seed 数据
+npm run db:studio     # 打开 Prisma Studio
+npm run db:reset      # 重置本地数据库
+```
+
+> 当前 Windows/Node 24 环境下 Prisma schema-engine 执行 `migrate dev/db push` 会出现空错误；项目保留 `prisma/schema.prisma` 与 `prisma/migrations`，并用 `prisma/migrate.ts` 通过 `better-sqlite3` 应用 migration SQL。Prisma Client 仍是运行时 ORM。
 
 ### 环境变量说明
 

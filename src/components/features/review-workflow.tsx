@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/features/empty-state";
-import { mockTeacherReviews, mockAIStudentReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";
+import type { ReviewWithReport } from "@/lib/server/db-mappers";
 import {
   CheckCircle2,
   Pencil,
@@ -19,17 +19,22 @@ import {
   Users,
   ClipboardCheck,
 } from "lucide-react";
-import type { TeacherReview } from "@/lib/types";
+import type { AIClassReport, AIStudentReport, TeacherReview } from "@/lib/types";
 
-function getOriginalAIText(reportType: "student" | "class"): string {
+function getOriginalAIText(report: AIStudentReport | AIClassReport | null, reportType: "student" | "class"): string {
+  if (!report) return "暂无报告内容";
   if (reportType === "student") {
-    return mockAIStudentReport.fitnessProfile.summary;
+    return (report as AIStudentReport).fitnessProfile.summary;
   }
-  return mockAIClassReport.overallAnalysis.summary;
+  return (report as AIClassReport).overallAnalysis.summary;
 }
 
-export function ReviewWorkflow() {
-  const [reviews, setReviews] = useState<TeacherReview[]>(mockTeacherReviews);
+interface ReviewWorkflowProps {
+  initialItems: ReviewWithReport[];
+}
+
+export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
+  const [items, setItems] = useState<ReviewWithReport[]>(initialItems);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState("");
   const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
@@ -60,10 +65,10 @@ export function ReviewWorkflow() {
     }, 2000);
   };
 
-  const pendingReviews = reviews.filter((r) => r.status === "pending");
-  const processedReviews = reviews.filter((r) => r.status !== "pending");
+  const pendingItems = items.filter((item) => item.review.status === "pending");
+  const processedItems = items.filter((item) => item.review.status !== "pending");
 
-  const handleAction = (
+  const handleAction = async (
     reviewId: string,
     action: "approved" | "modified" | "rejected",
     notes?: string
@@ -71,16 +76,29 @@ export function ReviewWorkflow() {
     // Clear rejection error when performing any action
     setRejectionErrorId(null);
 
-    setReviews((prev) =>
-      prev.map((r) =>
-        r.id === reviewId
+    const response = await fetch(`/api/reviews/${reviewId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: action,
+        teacherNotes: notes ?? "",
+      }),
+    });
+
+    if (!response.ok) {
+      showFeedback(reviewId, "审核状态保存失败，请稍后重试");
+      return;
+    }
+
+    const payload = await response.json() as { data: TeacherReview };
+    setItems((prev) =>
+      prev.map((item) =>
+        item.review.id === reviewId
           ? {
-              ...r,
-              status: action,
-              reviewedAt: new Date().toISOString(),
-              teacherNotes: notes !== undefined ? notes : r.teacherNotes,
+              ...item,
+              review: payload.data,
             }
-          : r
+          : item
       )
     );
     setEditingId(null);
@@ -132,9 +150,9 @@ export function ReviewWorkflow() {
         <TabsTrigger value="pending" className="flex-1 gap-1.5">
           <Clock className="h-4 w-4" />
           待审核
-          {pendingReviews.length > 0 && (
+          {pendingItems.length > 0 && (
             <Badge variant="pass" className="ml-1 h-4 px-1 text-[10px]">
-              {pendingReviews.length}
+              {pendingItems.length}
             </Badge>
           )}
         </TabsTrigger>
@@ -142,21 +160,21 @@ export function ReviewWorkflow() {
           <ClipboardCheck className="h-4 w-4" />
           已处理
           <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">
-            {processedReviews.length}
+            {processedItems.length}
           </Badge>
         </TabsTrigger>
       </TabsList>
 
       {/* 待审核 */}
       <TabsContent value="pending" className="mt-4 space-y-4">
-        {pendingReviews.length === 0 ? (
+        {pendingItems.length === 0 ? (
           <EmptyState
             icon={<ClipboardCheck className="h-8 w-8 text-muted-foreground" />}
             title="没有待审核的报告"
             description="所有 AI 报告已处理完毕"
           />
         ) : (
-          pendingReviews.map((review) => {
+          pendingItems.map(({ review, report }) => {
             const reportTitle =
               review.reportType === "student"
                 ? "学生个人 AI 体质报告"
@@ -212,17 +230,17 @@ export function ReviewWorkflow() {
                     {review.reportType === "student" ? (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <p className="text-sm">
-                          {mockAIStudentReport.fitnessProfile.summary}
+                          {getOriginalAIText(report, review.reportType)}
                         </p>
                         <div className="flex flex-wrap gap-1 content-start">
-                          {mockAIStudentReport.fitnessProfile.strengths.map(
+                          {((report as AIStudentReport | null)?.fitnessProfile.strengths ?? []).map(
                             (s) => (
                               <Badge key={s} variant="excellent" className="text-[10px]">
                                 {s}
                               </Badge>
                             )
                           )}
-                          {mockAIStudentReport.fitnessProfile.improvements.map(
+                          {((report as AIStudentReport | null)?.fitnessProfile.improvements ?? []).map(
                             (s) => (
                               <Badge key={s} variant="pass" className="text-[10px]">
                                 {s}
@@ -234,10 +252,10 @@ export function ReviewWorkflow() {
                     ) : (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <p className="text-sm">
-                          {mockAIClassReport.overallAnalysis.summary}
+                          {getOriginalAIText(report, review.reportType)}
                         </p>
                         <div className="flex flex-wrap gap-1 content-start">
-                          {mockAIClassReport.commonWeaknesses.map((w) => (
+                          {((report as AIClassReport | null)?.commonWeaknesses ?? []).map((w) => (
                             <Badge
                               key={w.itemId}
                               variant="pass"
@@ -260,7 +278,7 @@ export function ReviewWorkflow() {
                           AI 原文参考
                         </p>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                          {getOriginalAIText(review.reportType)}
+                          {getOriginalAIText(report, review.reportType)}
                         </p>
                       </div>
 
@@ -330,14 +348,14 @@ export function ReviewWorkflow() {
 
       {/* 已处理 */}
       <TabsContent value="processed" className="mt-4 space-y-3">
-        {processedReviews.length === 0 ? (
+        {processedItems.length === 0 ? (
           <EmptyState
             icon={<ClipboardCheck className="h-8 w-8 text-muted-foreground" />}
             title="暂无已处理的报告"
             description="审核完成后会显示在这里"
           />
         ) : (
-          processedReviews.map((review) => {
+          processedItems.map(({ review }) => {
             const statusConfig = {
               approved: {
                 label: "已通过",

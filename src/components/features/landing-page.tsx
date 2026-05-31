@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { mockStudents } from "@/lib/data/mock-students";
 import { cn } from "@/lib/utils";
+import type { LoginAccountOption } from "@/lib/server/data-service";
 import {
   Sparkles,
   Activity,
@@ -25,15 +25,13 @@ import {
 
 type Role = "student" | "teacher";
 
-const TEACHER_ACCOUNTS = [
-  { id: "t1", username: "zhanglaoshi", name: "张老师", class: "初二(3)班", subject: "体育教研组" },
-  { id: "t2", username: "lilaoshi", name: "李老师", class: "初二(5)班", subject: "体育教研组" },
-  { id: "t3", username: "wanglaoshi", name: "王老师", class: "初一(2)班", subject: "体育教研组" },
-];
-
 const DEMO_PASSWORD = "demo123";
 
-export function LandingPage() {
+interface LandingPageProps {
+  accounts: LoginAccountOption[];
+}
+
+export function LandingPage({ accounts }: LandingPageProps) {
   const router = useRouter();
   const [role, setRole] = useState<Role>("student");
   const [username, setUsername] = useState("");
@@ -42,25 +40,7 @@ export function LandingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 学生账号列表
-  const studentAccounts = mockStudents.map((s) => ({
-    id: s.id,
-    username: s.id,
-    name: s.name,
-    display: `${s.name}（${s.id} · ${s.grade} · ${s.gender === "male" ? "男" : "女"}）`,
-    grade: s.grade,
-    gender: s.gender === "male" ? "男" : "女",
-  }));
-
-  const teacherAccounts = TEACHER_ACCOUNTS.map((t) => ({
-    id: t.id,
-    username: t.username,
-    name: t.name,
-    display: `${t.name} · ${t.class} · ${t.subject}`,
-    class: t.class,
-  }));
-
-  const currentAccounts = role === "student" ? studentAccounts : teacherAccounts;
+  const currentAccounts = accounts.filter((account) => account.role === role);
 
   const handleSelectAccount = (accountId: string) => {
     const account = currentAccounts.find((a) => a.id === accountId);
@@ -71,7 +51,7 @@ export function LandingPage() {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setError("");
 
     if (!username.trim()) {
@@ -94,22 +74,34 @@ export function LandingPage() {
     }
 
     setIsLoading(true);
-    localStorage.setItem(
-      "demo_login",
-      JSON.stringify({
-        role,
-        username: account.username,
-        name: account.name,
-        class: role === "teacher" ? (account as typeof teacherAccounts[0]).class : undefined,
-        grade: role === "student" ? (account as typeof studentAccounts[0]).grade : undefined,
-        gender: role === "student" ? (account as typeof studentAccounts[0]).gender : undefined,
-        timestamp: Date.now(),
-      })
-    );
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, username: account.username, password }),
+    });
 
-    setTimeout(() => {
-      router.push(role === "student" ? "/dashboard" : "/teacher");
-    }, 500);
+    if (!response.ok) {
+      setError("账号或密码不正确");
+      setIsLoading(false);
+      return;
+    }
+
+    const payload = await response.json() as {
+      data: {
+        role: Role;
+        username: string;
+        name: string;
+        class?: string;
+        grade?: string;
+        gender?: string;
+        studentId?: string;
+        classId?: string;
+        timestamp: number;
+      };
+    };
+
+    localStorage.setItem("demo_login", JSON.stringify(payload.data));
+    router.push(role === "student" ? "/dashboard" : "/teacher");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

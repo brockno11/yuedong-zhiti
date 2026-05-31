@@ -5,7 +5,7 @@ import { StatCard } from "@/components/charts/stat-card";
 import { ClassBarChart } from "@/components/charts/class-bar-chart";
 import { LevelDonutChart } from "@/components/charts/level-donut-chart";
 import { Badge } from "@/components/ui/badge";
-import { mockClassSummary, mockTeacherReviews } from "@/lib/data/mock-ai-reports";
+import { getClassSummary } from "@/lib/server/data-service";
 import {
   Users,
   UserCheck,
@@ -19,21 +19,9 @@ import {
   Clock,
 } from "lucide-react";
 import Link from "next/link";
-import type { DonutChartSegment } from "@/lib/types";
 
-export default function TeacherOverviewPage() {
-  const summary = mockClassSummary;
-  const pendingReviewCount = mockTeacherReviews.filter(
-    (r) => r.status === "pending"
-  ).length;
-
-  // 等级分布数据
-  const levelData: DonutChartSegment[] = [
-    { grade: "excellent", label: "优秀", count: 3, percentage: 15 },
-    { grade: "good", label: "良好", count: 7, percentage: 35 },
-    { grade: "pass", label: "及格", count: 7, percentage: 35 },
-    { grade: "improve", label: "待提升", count: 3, percentage: 15 },
-  ];
+export default async function TeacherOverviewPage() {
+  const summary = await getClassSummary();
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 lg:grid lg:grid-cols-12 lg:gap-6 lg:space-y-0">
@@ -50,7 +38,7 @@ export default function TeacherOverviewPage() {
               <Lightbulb className="h-5 w-5 text-primary" />
               <h2 className="text-base font-semibold">今日教学建议</h2>
               <Badge variant="outline" className="ml-auto shrink-0 text-xs">
-                示例建议 · 演示模式
+                数据库统计 · 演示模式
               </Badge>
             </div>
             <p className="text-sm leading-relaxed text-foreground/80">
@@ -95,7 +83,7 @@ export default function TeacherOverviewPage() {
       </div>
 
       {/* ===== 待审核提醒 — 全宽 ===== */}
-      {pendingReviewCount > 0 && (
+      {summary.pendingReviewCount > 0 && (
         <div className="lg:col-span-12">
           <Link href="/teacher/review">
             <Card className="cursor-pointer rounded-xl border shadow-sm transition-shadow hover:shadow-md">
@@ -110,7 +98,7 @@ export default function TeacherOverviewPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">待审核报告</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    共有 {pendingReviewCount} 份AI报告等待您的审核确认
+                    共有 {summary.pendingReviewCount} 份AI报告等待您的审核确认
                   </p>
                 </div>
                 <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
@@ -145,7 +133,7 @@ export default function TeacherOverviewPage() {
               <CardTitle className="text-base">体测等级分布</CardTitle>
             </CardHeader>
             <CardContent>
-              <LevelDonutChart data={levelData} height={300} />
+              <LevelDonutChart data={summary.levelData} height={300} />
             </CardContent>
           </Card>
         </div>
@@ -221,3 +209,5 @@ export default function TeacherOverviewPage() {
     </div>
   );
 }
+
+export const dynamic = "force-dynamic";

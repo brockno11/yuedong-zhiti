@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FitnessRadarChart } from "@/components/charts/fitness-radar-chart";
 import { StudentReviewStatus } from "@/components/features/student-review-status";
-import { getStudentById } from "@/lib/data/mock-students";
-import { getLatestRecord, getRecordsByStudentId } from "@/lib/data/mock-fitness-records";
+import { getFitnessRecords, getLatestFitnessRecord, getStudentProfile } from "@/lib/server/data-service";
 import { FITNESS_ITEMS, GRADE_STANDARDS } from "@/lib/constants";
 import {
   User,
@@ -27,8 +26,8 @@ function formatDisplayDate(date: string) {
   return day || date;
 }
 
-export default function StudentDetailPage({ params }: StudentDetailPageProps) {
-  const student = getStudentById(params.id);
+export default async function StudentDetailPage({ params }: StudentDetailPageProps) {
+  const student = await getStudentProfile(params.id);
 
   if (!student) {
     return (
@@ -43,8 +42,8 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
     );
   }
 
-  const latestRecord = getLatestRecord(student.id);
-  const allRecords = getRecordsByStudentId(student.id);
+  const latestRecord = await getLatestFitnessRecord(student.id);
+  const allRecords = await getFitnessRecords(student.id);
 
   // 雷达图
   const radarData: RadarChartDataPoint[] = latestRecord ? [

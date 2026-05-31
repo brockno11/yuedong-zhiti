@@ -6,9 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/features/empty-state";
-import { mockStudents } from "@/lib/data/mock-students";
-import { getLatestRecord } from "@/lib/data/mock-fitness-records";
 import { GRADE_STANDARDS, FITNESS_ITEMS } from "@/lib/constants";
+import type { StudentListItem } from "@/lib/server/db-mappers";
 import {
   Search,
   ChevronRight,
@@ -18,15 +17,19 @@ import {
   Sparkles,
 } from "lucide-react";
 
-export function StudentSearchList() {
+interface StudentSearchListProps {
+  students: StudentListItem[];
+}
+
+export function StudentSearchList({ students }: StudentSearchListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredStudents = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return mockStudents;
+    if (!q) return students;
 
-    return mockStudents.filter((s) => {
-      const record = getLatestRecord(s.id);
+    return students.filter(({ student, latestRecord }) => {
+      const record = latestRecord;
       const avgScore = record
         ? Math.round(record.items.reduce((sum, i) => sum + i.score, 0) / record.items.length)
         : null;
@@ -35,16 +38,16 @@ export function StudentSearchList() {
         : "";
 
       return (
-        s.id.toLowerCase().includes(q) ||
-        s.name.toLowerCase().includes(q) ||
-        s.grade.includes(q) ||
-        (s.gender === "male" && q.includes("男")) ||
-        (s.gender === "female" && q.includes("女")) ||
+        student.id.toLowerCase().includes(q) ||
+        student.name.toLowerCase().includes(q) ||
+        student.grade.includes(q) ||
+        (student.gender === "male" && q.includes("男")) ||
+        (student.gender === "female" && q.includes("女")) ||
         (avgScore !== null && avgScore < 60 && q.includes("关注")) ||
         (gradeLabel && gradeLabel.includes(q))
       );
     });
-  }, [searchQuery]);
+  }, [searchQuery, students]);
 
   return (
     <>
@@ -72,8 +75,8 @@ export function StudentSearchList() {
         />
       ) : (
         <div className="grid gap-3">
-          {filteredStudents.map((student) => {
-            const record = getLatestRecord(student.id);
+          {filteredStudents.map(({ student, latestRecord }) => {
+            const record = latestRecord;
             const avgScore = record
               ? Math.round(
                   record.items.reduce((sum, i) => sum + i.score, 0) /

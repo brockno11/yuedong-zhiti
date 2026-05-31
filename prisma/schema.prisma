@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  student
+  teacher
+}
+
+enum Gender {
+  male
+  female
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  modified
+  rejected
+}
+
+enum ReportKind {
+  student
+  class
+}
+
+model ClassGroup {
+  id        String   @id
+  name      String
+  grade     String
+  semester  String
+  teacherId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students Student[]
+  accounts UserAccount[]
+}
+
+model UserAccount {
+  id           String   @id
+  role         UserRole
+  username     String   @unique
+  displayName  String
+  passwordHash String
+  studentId    String?
+  classId      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student Student?    @relation(fields: [studentId], references: [id])
+  class   ClassGroup? @relation(fields: [classId], references: [id])
+}
+
+model Student {
+  id             String   @id
+  name           String
+  gender         Gender
+  grade          String
+  age            Int
+  height         Float
+  weight         Float
+  bmi            Float
+  sportGoal      String
+  sportBase      String
+  discomfortsJson String
+  classId        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  class          ClassGroup @relation(fields: [classId], references: [id])
+  accounts       UserAccount[]
+  records        FitnessRecord[]
+  reports        AIReport[]
+}
+
+model FitnessRecord {
+  id                String   @id
+  studentId         String
+  date              DateTime
+  semester          String
+  fatigueLevel      Int
+  recoveryStatus    String
+  hasSoreness       Boolean
+  sorenessAreasJson String
+  hasDiscomfort     Boolean
+  discomfortNotes   String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  student Student             @relation(fields: [studentId], references: [id])
+  items   FitnessRecordItem[]
+
+  @@index([studentId, date])
+}
+
+model FitnessRecordItem {
+  id        String @id
+  recordId  String
+  itemId    String
+  value     Float
+  score     Int
+  grade     String
+
+  record FitnessRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+  @@index([itemId])
+}
+
+model AIReport {
+  id          String       @id
+  reportKind  ReportKind
+  studentId   String?
+  classId     String?
+  contentJson String
+  mode        String
+  status      ReviewStatus @default(pending)
+  version     Int          @default(1)
+  generatedAt DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  student Student?        @relation(fields: [studentId], references: [id])
+  reviews TeacherReview[]
+
+  @@index([reportKind, studentId])
+  @@index([classId])
+}
+
+model TeacherReview {
+  id                String       @id
+  reportId          String
+  reportType        ReportKind
+  reviewerName      String
+  status            ReviewStatus @default(pending)
+  teacherNotes      String       @default("")
+  modificationsJson String?
+  reviewedAt        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  report AIReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([reportId])
+}
