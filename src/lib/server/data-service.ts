@@ -603,6 +603,27 @@ export async function getNextStudentId(): Promise<string> {
   return `S${String(num).padStart(3, "0")}`;
 }
 
+// 班级项目均值
+export async function getClassAverages() {
+  const students = await prisma.student.findMany({ select: { id: true, gender: true } });
+  const records = await prisma.fitnessRecord.findMany({ include: { items: true }, orderBy: { date: "desc" } });
+  const latestByStudent = new Map<string, (typeof records)[0]>();
+  for (const r of records) { if (!latestByStudent.has(r.studentId)) latestByStudent.set(r.studentId, r); }
+
+  const result: Record<string, { count: number; avgScore: number; avgValue: number; hasData: boolean }> = {};
+  for (const itemId of ["50m_run","standing_long_jump","pull_up","sit_up","1000m_run","800m_run","sit_and_reach","vital_capacity"]) {
+    let scoreSum = 0, valueSum = 0, count = 0;
+    for (const s of students) {
+      const r = latestByStudent.get(s.id);
+      const item = r?.items.find(i => i.itemId === itemId);
+      if (item) { scoreSum += item.score; valueSum += item.value; count++; }
+    }
+    result[itemId] = { count, avgScore: count > 0 ? Math.round(scoreSum / count) : 0, avgValue: count > 0 ? Math.round(valueSum / count * 10) / 10 : 0, hasData: count >= 3 };
+  }
+  result["__body_ref__"] = { count: students.length, avgScore: 74, avgValue: 0, hasData: true };
+  return result;
+}
+
 // ===== 体测批次管理 =====
 
 export async function createBatch(input: {
