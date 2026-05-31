@@ -102,6 +102,62 @@ export function calculateItemScore(
   }
 }
 
+// ---- 数据完整度计算 ----
+
+const MALE_ITEMS = ["50m_run", "standing_long_jump", "pull_up", "1000m_run", "sit_and_reach", "vital_capacity"] as const;
+const FEMALE_ITEMS = ["50m_run", "standing_long_jump", "sit_up", "800m_run", "sit_and_reach", "vital_capacity"] as const;
+
+export interface RecordCompleteness {
+  recordedCount: number;
+  expectedCount: number;
+  missingItems: string[];
+  completionRate: number; // 0-100
+  isComplete: boolean;    // 全部项目已记录
+  isPartial: boolean;     // 部分项目已记录
+  availableDimensions: { dimension: string; itemId: string }[];
+  missingDimensions: { dimension: string; itemId: string }[];
+}
+
+const DIMENSION_MAP: Record<string, string> = {
+  "50m_run": "速度",
+  standing_long_jump: "力量",
+  pull_up: "力量",
+  sit_up: "力量",
+  "1000m_run": "耐力",
+  "800m_run": "耐力",
+  sit_and_reach: "柔韧",
+  vital_capacity: "耐力",
+};
+
+export function calculateRecordCompleteness(
+  recordedItemIds: string[],
+  gender: "male" | "female"
+): RecordCompleteness {
+  const expectedItems = gender === "male" ? [...MALE_ITEMS] : [...FEMALE_ITEMS];
+  const recorded = new Set(recordedItemIds);
+  const missingItems = expectedItems.filter((id) => !recorded.has(id));
+  const recordedCount = recordedItemIds.filter((id) => (expectedItems as readonly string[]).includes(id)).length;
+
+  const availableDimensions = expectedItems
+    .filter((id) => recorded.has(id))
+    .map((id) => ({ dimension: DIMENSION_MAP[id] ?? "其他", itemId: id }));
+
+  const missingDimensions = expectedItems
+    .filter((id) => !recorded.has(id))
+    .map((id) => ({ dimension: DIMENSION_MAP[id] ?? "其他", itemId: id }));
+
+  return {
+    recordedCount,
+    expectedCount: expectedItems.length,
+    missingItems,
+    completionRate: Math.round((recordedCount / expectedItems.length) * 100),
+    isComplete: recordedCount >= expectedItems.length,
+    isPartial: recordedCount > 0 && recordedCount < expectedItems.length,
+    availableDimensions,
+    missingDimensions,
+  };
+}
+
 // ---- 计算综合评分 ----
 export function calculateOverallScore(
   scores: { itemId: FitnessItemId; value: number; grade: string }[]

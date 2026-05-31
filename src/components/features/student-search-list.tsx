@@ -143,6 +143,16 @@ export function StudentSearchList({ students }: StudentSearchListProps) {
                         {needsAttention && (
                           <Badge variant="improve" className="text-[11px]">需关注</Badge>
                         )}
+                        {record ? (
+                          <Badge
+                            variant={record.items.length >= 6 ? "excellent" : record.items.length >= 1 ? "pass" : "secondary"}
+                            className="text-[11px]"
+                          >
+                            {record.items.length >= 6 ? "完整录入" : `部分录入 ${record.items.length}/6`}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[11px]">未录入</Badge>
+                        )}
                       </div>
 
                       <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">

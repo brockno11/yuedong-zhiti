@@ -5,7 +5,8 @@ import { StatCard } from "@/components/charts/stat-card";
 import { ClassBarChart } from "@/components/charts/class-bar-chart";
 import { LevelDonutChart } from "@/components/charts/level-donut-chart";
 import { Badge } from "@/components/ui/badge";
-import { getClassSummary } from "@/lib/server/data-service";
+import { getClassSummaryWithBatch } from "@/lib/server/data-service";
+import { BatchSelector } from "@/components/features/batch-selector";
 import {
   Users,
   UserCheck,
@@ -21,8 +22,13 @@ import {
 import Link from "next/link";
 import { DemoBanner } from "@/components/features/demo-banner";
 
-export default async function TeacherOverviewPage() {
-  const summary = await getClassSummary();
+export default async function TeacherOverviewPage({
+  searchParams,
+}: {
+  searchParams?: { batchId?: string };
+}) {
+  const batchId = searchParams?.batchId;
+  const summary = await getClassSummaryWithBatch(batchId);
 
   // 从实际数据生成今日教学建议
   const weakItems = summary.weakItemRanking;
@@ -72,6 +78,11 @@ export default async function TeacherOverviewPage() {
       {/* ===== 页面标题 — 全宽 ===== */}
       <div className="lg:col-span-12">
         <PageHeader title="高二(1)班" description="2025年春季学期" />
+      </div>
+
+      {/* ===== 批次筛选 — 全宽 ===== */}
+      <div className="lg:col-span-12">
+        <BatchSelector />
       </div>
 
       {/* ===== 今日教学建议 — 全宽 ===== */}

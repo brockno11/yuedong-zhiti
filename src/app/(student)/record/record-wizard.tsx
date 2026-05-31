@@ -4,22 +4,34 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { RecordProjectSelect } from "@/components/features/record-project-select";
 import { RecordScoreInput } from "@/components/features/record-score-input";
 import { RecordFeelingStep } from "@/components/features/record-feeling-step";
 import { RecordComplete } from "@/components/features/record-complete";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, GraduationCap, Dumbbell } from "lucide-react";
 import type { FitnessItemId, BodyFeeling } from "@/lib/types";
 
 const PHYSICAL_CATEGORIES = ["speed", "strength", "endurance"];
 
+interface BatchOption {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+}
+
 export function RecordWizard() {
   const [step, setStep] = useState(0);
+  // 批次选择
+  const [batches, setBatches] = useState<BatchOption[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>("");
+  const [recordType, setRecordType] = useState<"official_test" | "daily_training">("official_test");
+  // 项目选择
   const [selectedItems, setSelectedItems] = useState<FitnessItemId[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
-  // 逐项体感
   const [feelings, setFeelings] = useState<Partial<Record<FitnessItemId, BodyFeeling>>>({});
   const [overallDiscomfort, setOverallDiscomfort] = useState({
     hasDiscomfort: false,
@@ -28,14 +40,27 @@ export function RecordWizard() {
   const [isSaving, setIsSaving] = useState(false);
   const savedRef = useRef(false);
 
+  // 加载批次列表
+  useEffect(() => {
+    fetch("/api/batches")
+      .then(r => r.json())
+      .then((data: BatchOption[]) => {
+        setBatches(data);
+        const active = data.find(b => b.status === "active");
+        if (active) setSelectedBatchId(active.id);
+      })
+      .catch(() => {});
+  }, []);
+
   const hasPhysicalItems = selectedItems.some((id) => {
     const item = FITNESS_ITEMS.find((i) => i.id === id);
     return item && PHYSICAL_CATEGORIES.includes(item.category);
   });
 
+  // 步骤：batch(0) → items(1) → scores(2) → feeling(3?) → complete
   const STEPS = hasPhysicalItems
-    ? ["选择项目", "输入成绩", "逐项体感", "完成"]
-    : ["选择项目", "输入成绩", "完成"];
+    ? ["选择批次", "选择项目", "输入成绩", "逐项体感", "完成"]
+    : ["选择批次", "选择项目", "输入成绩", "完成"];
 
   const toggleItem = useCallback((itemId: FitnessItemId) => {
     setSelectedItems((prev) =>
@@ -53,15 +78,16 @@ export function RecordWizard() {
 
   const canProceed = () => {
     switch (step) {
-      case 0: return selectedItems.length > 0;
-      case 1: return selectedItems.every((id) => scores[id] && scores[id] > 0);
+      case 0: return selectedBatchId !== "" || recordType === "daily_training";
+      case 1: return selectedItems.length > 0;
+      case 2: return selectedItems.every((id) => scores[id] && scores[id] > 0);
       default: return true;
     }
   };
 
   const handleNext = () => {
-    if (!hasPhysicalItems && step === 1) {
-      setStep(2);
+    if (!hasPhysicalItems && step === 2) {
+      setStep(3); // skip feeling, go to complete
     } else if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
     }
@@ -69,7 +95,7 @@ export function RecordWizard() {
 
   const handleBack = () => {
     if (step > 0) {
-      if (!hasPhysicalItems && step === 2) setStep(1);
+      if (!hasPhysicalItems && step === 3) setStep(2);
       else setStep((s) => s - 1);
     }
   };
@@ -85,6 +111,8 @@ export function RecordWizard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         studentId: login?.studentId ?? login?.username,
+        batchId: selectedBatchId || undefined,
+        recordType: recordType,
         items: selectedItems.map((itemId) => ({
           itemId,
           value: scores[itemId],
@@ -106,19 +134,19 @@ export function RecordWizard() {
     }
 
     localStorage.removeItem("ai_analysis_cache");
-    // 保存完成，不自动跳转 — 让用户在完成页选择下一步
     setIsSaving(false);
     savedRef.current = true;
   };
 
-  // 到达完成步骤时自动保存（savedRef 防止重复执行）
-  const completionStep = hasPhysicalItems ? 3 : 2;
+  const completionStep = hasPhysicalItems ? 4 : 3;
   useEffect(() => {
     if (step === completionStep && !savedRef.current && !isSaving) {
       handleComplete();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, completionStep, isSaving]);
+
+  const selectedBatch = batches.find(b => b.id === selectedBatchId);
 
   return (
     <>
@@ -144,11 +172,89 @@ export function RecordWizard() {
       </div>
 
       <Card className="rounded-xl shadow-sm">
+        {/* Step 0: 选择批次 */}
         {step === 0 && (
           <>
             <CardHeader>
+              <CardTitle className="text-lg">选择体测批次</CardTitle>
+              <CardDescription>请选择本次记录所属的体测批次</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {batches.length > 0 ? (
+                batches.map((batch) => (
+                  <button
+                    key={batch.id}
+                    type="button"
+                    onClick={() => { setSelectedBatchId(batch.id); setRecordType("official_test"); }}
+                    className={cn(
+                      "w-full rounded-xl border p-4 text-left transition-all",
+                      selectedBatchId === batch.id
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:border-primary/30 hover:bg-accent"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                        batch.type === "daily" ? "bg-blue-500/10" : "bg-primary/10"
+                      )}>
+                        {batch.type === "daily" ? (
+                          <Dumbbell className="h-5 w-5 text-blue-500" />
+                        ) : (
+                          <GraduationCap className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">{batch.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {batch.type === "daily" ? "日常训练" : batch.status === "archived" ? "正式体测 · 已归档" : "正式体测"}
+                        </p>
+                      </div>
+                      <Badge variant={batch.status === "active" ? "excellent" : "secondary"} className="text-[10px]">
+                        {batch.status === "active" ? "进行中" : batch.status === "archived" ? "已归档" : batch.status}
+                      </Badge>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">暂无可用批次，将以独立记录方式保存</p>
+              )}
+
+              {/* 日常训练快捷入口 */}
+              <button
+                type="button"
+                onClick={() => { setSelectedBatchId(""); setRecordType("daily_training"); }}
+                className={cn(
+                  "w-full rounded-xl border p-4 text-left transition-all",
+                  recordType === "daily_training"
+                    ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
+                    : "border-dashed border-muted-foreground/30 hover:border-blue-300 hover:bg-blue-50/50"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+                    <Dumbbell className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">日常训练记录</p>
+                    <p className="text-xs text-muted-foreground">不绑定正式体测批次，用于训练过程追踪</p>
+                  </div>
+                </div>
+              </button>
+            </CardContent>
+          </>
+        )}
+
+        {/* Step 1: 选择项目 */}
+        {step === 1 && (
+          <>
+            <CardHeader>
               <CardTitle className="text-lg">选择体测项目</CardTitle>
-              <CardDescription>选择要记录的项目，可多选</CardDescription>
+              <CardDescription>
+                {recordType === "daily_training"
+                  ? "日常训练 — 选择要记录的项目"
+                  : `批次：${selectedBatch?.name ?? "—"} — 选择项目，可多选`}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <RecordProjectSelect selected={selectedItems} onToggle={toggleItem} />
@@ -156,7 +262,8 @@ export function RecordWizard() {
           </>
         )}
 
-        {step === 1 && (
+        {/* Step 2: 输入成绩 */}
+        {step === 2 && (
           <>
             <CardHeader>
               <CardTitle className="text-lg">输入成绩</CardTitle>
@@ -168,7 +275,8 @@ export function RecordWizard() {
           </>
         )}
 
-        {step === 2 && hasPhysicalItems && (
+        {/* Step 3: 体感 */}
+        {step === 3 && hasPhysicalItems && (
           <>
             <CardHeader>
               <CardTitle className="text-lg">逐项运动体感</CardTitle>
@@ -186,7 +294,8 @@ export function RecordWizard() {
           </>
         )}
 
-        {(step === 2 && !hasPhysicalItems) || step === 3 ? (
+        {/* 完成 */}
+        {(step === 3 && !hasPhysicalItems) || step === 4 ? (
           <CardContent>
             <RecordComplete
               itemCount={selectedItems.length}

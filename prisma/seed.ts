@@ -181,6 +181,64 @@ async function main() {
     });
   }
 
+  // 部分记录学生示例 — S018: 仅肺活量+坐位体前屈（2/6项）
+  const PARTIAL_RECORD_ID_1 = "R018";
+  await prisma.fitnessRecord.upsert({
+    where: { id: PARTIAL_RECORD_ID_1 },
+    update: {
+      studentId: "S018", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
+      fatigueLevel: 4, recoveryStatus: "normal", hasSoreness: false, sorenessAreasJson: "[]", hasDiscomfort: false, discomfortNotes: "",
+      items: {
+        deleteMany: {},
+        create: [
+          { id: "R018-vital_capacity", itemId: "vital_capacity", value: 2600, score: 70, grade: "pass" },
+          { id: "R018-sit_and_reach", itemId: "sit_and_reach", value: 9, score: 68, grade: "pass" },
+        ],
+      },
+    },
+    create: {
+      id: PARTIAL_RECORD_ID_1, studentId: "S018", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
+      fatigueLevel: 4, recoveryStatus: "normal", hasSoreness: false, sorenessAreasJson: "[]", hasDiscomfort: false, discomfortNotes: "",
+      items: {
+        create: [
+          { id: "R018-vital_capacity", itemId: "vital_capacity", value: 2600, score: 70, grade: "pass" },
+          { id: "R018-sit_and_reach", itemId: "sit_and_reach", value: 9, score: 68, grade: "pass" },
+        ],
+      },
+    },
+  });
+
+  // 部分记录学生示例 — S019: 仅跑步项目（50m+1000m，2/6项）
+  const PARTIAL_RECORD_ID_2 = "R019";
+  await prisma.fitnessRecord.upsert({
+    where: { id: PARTIAL_RECORD_ID_2 },
+    update: {
+      studentId: "S019", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
+      fatigueLevel: 6, recoveryStatus: "quick", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部"]), hasDiscomfort: false, discomfortNotes: "",
+      items: {
+        deleteMany: {},
+        create: [
+          { id: "R019-50m_run", itemId: "50m_run", value: 7.8, score: 85, grade: "good" },
+          { id: "R019-1000m_run", itemId: "1000m_run", value: 255, score: 72, grade: "pass" },
+        ],
+      },
+    },
+    create: {
+      id: PARTIAL_RECORD_ID_2, studentId: "S019", date: new Date("2025-03-15T10:00:00Z"), semester: "高二下 · 2025春季",
+      batchId: OFFICIAL_BATCH_ID, recordType: "official_test",
+      fatigueLevel: 6, recoveryStatus: "quick", hasSoreness: true, sorenessAreasJson: JSON.stringify(["腿部"]), hasDiscomfort: false, discomfortNotes: "",
+      items: {
+        create: [
+          { id: "R019-50m_run", itemId: "50m_run", value: 7.8, score: 85, grade: "good" },
+          { id: "R019-1000m_run", itemId: "1000m_run", value: 255, score: 72, grade: "pass" },
+        ],
+      },
+    },
+  });
+
   await prisma.aIReport.upsert({
     where: { id: mockAIStudentReport.id },
     update: {

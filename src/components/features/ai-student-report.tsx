@@ -470,9 +470,14 @@ function GuidanceStrategyCard({
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {isComprehensive
-                ? `基于 ${itemCount} 个项目的完整记录，AI 将综合评估你的体质水平，提供跨维度的训练建议`
-                : `单项目专项分析：AI 将针对「${FITNESS_ITEMS.find(i => i.id === latestRecord.items[0]?.itemId)?.name ?? "该项目"}」进行深入分析，提供该项目的技术指导和提升建议`
+                ? `基于 ${itemCount} 个项目的完整记录，AI 将综合评估体质水平并提供跨维度训练建议`
+                : `单项目专项分析：AI 将针对「${FITNESS_ITEMS.find(i => i.id === latestRecord.items[0]?.itemId)?.name ?? "该项目"}」进行深入分析`
               }
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isComprehensive
+                ? `数据完整度 ${itemCount}/6 项，可生成综合体质分析`
+                : `数据完整度 ${itemCount}/6 项，AI 仅分析已有项目，不推断缺失数据`}
             </p>
             <p className="mt-2 text-xs text-primary">
               📋 来源记录：{buildRecordSummary(latestRecord)}

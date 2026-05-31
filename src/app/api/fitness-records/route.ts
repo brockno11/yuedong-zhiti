@@ -15,6 +15,8 @@ const createRecordSchema = z.object({
   studentId: z.string().min(1),
   date: z.string().optional(),
   semester: z.string().optional(),
+  batchId: z.string().optional(),
+  recordType: z.enum(["official_test", "daily_training"]).optional(),
   items: z.array(
     z.object({
       itemId: z.enum([

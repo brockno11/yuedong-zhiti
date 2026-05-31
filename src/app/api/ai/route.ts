@@ -210,12 +210,16 @@ function buildStudentSystemPrompt(): string {
 
 分析模式有两种：
 1. 专项分析模式（单项目）：当学生只录入了一个体能项目时，针对该项目进行深入的技术分析。
-   - 分析该项目成绩在高二年级中的水平
-   - 给出该项目的具体技术要领和改进方法
-   - 提供该项目的针对性训练动作（2-3个）
-   - 评估该项目与其他体能维度的关联
 2. 综合分析模式（多项目）：当学生录入了多个项目时，进行全面的体质画像分析。
-   - 分析优势项目、待提升项目、可能原因、个性化训练建议、恢复建议
+
+【数据不完整处理规则 — 必须严格遵守】
+- 只分析学生实际提供了数据的项目，严禁推测、假设或填补缺失项目的数据。
+- 未录入项目必须在报告中明确标注"暂无数据"或"建议后续补充记录"。
+- 数据完整度不足时，只能生成局部分析和有限的训练建议，不得生成完整的体质综合评价。
+- 综合评分（overallScore）仅基于实际录入项目计算，不得推断。
+- 训练计划优先围绕已录入项目和学生目标生成，可建议补充记录项目但不可假定其成绩。
+- 在 fitnessProfile.summary 中，如果数据不完整，第一句话必须说明"本次分析仅基于已录入的N个项目"。
+- 对于正式体测记录，对比国家标准给出等级评价；对于日常训练记录，关注进步趋势而非绝对评分。
 
 训练计划要循序渐进，适合校园体育锻炼场景（高中）。
 如果学生体感疲劳较高（≥7/10），必须在训练建议中明确提醒降低强度，并建议告知体育教师。
@@ -225,7 +229,18 @@ function buildStudentSystemPrompt(): string {
 }
 
 function buildStudentUserPrompt(data: Record<string, unknown>): string {
-  const itemCount = (data.currentRecord as { items?: unknown[] })?.items?.length ?? 0;
+  const currentRecord = data.currentRecord as { items?: { itemId: string; value: number }[]; recordType?: string };
+  const itemCount = currentRecord?.items?.length ?? 0;
+  const recordType = currentRecord?.recordType ?? "official_test";
+  const totalExpectedItems = 6; // 标准体测项目数（不含身高体重）
+
+  const completenessNote = itemCount < totalExpectedItems
+    ? `\n⚠️ 数据完整性提醒：该记录仅包含 ${itemCount}/${totalExpectedItems} 项体测数据，存在数据缺失。分析时必须标注缺失项，不得推断未录入项目。未录入项目维度标注"暂无数据"。`
+    : "";
+
+  const recordTypeNote = recordType === "daily_training"
+    ? `\n【记录类型：日常训练】本次为日常训练记录，请以鼓励进步为主，关注训练感受和过程追踪，不需严格对比国家标准。`
+    : `\n【记录类型：正式体测】本次为正式体测，请参考国家学生体质健康标准给出等级评价。`;
 
   const modeInstruction = itemCount <= 1
     ? `\n\n【专项分析模式】学生本次仅录入了一个项目，请针对该项目进行深入分析：
@@ -237,7 +252,7 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
 
   return `请分析以下学生体测数据并生成个人体质报告：
 ${JSON.stringify(data, null, 2)}
-${modeInstruction}
+${completenessNote}${recordTypeNote}${modeInstruction}
 
 请以JSON格式返回（严格按此结构）：
 {
