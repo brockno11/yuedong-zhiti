@@ -1,6 +1,6 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-## 2026-06-02 本轮修复记录（Claude Code）
+## 2026-06-02 本轮修复记录
 
 ### 安全加固
 - **PATCH/DELETE 权限绕过修复**：`fitness-records/[id]/route.ts` 不再从请求体读取 `role` 字段，仅从 cookie/header 服务端推断角色，防止客户端伪装教师绕过正式体测保护。
@@ -35,7 +35,7 @@
 
 ---
 
-## 2026-06-01 本轮修复记录（Codex）
+## 2026-06-01 本轮修复记录
 
 - AI 指导页报告详情新增”本次生成时间”，覆盖正式体测分析与专项分析详情。
 - 修复专项分析”新数据”角标误判：优先使用 `sourceMeta.includedRecordIds/latestDataDate`，并回退到 `sourceRecordId/sourceRecordDate/generatedAt`，避免无新记录时仍提示更新。

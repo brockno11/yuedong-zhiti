@@ -1,9 +1,9 @@
-# Claude Code Skills 参考文档
+# 开发 Skills 参考文档
 
 > 生成日期: 2026-05-29
 > 最后更新: 2026-05-29（添加项目专属 Skills）
 
-本文档列出了 Claude Code 中所有可用的 skills，按类别组织。
+本文档列出了项目中所有可用的 skills，按类别组织。
 
 ---
 
@@ -52,11 +52,11 @@
 
 ## 第一部分：内置/系统 Skills
 
-这些 skills 在每个 Claude Code 会话中默认可用。
+这些 skills 在每个开发会话中默认可用。
 
 ### 1. update-config
 - **名称**: `update-config`
-- **功能**: 通过 `settings.json` 配置 Claude Code
+- **功能**: 通过 `settings.json` 配置开发环境
 - **用途**:
   - 设置自动化行为（当 X 发生时执行 Y 的 hooks）
   - 配置权限（"allow X", "add permission to"）
@@ -145,16 +145,16 @@
 
 ## 第二部分：插件 Skills（通过 Marketplace 安装）
 
-这些 skills 通过 Claude Code 插件市场安装。
+这些 skills 通过插件市场安装。
 
 ### 2.1 claude-code-setup 插件
 
 #### claude-automation-recommender
 - **名称**: `claude-automation-recommender`
-- **功能**: 分析代码库并推荐 Claude Code 自动化方案
+- **功能**: 分析代码库并推荐自动化方案
 - **推荐内容**: Hooks、子代理、skills、插件、MCP 服务器
 - **只读**: 仅分析，不修改文件
-- **触发条件**: "automation recommendations", "optimize Claude Code setup", "improve workflows"
+- **触发条件**: "automation recommendations", "optimize development setup", "improve workflows"
 
 ### 2.2 claude-md-management 插件
 
@@ -226,7 +226,7 @@
 
 #### session-report
 - **名称**: `session-report`
-- **功能**: 生成 Claude Code 会话使用情况的 HTML 报告
+- **功能**: 生成开发会话使用情况的 HTML 报告
 - **指标**: Token 使用量、缓存、子代理、skills、高消耗提示
 - **数据来源**: `~/.claude/projects` 会话记录
 
@@ -335,8 +335,8 @@
 | 类别 | 数量 | 核心 Skills |
 |------|------|------------|
 | **内置/系统** | 12 | update-config, verify, code-review, simplify, run, review |
-| **Claude Code 设置** | 1 | claude-automation-recommender |
-| **CLAUDE.md 管理** | 1 | claude-md-improver |
+| **开发环境设置** | 1 | claude-automation-recommender |
+| **项目文档管理** | 1 | claude-md-improver |
 | **前端设计** | 1 | frontend-design |
 | **数学** | 1 | math-olympiad |
 | **MCP 开发** | 3 | build-mcp-server, build-mcp-app, build-mcpb |
@@ -357,7 +357,7 @@
 ## 如何使用 Skills
 
 ### 调用 Skill
-在 Claude Code 提示符中输入 `/<skill-name>`。例如：
+在开发环境中输入 `/<skill-name>`。例如：
 - `/verify` — 验证更改
 - `/code-review` — 审查代码
 - `/feature-dev Add feature X` — 开始功能开发
@@ -366,8 +366,8 @@
 Skills 在会话期间的 system-reminder 消息中列出。
 
 ### 安装新 Skills
-使用 Claude Code 插件市场发现和安装新 skills。
+使用插件市场发现和安装新 skills。
 
 ---
 
-*文档由 Claude Code 会话生成于 2026-05-29*
+*文档生成于 2026-05-29*
