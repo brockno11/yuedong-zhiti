@@ -1,6 +1,6 @@
 # 跃动智体 — 演示前验证清单
 
-> 最后更新：v0.9.2 | 路由：22 个 | 数据库表：7 个
+> 最后更新：v0.9.4 | 路由：23 个 | 数据库表：7 个
 
 ## 一、启动检查
 
@@ -9,7 +9,7 @@
 - [ ] `npm run db:seed` 种子数据写入成功
 - [ ] `npm run typecheck` 零错误
 - [ ] `npm run lint` 零警告
-- [ ] `npm run build` 22 路由全部编译
+- [ ] `npm run build` 23 路由全部编译
 - [ ] `npm run dev` 正常启动 localhost:3000
 
 ## 二、数据库检查

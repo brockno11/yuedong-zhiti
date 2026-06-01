@@ -59,6 +59,16 @@ export async function PATCH(
       }
     }
 
+    // Validate name
+    if (body.name !== undefined) {
+      if (typeof body.name !== "string" || body.name.trim().length === 0) {
+        return fail("姓名不能为空", 400);
+      }
+      if (body.name.length > 50) {
+        return fail("姓名不能超过 50 个字符", 400);
+      }
+    }
+
     const updated = await updateStudent(params.id, {
       height: body.height,
       weight: body.weight,

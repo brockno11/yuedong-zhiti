@@ -24,7 +24,7 @@ const createRecordSchema = z.object({
         "height_weight", "vital_capacity", "50m_run", "standing_long_jump",
         "sit_and_reach", "pull_up", "sit_up", "800m_run", "1000m_run",
       ]),
-      value: z.number(),
+      value: z.number().finite(),
       feedbackJson: z.string().optional(),
     })
   ).min(1),

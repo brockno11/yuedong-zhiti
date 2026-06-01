@@ -10,11 +10,16 @@ export async function GET() {
   }
 }
 
+const ALLOWED_GRADES = ["高一", "高二", "高三"];
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     if (!body.name || !body.grade) {
       return NextResponse.json({ error: "班级名称和年级为必填项" }, { status: 400 });
+    }
+    if (!ALLOWED_GRADES.includes(body.grade)) {
+      return NextResponse.json({ error: "仅支持高一、高二、高三学段" }, { status: 400 });
     }
     const cls = await createClass({
       name: body.name,

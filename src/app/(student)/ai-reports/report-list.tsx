@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/features/empty-state";
 import {
@@ -311,40 +312,40 @@ export function AIReportList({ reports }: ReportListProps) {
       )}
 
       {/* Single delete confirmation dialog */}
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmDeleteId(null)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确定删除这份 AI 报告吗？</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <Dialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确定删除这份 AI 报告吗？</DialogTitle>
+            <DialogDescription>
               此操作不会删除原始体测或训练记录，但删除后无法从历史报告中查看。
-            </p>
-            <div className="mt-5 flex gap-3">
-              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmDeleteId(null)} disabled={deletingId === confirmDeleteId}>取消</Button>
-              <Button variant="destructive" className="h-11 flex-1" onClick={() => handleDelete(confirmDeleteId)} disabled={deletingId === confirmDeleteId}>
-                {deletingId === confirmDeleteId ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : "确认删除"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteId(null)} disabled={deletingId === confirmDeleteId}>取消</Button>
+            <Button variant="destructive" onClick={() => confirmDeleteId && handleDelete(confirmDeleteId)} disabled={deletingId === confirmDeleteId}>
+              {deletingId === confirmDeleteId ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Batch delete confirmation dialog */}
-      {confirmBatchDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmBatchDelete(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确定批量删除 {selectedIds.size} 份 AI 报告吗？</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <Dialog open={confirmBatchDelete} onOpenChange={(open) => { if (!open) setConfirmBatchDelete(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确定批量删除 {selectedIds.size} 份 AI 报告吗？</DialogTitle>
+            <DialogDescription>
               此操作不会删除原始体测或训练记录，但删除后无法从历史报告中查看。此操作不可撤销。
-            </p>
-            <div className="mt-5 flex gap-3">
-              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
-              <Button variant="destructive" className="h-11 flex-1" onClick={handleBatchDelete} disabled={batchDeleting}>
-                {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${selectedIds.size} 份`}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
+            <Button variant="destructive" onClick={handleBatchDelete} disabled={batchDeleting}>
+              {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${selectedIds.size} 份`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

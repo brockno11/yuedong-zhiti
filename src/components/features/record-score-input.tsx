@@ -2,6 +2,7 @@
 
 import { WheelPicker } from "@/components/forms/wheel-picker";
 import { FITNESS_ITEMS } from "@/lib/constants";
+import { formatRunTime, isEnduranceRun } from "@/lib/utils";
 import type { FitnessItemId } from "@/lib/types";
 
 interface RecordScoreInputProps {
@@ -17,8 +18,8 @@ const PICKER_CONFIGS: Record<string, { min: number; max: number; step: number; u
   sit_and_reach: { min: -10, max: 30, step: 0.5, unit: "cm" },
   pull_up: { min: 0, max: 30, step: 1, unit: "次" },
   sit_up: { min: 0, max: 60, step: 1, unit: "次/分钟" },
-  "800m_run": { min: 180, max: 360, step: 1, unit: "秒" },
-  "1000m_run": { min: 180, max: 420, step: 1, unit: "秒" },
+  "800m_run": { min: 180, max: 360, step: 1, unit: "分:秒" },
+  "1000m_run": { min: 180, max: 420, step: 1, unit: "分:秒" },
 };
 
 export function RecordScoreInput({ selectedItems, scores, onChange }: RecordScoreInputProps) {
@@ -29,17 +30,19 @@ export function RecordScoreInput({ selectedItems, scores, onChange }: RecordScor
         if (!item) return null;
 
         const config = PICKER_CONFIGS[itemId] || { min: 0, max: 300, step: 1, unit: "" };
+        const isRun = isEnduranceRun(itemId);
 
         return (
           <WheelPicker
             key={itemId}
             label={`${item.icon} ${item.name}`}
-            value={scores[itemId] || config.min + (config.max - config.min) / 2}
+            value={scores[itemId] ?? (config.min + (config.max - config.min) / 2)}
             onChange={(v) => onChange(itemId, v)}
             min={config.min}
             max={config.max}
             step={config.step}
             unit={config.unit}
+            formatValue={isRun ? formatRunTime : undefined}
           />
         );
       })}

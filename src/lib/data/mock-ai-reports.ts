@@ -42,7 +42,7 @@ export const mockAIStudentReport: AIStudentReport = {
   weaknessAnalysis: [
     {
       item: "1000米跑",
-      currentLevel: "及格（260秒）",
+      currentLevel: "及格（4:20）",
       possibleCauses: [
         "平时的有氧运动量可能不够充分",
         "跑步节奏和呼吸方法可以进一步优化",
@@ -150,7 +150,7 @@ export const mockAIStudentReport: AIStudentReport = {
     { itemId: "standing_long_jump", itemName: "立定跳远", valueText: "210cm", score: 82, grade: "good", statusLabel: "优势项", analysis: "下肢爆发力表现良好，起跳技术和落地稳定性较好。这是速度类项目的重要基础。", suggestion: "继续保持，可结合深蹲和跳跃练习进一步提升" },
     { itemId: "sit_and_reach", itemName: "坐位体前屈", valueText: "12cm", score: 78, grade: "pass", statusLabel: "稳定项", analysis: "柔韧性处于中等水平。良好的柔韧性有助于跑步步幅、动作舒展和损伤预防。", suggestion: "每次训练后增加5-10分钟拉伸，特别是腿后侧和腰背" },
     { itemId: "pull_up", itemName: "引体向上", valueText: "8次", score: 85, grade: "good", statusLabel: "优势项", analysis: "上肢力量表现良好，肩背力量基础扎实。可作为其他力量训练的基础支撑。", suggestion: "保持引体向上练习，可尝试增加负重或变式训练" },
-    { itemId: "1000m_run", itemName: "1000米跑", valueText: "260秒", score: 68, grade: "pass", statusLabel: "需关注项", analysis: "中长跑成绩偏低，心肺耐力是目前的主要短板。配速在后半程明显下降，说明有氧基础需要加强。", suggestion: "重点突破：每周3次有氧训练，从慢跑开始逐步增加距离和强度" },
+    { itemId: "1000m_run", itemName: "1000米跑", valueText: "4:20", score: 68, grade: "pass", statusLabel: "需关注项", analysis: "中长跑成绩偏低，心肺耐力是目前的主要短板。配速在后半程明显下降，说明有氧基础需要加强。", suggestion: "重点突破：每周3次有氧训练，从慢跑开始逐步增加距离和强度" },
   ],
 
   relationshipAnalysis: [
@@ -216,7 +216,7 @@ export const mockAIStudentReport: AIStudentReport = {
     changes: [
       { item: "引体向上", previous: "6次(72分)", current: "8次(85分)", trend: "up", note: "上肢力量有明显进步，与日常力量训练频率增加有关" },
       { item: "50米跑", previous: "8.3秒(68分)", current: "8.1秒(70分)", trend: "up", note: "速度略有提升，但进展幅度偏小" },
-      { item: "1000米跑", previous: "270秒(62分)", current: "260秒(68分)", trend: "up", note: "耐力有改善但仍是主要短板" },
+      { item: "1000米跑", previous: "4:30(62分)", current: "4:20(68分)", trend: "up", note: "耐力有改善但仍是主要短板" },
     ],
     summary: "与上学期相比整体呈上升趋势，力量项目进步明显。耐力项目虽有改善但仍是主要关注点，建议下一阶段重点突破。",
   },
@@ -425,7 +425,7 @@ export const mockFemaleAIStudentReport: AIStudentReport = {
   weaknessAnalysis: [
     {
       item: "800米跑",
-      currentLevel: "及格（252秒）",
+      currentLevel: "及格（4:12）",
       possibleCauses: [
         "有氧运动量可能不够充分",
         "配速策略和呼吸节奏可以优化",
@@ -529,7 +529,7 @@ export const mockFemaleAIStudentReport: AIStudentReport = {
     { itemId: "standing_long_jump", itemName: "立定跳远", valueText: "170cm", score: 80, grade: "good", statusLabel: "稳定项", analysis: "下肢爆发力表现良好，起跳技术和落地稳定性较好。", suggestion: "结合深蹲和跳跃练习进一步提升" },
     { itemId: "sit_and_reach", itemName: "坐位体前屈", valueText: "19cm", score: 88, grade: "excellent", statusLabel: "优势项", analysis: "柔韧性表现优秀，这有助于跑步步幅、动作舒展和损伤预防。", suggestion: "保持柔韧训练，可在训练后增加动态拉伸" },
     { itemId: "sit_up", itemName: "仰卧起坐", valueText: "42次", score: 85, grade: "good", statusLabel: "优势项", analysis: "核心力量扎实，仰卧起坐表现稳定。核心稳定对其他跑跳项目有重要支撑作用。", suggestion: "保持仰卧起坐练习，可尝试增加变式训练如交替卷腹" },
-    { itemId: "800m_run", itemName: "800米跑", valueText: "252秒", score: 65, grade: "pass", statusLabel: "需关注项", analysis: "中长跑成绩偏低，心肺耐力是目前的主要短板。后半程配速下降明显。", suggestion: "重点突破：每周3次有氧训练，从慢跑开始逐步增加距离和强度" },
+    { itemId: "800m_run", itemName: "800米跑", valueText: "4:12", score: 65, grade: "pass", statusLabel: "需关注项", analysis: "中长跑成绩偏低，心肺耐力是目前的主要短板。后半程配速下降明显。", suggestion: "重点突破：每周3次有氧训练，从慢跑开始逐步增加距离和强度" },
   ],
 
   relationshipAnalysis: [

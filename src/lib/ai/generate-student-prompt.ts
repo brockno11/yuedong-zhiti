@@ -2,6 +2,8 @@
 import type { StudentProfile, FitnessRecord } from "../types";
 import { getBMIStatus } from "../validators";
 import { calculateOverallScore } from "../scoring";
+import { FITNESS_ITEMS } from "../constants";
+import { formatItemValue } from "../utils";
 
 export function generateStudentPrompt(
   student: StudentProfile,
@@ -41,8 +43,10 @@ export function generateStudentPrompt(
 ## 当前体测成绩（${currentRecord.semester}）
 ${currentRecord.items
   .map(
-    (item) =>
-      `- ${item.itemId}: ${item.value}（等级: ${item.grade}，得分: ${item.score}）`
+    (item) => {
+      const def = FITNESS_ITEMS.find(f => f.id === item.itemId);
+      return `- ${def?.name ?? item.itemId}: ${formatItemValue(item.itemId, item.value, def?.unit ?? "")}（等级: ${item.grade}，得分: ${item.score}）`;
+    }
   )
   .join("\n")}
 

@@ -36,6 +36,7 @@ export function mapStudent(row: StudentRow): StudentProfile {
     sportGoal: row.sportGoal as SportGoal,
     sportBase: row.sportBase as SportBase,
     discomforts: parseJsonArray<DiscomfortType>(row.discomfortsJson, ["none"]),
+    classId: row.classId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -117,7 +118,7 @@ export function mapFitnessRecordItem(
     value: row.value,
     score: row.score,
     grade: row.grade as GradeTier,
-    feedbackJson: (row as Record<string, unknown>).feedbackJson as string ?? undefined,
+    feedbackJson: row.feedbackJson ?? undefined,
   };
 }
 

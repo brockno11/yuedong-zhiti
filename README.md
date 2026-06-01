@@ -2,7 +2,7 @@
 
 > 面向中学生体质健康提升的 AI 智能评价与个性化运动指导系统。当前演示场景以高二(1)班为例。
 
-> 2026-06-01 更新：AI 报告详情已显示本次生成时间；专项分析新数据判定已与数据库来源元信息对齐；AI 分析提示词补充 WHO/CDC 与 NSCA 青少年训练原则，并加强反标签化与缺失数据约束。单项分析已拆分为「专项动作训练指导」动作教学库与「阶段训练规划指导」周期安排：动作库只讲动作步骤、训练量、要点、常见错误、进阶/降阶与自测标准；阶段规划才按阶段/周次组合动作。新增"项目科普与评分解读"模块，基于《国家学生体质健康标准（2014年修订）》本地静态配置，专项报告含可视化评分尺与成绩定位点，总体报告含六维能力说明与权重构成条形图。
+> 2026-06-02 更新（v0.9.4）：800m/1000m 跑步成绩改为「M:SS」分秒格式显示（如 3:50），内部仍以秒数存储；6 处自定义弹窗替换为 shadcn/ui Dialog 组件，支持 Escape 关闭、焦点陷阱、aria-modal 无障碍；API 安全加固——PATCH/DELETE 路由不再信任客户端 role 字段、新增性别校验与输入范围验证；数据一致性修复——日常训练不再混入班级正式统计、BMI 在单独修改身高或体重时自动重算、批次筛选使用过滤后的数据；修复多处除零 NaN 问题；新增 favicon；教师端版本号统一为 v0.9.4；新增 3 个测试/审查 Skills。
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
@@ -382,6 +382,7 @@ npm run dev           # 启动 → http://localhost:3000
 │   └── 2026年教师人工智能应用案例征集通知及附件/
 ├── src/
 │   ├── app/                       # Next.js App Router（23 个路由）
+│   │   ├── icon.svg               # 网站图标（favicon）
 │   │   ├── layout.tsx             # 根布局（字体、metadata、viewport）
 │   │   ├── globals.css            # CSS Variables 主题 + 液态玻璃动画 + 骨架屏
 │   │   ├── page.tsx               # 登录首页 "/"
@@ -470,7 +471,7 @@ npm run dev           # 启动 → http://localhost:3000
 │       ├── validators.ts          # 数据验证（四级异常值检测）
 │       ├── scoring.ts             # 体测评分算法
 │       ├── fitness-education.ts   # 项目科普与评分解读静态配置（国家标准）
-│       ├── utils.ts               # 工具函数（cn 类名合并）
+│       ├── utils.ts               # 工具函数（cn 类名合并 + 时间格式化 formatRunTime/parseRunTime/formatItemValue）
 │       ├── demo-store.ts          # 演示模式 localStorage 状态管理
 │       ├── db.ts                  # Prisma 客户端单例
 │       ├── data/

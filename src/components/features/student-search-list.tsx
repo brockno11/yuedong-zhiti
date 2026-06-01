@@ -30,7 +30,7 @@ export function StudentSearchList({ students }: StudentSearchListProps) {
 
     return students.filter(({ student, latestRecord }) => {
       const record = latestRecord;
-      const avgScore = record
+      const avgScore = record && record.items.length > 0
         ? Math.round(record.items.reduce((sum, i) => sum + i.score, 0) / record.items.length)
         : null;
       const gradeLabel = avgScore

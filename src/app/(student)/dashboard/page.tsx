@@ -40,7 +40,7 @@ export default async function DashboardPage() {
   const batchItems = getBatchLatestItems(allRecords);
   const batchItemIds = batchItems.map(i => i.itemId);
   const completeness = calculateRecordCompleteness(batchItemIds, student.gender);
-  const avgScore = Math.round(batchItems.reduce((sum, i) => sum + i.score, 0) / batchItems.length);
+  const avgScore = batchItems.length > 0 ? Math.round(batchItems.reduce((sum, i) => sum + i.score, 0) / batchItems.length) : 0;
   const bmiLabel = student.bmi >= 18.5 && student.bmi < 24 ? "正常范围" : "BMI 指标值得关注";
   const missingNames = completeness.missingItems.map(id => FITNESS_ITEMS.find(f => f.id === id)?.name ?? id).slice(0, 3);
 

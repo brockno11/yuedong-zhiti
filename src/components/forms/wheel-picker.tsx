@@ -15,6 +15,8 @@ interface WheelPickerProps {
   label?: string;
   className?: string;
   quickOptions?: { label: string; value: number }[];
+  /** 自定义值格式化函数，用于将内部值转为展示文本（如秒数→"3:50"） */
+  formatValue?: (_value: number) => string;
 }
 
 export function WheelPicker({
@@ -27,6 +29,7 @@ export function WheelPicker({
   label,
   className,
   quickOptions,
+  formatValue,
 }: WheelPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -112,7 +115,7 @@ export function WheelPicker({
                 isDragging && "scale-110 text-primary"
               )}
             >
-              {value}
+              {formatValue ? formatValue(value) : value}
             </span>
             {unit && (
               <span className="text-base text-muted-foreground">{unit}</span>

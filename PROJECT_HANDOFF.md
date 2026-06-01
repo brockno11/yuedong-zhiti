@@ -1,5 +1,40 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
+## 2026-06-02 本轮修复记录（Claude Code）
+
+### 安全加固
+- **PATCH/DELETE 权限绕过修复**：`fitness-records/[id]/route.ts` 不再从请求体读取 `role` 字段，仅从 cookie/header 服务端推断角色，防止客户端伪装教师绕过正式体测保护。
+- **PATCH 性别校验**：更新记录时校验项目与学生性别匹配（男生不可录入仰卧起坐/800m，女生不可录入引体向上/1000m）。
+- **输入范围验证**：`fitness-records/route.ts` 添加 `.finite()` 约束防止 NaN/Infinity；`students/[id]/route.ts` 添加姓名长度校验（1-50 字符）。
+- **班级 API 学段白名单**：`classes/route.ts` 仅允许创建高一/高二/高三学段班级。
+
+### 数据一致性
+- **日常训练隔离**：`getStudentListItems` 优先取正式体测记录，日常训练不再混入班级及格率、等级分布等统计。
+- **批次过滤**：`getClassSummaryWithBatch` 的 `projectAverages` 和 `attentionStudents` 改用批次过滤后的数据。
+- **BMI 重算**：`updateStudent` 在单独修改身高或体重时自动重新计算 BMI（原来要求两者同时变化才重算）。
+- **除零保护**：`getAverageRecordScore`、dashboard、records-list、student-search-list 添加空数组 guard。
+
+### 800m/1000m 时间格式化
+- **显示层**：800m/1000m 跑步成绩从原始秒数（如 260秒）改为「M:SS」分秒格式（如 4:20）。
+- **内部存储**：数据库、评分、校验层保持秒数不变，仅显示层格式化。
+- **新增工具函数**：`utils.ts` 新增 `formatRunTime`、`parseRunTime`、`formatItemValue`、`isEnduranceRun`。
+- **WheelPicker 增强**：新增 `formatValue` 回调 prop，支持自定义值显示格式。
+- **编辑对话框**：`record-edit-dialog.tsx` 新增 `RunTimeInput` 组件，支持 M:SS 格式输入/解析。
+- **AI prompt 更新**：AI 路由 prompt 中明确 `valueText` 格式——800m/1000m 用 M:SS，其他用数值+单位。
+- **Mock 数据同步**：`mock-ai-reports.ts` 中所有跑步 valueText 更新为 M:SS 格式。
+
+### 弹窗无障碍升级
+- 6 处自定义 `div` 弹窗替换为 shadcn/ui `Dialog` 组件（records-list、review-workflow、record-edit-dialog、ai-student-report、ai-report-detail×3、report-list×2）。
+- 每个弹窗现在支持：Escape 键关闭、焦点自动陷阱、`aria-modal`/`role="dialog"`、背景滚动锁定、动画过渡。
+
+### 其他修复
+- **favicon**：新增 `src/app/icon.svg`，消除浏览器 404。
+- **版本号统一**：教师端侧边栏从 "MVP 0.7.0" 更新为 "v0.9.4"。
+- **数据库清理**：删除非目标学段的「初二(3)班」脏数据。
+- **新 Skills**：新增 `e2e-testing`、`code-audit`、`playwright-integration` 三个测试/审查 Skills。
+
+---
+
 ## 2026-06-01 本轮修复记录（Codex）
 
 - AI 指导页报告详情新增”本次生成时间”，覆盖正式体测分析与专项分析详情。
@@ -17,7 +52,7 @@
 - AI 指导页面进入报告详情时显示悬浮返回栏 `FloatingBackBar`，标题动态切换为当前报告名称。
 - 问答反馈洞察 `factor` 字段提示词优化：要求纯中文标题 + 中文学生回答值，禁止回显 JSON 字段名和英文键值。
 
-> 生成日期：2026-06-01 | 版本：MVP 0.9.4 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23 | AI 分析体系重构 ✅ | 记录问答 v2 ✅
+> 生成日期：2026-06-02 | 版本：v0.9.4 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23 | 安全加固 ✅ | 数据一致性修复 ✅ | 弹窗无障碍 ✅ | 800m/1000m 时间格式化 ✅
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 

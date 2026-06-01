@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/features/empty-state";
 import { BatchReviewBar } from "@/components/features/batch-review-bar";
 import type { ReviewWithReport } from "@/lib/server/db-mappers";
@@ -538,22 +539,22 @@ export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
     </Tabs>
 
       {/* Batch delete confirmation dialog */}
-      {confirmBatchDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmBatchDelete(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确定删除选中的 {selectedIds.size} 份报告吗？</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <Dialog open={confirmBatchDelete} onOpenChange={(open) => { if (!open) setConfirmBatchDelete(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确定删除选中的 {selectedIds.size} 份报告吗？</DialogTitle>
+            <DialogDescription>
               此操作将永久删除 AI 报告及其审核记录，原始体测数据不受影响。此操作不可撤销。
-            </p>
-            <div className="mt-5 flex gap-3">
-              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
-              <Button variant="destructive" className="h-11 flex-1" onClick={handleBatchDelete} disabled={batchDeleting}>
-                {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${selectedIds.size} 份`}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
+            <Button variant="destructive" onClick={handleBatchDelete} disabled={batchDeleting}>
+              {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${selectedIds.size} 份`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -140,17 +140,22 @@ export async function getStudentListItems(): Promise<StudentListItem[]> {
     include: { items: true, batch: true },
     orderBy: { date: "desc" },
   });
-  const latestByStudent = new Map<string, FitnessRecord>();
+  // 优先取正式体测记录，避免日常训练混入班级统计
+  const latestOfficialByStudent = new Map<string, FitnessRecord>();
+  const latestAnyByStudent = new Map<string, FitnessRecord>();
 
   for (const record of records.map(mapFitnessRecord)) {
-    if (!latestByStudent.has(record.studentId)) {
-      latestByStudent.set(record.studentId, record);
+    if (!latestAnyByStudent.has(record.studentId)) {
+      latestAnyByStudent.set(record.studentId, record);
+    }
+    if (record.recordType === "official_test" && !latestOfficialByStudent.has(record.studentId)) {
+      latestOfficialByStudent.set(record.studentId, record);
     }
   }
 
   return students.map((student) => ({
     student,
-    latestRecord: latestByStudent.get(student.id) ?? null,
+    latestRecord: latestOfficialByStudent.get(student.id) ?? latestAnyByStudent.get(student.id) ?? null,
   }));
 }
 
@@ -497,6 +502,7 @@ function getGradeTier(score: number): GradeTier {
 }
 
 function getAverageRecordScore(record: FitnessRecord): number {
+  if (record.items.length === 0) return 0;
   return Math.round(record.items.reduce((sum, item) => sum + item.score, 0) / record.items.length);
 }
 
@@ -631,8 +637,14 @@ export async function updateStudent(studentId: string, input: Partial<AddStudent
   if (input.sportGoal !== undefined) updateData.sportGoal = input.sportGoal;
   if (input.sportBase !== undefined) updateData.sportBase = input.sportBase;
   if (input.discomforts !== undefined) updateData.discomfortsJson = JSON.stringify(input.discomforts);
-  if (input.height !== undefined && input.weight !== undefined) {
-    updateData.bmi = Math.round((input.weight / ((input.height / 100) * (input.height / 100))) * 10) / 10;
+  // 只要身高或体重任一变化，都重新计算 BMI
+  if (input.height !== undefined || input.weight !== undefined) {
+    const current = await prisma.student.findUnique({ where: { id: studentId } });
+    const h = input.height ?? current?.height;
+    const w = input.weight ?? current?.weight;
+    if (h && w) {
+      updateData.bmi = Math.round((w / ((h / 100) * (h / 100))) * 10) / 10;
+    }
   }
 
   await prisma.student.update({ where: { id: studentId }, data: updateData as never });
@@ -784,11 +796,13 @@ export async function getClassSummaryWithBatch(batchId?: string): Promise<ClassS
     .sort((a, b) => a.passRate - b.passRate)
     .slice(0, 6);
 
+  // 使用批次过滤后的记录计算项目均值，避免混入非当前批次数据
   const projectAverages = FITNESS_ITEMS.filter((f) => f.id !== "height_weight").map((f) => {
     const maleValues: number[] = [];
     const femaleValues: number[] = [];
     for (const li of listItems) {
-      const v = li.latestRecord?.items.find((ri) => ri.itemId === f.id)?.value;
+      const batchRecord = latestByStudent.get(li.student.id);
+      const v = batchRecord?.items.find((ri) => ri.itemId === f.id)?.value ?? li.latestRecord?.items.find((ri) => ri.itemId === f.id)?.value;
       if (v === undefined) continue;
       if (li.student.gender === "male") maleValues.push(v);
       else femaleValues.push(v);
@@ -796,16 +810,19 @@ export async function getClassSummaryWithBatch(batchId?: string): Promise<ClassS
     return { itemName: f.name, maleAverage: roundAverage(maleValues), femaleAverage: roundAverage(femaleValues), overallAverage: roundAverage([...maleValues, ...femaleValues]) };
   });
 
+  // 使用批次过滤后的记录计算重点关注学生
   const attentionStudents = listItems
     .filter((item) => {
-      const avgScore = item.latestRecord ? getAverageRecordScore(item.latestRecord) : 0;
+      const batchRecord = latestByStudent.get(item.student.id);
+      const record = batchRecord ?? item.latestRecord;
+      const avgScore = record ? getAverageRecordScore(record) : 0;
       return item.student.discomforts.some((d) => d !== "none") || item.student.bmi >= 24 || avgScore < 60;
     })
     .slice(0, 4)
     .map((item) => ({
       studentId: item.student.id,
       name: item.student.name,
-      reason: buildAttentionReason(item.student, item.latestRecord),
+      reason: buildAttentionReason(item.student, latestByStudent.get(item.student.id) ?? item.latestRecord),
     }));
 
   return {

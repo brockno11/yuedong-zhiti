@@ -32,6 +32,7 @@ const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 30000)
 // Mock 报告（从数据层导入）
 import { mockAIStudentReport, mockDeepItemReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";
 import { FITNESS_ITEMS } from "@/lib/constants";
+import { formatItemValue } from "@/lib/utils";
 import { upsertAIReportForReview } from "@/lib/server/data-service";
 import type { AIClassReport, AIStudentReport } from "@/lib/types";
 
@@ -49,7 +50,7 @@ function buildServerItemFallbackReport(itemId: (typeof FITNESS_ITEMS)[number]["i
   const itemName = itemDef?.name ?? "该项目";
   const currentRecord = studentData?.currentRecord as { date?: string; items?: { itemId?: string; value?: number | string; score?: number; grade?: string }[] } | undefined;
   const currentItem = currentRecord?.items?.find((item) => item.itemId === itemId);
-  const valueText = currentItem?.value !== undefined ? `${currentItem.value}${itemDef?.unit ?? ""}` : "暂无数据";
+  const valueText = currentItem?.value !== undefined ? formatItemValue(itemId, Number(currentItem.value), itemDef?.unit ?? "") : "暂无数据";
   const score = typeof currentItem?.score === "number" ? currentItem.score : 0;
   const grade = typeof currentItem?.grade === "string" ? currentItem.grade : "improve";
   const actionNames = [`${itemName}技术分解练习`, `${itemName}基础能力练习`, `${itemName}节奏与稳定练习`];
@@ -145,6 +146,7 @@ function buildServerItemFallbackReport(itemId: (typeof FITNESS_ITEMS)[number]["i
       "训练前确认场地安全并充分热身。",
       "动作出现明显变形时先停止，不硬撑完成数量。",
       "如出现疼痛、头晕或明显不适，应立即停止并告知教师。",
+      "训练后进行适当拉伸和放松，促进恢复。",
       "AI 建议仅作锻炼参考，需经体育教师审核后使用。",
     ],
     teacherReviewNotes: [
@@ -498,6 +500,7 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
 [模块6] itemScores — 逐项分析每个正式体测项目：
   肺活量/50米跑/立定跳远/坐位体前屈/引体向上(男)/仰卧起坐(女)/1000米跑(男)/800米跑(女)
   每项：{ itemId, itemName, valueText, score, grade, statusLabel(优势项|稳定项|需关注项), analysis, suggestion }
+  valueText 格式：800米跑/1000米跑使用"M:SS"格式（如"3:50"），其他项目用"数值+单位"（如"3200ml"）
   缺失项目statusLabel="暂无数据"
 [模块7] relationshipAnalysis — 至少3条项目关系分析：
   { title, relatedItems[], analysis, suggestion }
@@ -562,7 +565,8 @@ function buildReportSchema(reportType: string): string {
     "strengths": ["优势项"], "improvements": ["待提升项"]
   },
   "itemScores": [
-    { "itemId": "vital_capacity", "itemName": "肺活量", "valueText": "3200ml", "score": 78, "grade": "pass", "statusLabel": "稳定项", "analysis": "项目分析", "suggestion": "建议" }
+    { "itemId": "vital_capacity", "itemName": "肺活量", "valueText": "3200ml", "score": 78, "grade": "pass", "statusLabel": "稳定项", "analysis": "项目分析", "suggestion": "建议" },
+    { "itemId": "1000m_run", "itemName": "1000米跑", "valueText": "3:50", "score": 85, "grade": "good", "statusLabel": "优势项", "analysis": "项目分析", "suggestion": "建议" }
   ],
   "relationshipAnalysis": [
     { "title": "关系标题(如速度与爆发力的协同)", "relatedItems": ["50米跑","立定跳远"], "analysis": "关系分析说明", "suggestion": "针对性建议" }
@@ -591,7 +595,7 @@ function buildReportSchema(reportType: string): string {
   "dataSourceSummary": "本报告基于[正式体测日期]正式体测+N条同项目日常训练+问答反馈生成",
   "headlineInsight": "一句话：当前水平+最近趋势+下一步重点",
   "fitnessProfile": { "summary": "3-5句专项总览", "bmiStatus": "", "overallScore": 0, "overallGrade": "excellent|good|pass|improve", "dimensions": [], "strengths": [], "improvements": [] },
-  "formalBaseline": { "itemName": "项目中文名", "valueText": "值+单位", "score": 0, "grade": "excellent|good|pass|improve", "date": "正式体测日期", "analysis": "基线分析说明" },
+  "formalBaseline": { "itemName": "项目中文名", "valueText": "值+单位（800m/1000m用M:SS格式如3:50）", "score": 0, "grade": "excellent|good|pass|improve", "date": "正式体测日期", "analysis": "基线分析说明" },
   "dailyTrainingTrend": { "recordCount": 0, "latestDate": "最近日期或null", "trend": "提升中|基本稳定|有波动|数据不足", "stability": "稳定|轻微波动|明显波动", "fatigueSummary": "疲劳观察", "sorenessSummary": "酸痛观察", "note": "趋势总结" },
   "feedbackInsights": [
     { "factor": "问卷题目：学生答案，如'最吃力阶段：中段''动作是否变形：是''主观用力程度：7/10'", "observation": "结合运动科学对该回答进行细致分析", "implication": "针对性训练建议" }

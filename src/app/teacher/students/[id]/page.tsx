@@ -6,6 +6,7 @@ import { FitnessRadarChart } from "@/components/charts/fitness-radar-chart";
 import { StudentReviewStatus } from "@/components/features/student-review-status";
 import { getFitnessRecords, getLatestFitnessRecord, getStudentProfile } from "@/lib/server/data-service";
 import { FITNESS_ITEMS, GRADE_STANDARDS } from "@/lib/constants";
+import { formatItemValue } from "@/lib/utils";
 import {
   User,
   Activity,
@@ -219,7 +220,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                       const def = FITNESS_ITEMS.find(d => d.id === item.itemId);
                       return (
                         <Badge key={item.itemId} variant="outline" className="text-[11px]">
-                          {def?.name ?? item.itemId}: {item.value}{def?.unit ?? ""} ({item.grade === "excellent" ? "优秀" : item.grade === "good" ? "良好" : item.grade === "pass" ? "及格" : "待提升"})
+                          {def?.name ?? item.itemId}: {formatItemValue(item.itemId, item.value, def?.unit ?? "")} ({item.grade === "excellent" ? "优秀" : item.grade === "good" ? "良好" : item.grade === "pass" ? "及格" : "待提升"})
                         </Badge>
                       );
                     })}

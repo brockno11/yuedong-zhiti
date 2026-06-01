@@ -16,7 +16,9 @@ import { AIGenerationStatus, type AIStatus } from "@/components/features/ai-gene
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { FITNESS_ITEMS } from "@/lib/constants";
+import { formatItemValue as formatItemValueUtil } from "@/lib/utils";
 import { mockAIStudentReport, mockDeepItemReport } from "@/lib/data/mock-ai-reports";
 import { calculateRecordCompleteness } from "@/lib/scoring";
 import type { StudentReportHistoryItem } from "@/lib/server/db-mappers";
@@ -237,7 +239,7 @@ function inferItemIdFromReport(report: AIStudentReport, sourceSummary?: string |
 
 function formatItemValue(item: FitnessRecordItem, itemId: FitnessItemId): string {
   const def = FITNESS_ITEMS.find((fitnessItem) => fitnessItem.id === itemId);
-  return `${item.value}${def?.unit ?? ""}`;
+  return formatItemValueUtil(itemId, item.value, def?.unit ?? "");
 }
 
 function isReportMatchedToItem(report: AIStudentReport, itemId: FitnessItemId): boolean {
@@ -896,34 +898,22 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
       )}
 
       {/* Delete confirmation dialog */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDeleteConfirmId(null)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确定删除这份 AI 报告吗？</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确定删除这份 AI 报告吗？</DialogTitle>
+            <DialogDescription>
               此操作不会删除原始体测或训练记录，但删除后无法从历史报告中查看。
-            </p>
-            <div className="mt-5 flex gap-3">
-              <Button
-                variant="outline"
-                className="h-11 flex-1"
-                onClick={() => setDeleteConfirmId(null)}
-                disabled={deleting}
-              >
-                取消
-              </Button>
-              <Button
-                variant="destructive"
-                className="h-11 flex-1"
-                onClick={() => handleDeleteReport(deleteConfirmId)}
-                disabled={deleting}
-              >
-                {deleting ? "删除中..." : "确认删除"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)} disabled={deleting}>取消</Button>
+            <Button variant="destructive" onClick={() => deleteConfirmId && handleDeleteReport(deleteConfirmId)} disabled={deleting}>
+              {deleting ? "删除中..." : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom spacer for floating nav */}
       <div className="pb-28" />

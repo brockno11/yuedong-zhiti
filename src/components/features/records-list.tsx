@@ -6,7 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { FITNESS_ITEMS } from "@/lib/constants";
+import { formatItemValue } from "@/lib/utils";
 import { calculateRecordCompleteness } from "@/lib/scoring";
 import { Clock, GraduationCap, Dumbbell, Sparkles, BarChart3, PlusCircle, Trash2, ChevronDown, ChevronUp, Pencil, X, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -183,7 +185,7 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
         filtered.map((record) => {
           const completeness = calculateRecordCompleteness(record.items.map(i => i.itemId), gender);
           const topItems = record.items.slice(0, 4);
-          const avgScore = Math.round(record.items.reduce((sum, i) => sum + i.score, 0) / record.items.length);
+          const avgScore = record.items.length > 0 ? Math.round(record.items.reduce((sum, i) => sum + i.score, 0) / record.items.length) : 0;
           const isDaily = record.recordType === "daily_training";
           const isExpanded = expandedIds.has(record.id);
 
@@ -238,7 +240,7 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
                       <div key={i.itemId} className="flex items-center justify-between text-sm">
                         <span>{itemName(i.itemId)}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{i.value}{FITNESS_ITEMS.find(f => f.id === i.itemId)?.unit ?? ""}</span>
+                          <span className="text-xs text-muted-foreground">{formatItemValue(i.itemId, i.value, FITNESS_ITEMS.find(f => f.id === i.itemId)?.unit ?? "")}</span>
                           <Badge variant={i.grade === "excellent" || i.grade === "good" ? "excellent" : "pass"} className="text-[10px]">{i.score}分 · {i.grade === "excellent" ? "优秀" : i.grade === "good" ? "良好" : i.grade === "pass" ? "及格" : "待提升"}</Badge>
                         </div>
                       </div>
@@ -290,22 +292,22 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
       )}
 
       {/* Batch delete confirmation dialog */}
-      {confirmBatchDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmBatchDelete(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确定批量删除 {batchSelectedIds.size} 条日常训练记录吗？</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <Dialog open={confirmBatchDelete} onOpenChange={(open) => { if (!open) setConfirmBatchDelete(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确定批量删除 {batchSelectedIds.size} 条日常训练记录吗？</DialogTitle>
+            <DialogDescription>
               此操作不可撤销。正式体测记录不会被删除（学生不可删除正式体测数据）。
-            </p>
-            <div className="mt-5 flex gap-3">
-              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
-              <Button variant="destructive" className="h-11 flex-1" onClick={handleBatchDelete} disabled={batchDeleting}>
-                {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${batchSelectedIds.size} 条`}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
+            <Button variant="destructive" onClick={handleBatchDelete} disabled={batchDeleting}>
+              {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${batchSelectedIds.size} 条`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

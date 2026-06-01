@@ -245,6 +245,8 @@ src/lib/
   ├── constants.ts            # 体测项目/评分/导航/选项常量
   ├── validators.ts           # 四级异常值检测
   ├── scoring.ts              # 评分算法（高中生标准）
+  ├── utils.ts                # cn 类名合并 + 时间格式化（formatRunTime/parseRunTime/formatItemValue/isEnduranceRun）
+  ├── fitness-education.ts    # 项目科普与评分解读静态配置
   ├── demo-store.ts           # localStorage 状态管理
   ├── db.ts                   # Prisma 单例
   ├── data/                   # 3 个 Mock 数据文件
@@ -260,4 +262,4 @@ prisma/
 
 > 📋 **本文档目标**：让 Claude Code 和 Codex 在协作开发中保持一致的规范认知，避免各自为政。
 >
-> **最后更新**：2026-06-01 · 项目版本 MVP 0.9.4 · AI 分析体系深度重构 + 记录问答系统 v2
+> **最后更新**：2026-06-02 · 项目版本 v0.9.4 · 安全加固 + 数据一致性修复 + 弹窗无障碍 + 800m/1000m 时间格式化

@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { computeDimensionsFromItems, type DimensionInput } from "@/lib/scoring";
 import type { AIStudentReport, FitnessItemId, GradeTier } from "@/lib/types";
@@ -457,7 +458,7 @@ export function AIReportDetail({
                 <CardTitle className="text-sm">各维度表现</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <DimensionList dimensions={profile.dimensions} report={report} />
+                <DimensionList dimensions={profile.dimensions} report={report} gender={gender} />
               </CardContent>
             </Card>
 
@@ -766,23 +767,23 @@ export function AIReportDetail({
             </div>
 
             {/* Regenerate confirmation dialog */}
-            {confirmRegenerate && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmRegenerate(false)}>
-                <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-                  <p className="text-base font-semibold">确定重新生成报告吗？</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
+            <Dialog open={confirmRegenerate} onOpenChange={(open) => { if (!open) setConfirmRegenerate(false); }}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>确定重新生成报告吗？</DialogTitle>
+                  <DialogDescription>
                     将使用相同的正式体测数据调用最新的 AI 分析引擎生成新报告，当前页面会直接进入生成进度。
-                  </p>
-                  <div className="mt-5 flex gap-3">
-                    <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>
-                    <Button className="h-11 flex-1 gap-1.5" onClick={() => { setConfirmRegenerate(false); setRegenerating(true); onRegenerate?.(); }}
-                      disabled={regenerating}>
-                      <Sparkles className="h-4 w-4" />确认重新生成
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>
+                  <Button className="gap-1.5" onClick={() => { setConfirmRegenerate(false); setRegenerating(true); onRegenerate?.(); }}
+                    disabled={regenerating}>
+                    <Sparkles className="h-4 w-4" />确认重新生成
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </>
         )}
       </div>
@@ -1273,23 +1274,23 @@ export function AIReportDetail({
       </div>
 
       {/* Regenerate confirmation dialog */}
-      {confirmRegenerate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmRegenerate(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确定重新生成报告吗？</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <Dialog open={confirmRegenerate} onOpenChange={(open) => { if (!open) setConfirmRegenerate(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确定重新生成报告吗？</DialogTitle>
+            <DialogDescription>
               将使用相同的体测和训练数据调用最新的 AI 分析引擎生成新报告，当前页面会直接进入生成进度。
-            </p>
-            <div className="mt-5 flex gap-3">
-              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>
-              <Button className="h-11 flex-1 gap-1.5" onClick={() => { setConfirmRegenerate(false); setRegenerating(true); onRegenerate?.(); }}
-                disabled={regenerating}>
-                <Sparkles className="h-4 w-4" />确认重新生成
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>
+            <Button className="gap-1.5" onClick={() => { setConfirmRegenerate(false); setRegenerating(true); onRegenerate?.(); }}
+              disabled={regenerating}>
+              <Sparkles className="h-4 w-4" />确认重新生成
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1434,12 +1435,14 @@ function ItemAnalysisAccordion({
 function DimensionList({
   dimensions,
   report,
+  gender,
 }: {
   dimensions: AIStudentReport["fitnessProfile"]["dimensions"];
   report: AIStudentReport;
+  gender?: string;
 }) {
   // If dimensions are empty, compute fallback from itemScores
-  const dims = dimensions.length > 0 ? dimensions : computeFallbackDimensions(report);
+  const dims = dimensions.length > 0 ? dimensions : computeFallbackDimensions(report, gender);
 
   if (dims.length === 0) {
     return <p className="text-xs text-muted-foreground">暂无维度数据。</p>;
@@ -1475,7 +1478,7 @@ function DimensionList({
   );
 }
 
-function computeFallbackDimensions(report: AIStudentReport) {
+function computeFallbackDimensions(report: AIStudentReport, gender?: string) {
   if (!report.itemScores || report.itemScores.length === 0) return [];
   const inputs: DimensionInput[] = report.itemScores
     .filter(item => item.score > 0)
@@ -1488,7 +1491,7 @@ function computeFallbackDimensions(report: AIStudentReport) {
   // Extract BMI from bmiStatus string (e.g., "19.5，属于正常范围")
   const bmiMatch = report.fitnessProfile.bmiStatus.match(/([\d.]+)/);
   const bmi = bmiMatch ? parseFloat(bmiMatch[1]) : null;
-  return computeDimensionsFromItems(inputs, bmi, "male") as Array<{
+  return computeDimensionsFromItems(inputs, bmi, (gender === "female" ? "female" : "male")) as Array<{
     key: string; label: string; score: number | null; grade: GradeTier | null;
     relatedItems: string[]; analysis: string; suggestion: string;
   }>;
@@ -1618,22 +1621,22 @@ function BatchHistorySection({
         )}
       </div>
 
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmDeleteId(null)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-semibold">确定删除这份 AI 报告吗？</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <Dialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确定删除这份 AI 报告吗？</DialogTitle>
+            <DialogDescription>
               此操作不会删除原始体测或训练记录，但删除后无法从历史报告中查看。
-            </p>
-            <div className="mt-5 flex gap-3">
-              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmDeleteId(null)} disabled={deleting}>取消</Button>
-              <Button variant="destructive" className="h-11 flex-1" onClick={() => handleDelete(confirmDeleteId)} disabled={deleting}>
-                {deleting ? "删除中..." : "确认删除"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteId(null)} disabled={deleting}>取消</Button>
+            <Button variant="destructive" onClick={() => confirmDeleteId && handleDelete(confirmDeleteId)} disabled={deleting}>
+              {deleting ? "删除中..." : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
