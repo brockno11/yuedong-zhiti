@@ -38,7 +38,15 @@ tmp/
 tmp-verification/
 .agents/
 test-artifacts/
+test-results/
 *.bundle
+
+# development docs (local only)
+AGENTS.md
+PROJECT_HANDOFF.md
+skills.md
+archive/
+docs/
 
 # local SQLite database
 prisma/dev.db
