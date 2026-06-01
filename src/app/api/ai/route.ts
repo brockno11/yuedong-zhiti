@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       userPrompt = buildClassUserPrompt(classData || {});
     }
 
-    // 调用 DeepSeek API，避免外部服务慢时页面无限等待
+    // 调用 DeepSeek API
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
     const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
           { role: "user", content: userPrompt },
         ],
         temperature: 0.4,
-        max_tokens: 4096,
+        max_tokens: 8192,
       }),
     }).finally(() => clearTimeout(timeoutId));
 
@@ -136,7 +136,6 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text();
       console.error("[AI API] DeepSeek 调用失败:", response.status, errorText);
 
-      // 失败时回退到 mock
       const studentDataFail = body.studentData as Record<string, unknown> | undefined;
       const failReportType: AIStudentReport["reportType"] = (studentDataFail?.reportType as AIStudentReport["reportType"]) || "record_report";
       const report = {
@@ -167,7 +166,7 @@ export async function POST(request: NextRequest) {
     const report = type === "student-report"
       ? {
           ...mockAIStudentReport,
-          reportType: realReportType, // default, overridden by parsed if AI returns it
+          reportType: realReportType,
           ...parsed,
           id: `AI-S-${body.studentId ?? "001"}-${Date.now()}`,
           studentId: body.studentId ?? mockAIStudentReport.studentId,
@@ -200,7 +199,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[AI API] 错误:", error);
 
-    // 异常时返回 mock
     const fallbackType = body?.type === "class-report" ? "class" : "student";
     const errorStudentData = body?.studentData as Record<string, unknown> | undefined;
     const errorReportType: AIStudentReport["reportType"] = (errorStudentData?.reportType as AIStudentReport["reportType"]) || "record_report";
@@ -228,48 +226,42 @@ export async function POST(request: NextRequest) {
 // ===== 提示词构建 =====
 
 function buildStudentSystemPrompt(): string {
-  return `你是中学（高中）体育教师助手，依据《国家学生体质健康标准（2014年修订）》为高中生提供体育锻炼建议。
+  return `你是高中体育教师助手，为高中生提供体育锻炼分析参考。你依据《国家学生体质健康标准（2014年修订）》及体育与健康核心素养（运动能力、健康行为、体育品德）开展工作。
 
-你遵循"健康第一"的学校体育工作方针，帮助学生享受乐趣、增强体质、健全人格、锤炼意志。
+# 核心遵循
+- "健康第一"、"教会、勤练、常赛"
+- 训练循序渐进，动作质量优先，不提倡过早专项化和过度训练
+- 青少年运动科学参考：结合 WHO/CDC 对5-17岁儿童青少年的身体活动建议（平均每天≥60分钟中高强度、每周≥3天较高强度有氧及增强肌肉骨骼活动）和 NSCA 青少年训练原则（合格监督、动态热身、轻负荷起步、技术优先、渐进负荷、重视恢复）
 
-你只提供体育锻炼建议，不进行任何医学诊断。
-语言要积极、鼓励、保护学生自尊。不要使用"诊断""治疗""处方""肥胖""差""不行""排名"等表达。
-使用"有提升空间""待提升""值得关注""锻炼建议""训练参考"等积极表达。
+# 必须做到
+- 语言积极鼓励，保护学生自尊
+- 训练建议必须标注"需经体育教师审核后使用"
+- 只分析实际提供数据的项目，严禁推测缺失数据
+- 缺失项目标注"暂无数据"或"建议后续补充记录"
+- 综合评分仅基于实际录入项目计算，不得推断
+- 所有 AI 内容必须标注"AI生成，需经体育教师审核后使用"
 
-核心素养关注：运动能力、健康行为、体育品德。报告应包含动作能力分析、锻炼习惯观察、教师教学参考。
+# 严禁事项
+- 医学用语："诊断""治疗""处方"
+- 负面标签："差""很差""不行""肥胖""超重"
+- 比较性用语："排名""倒数"
+- 数据造假：推断、补全、平均值填充缺失项目
+- 日常训练生成正式等级评价
+- 对未直接测量的能力使用"推测""暗示"等表达。只能写"建议教师进一步观察"或"暂无直接数据"
 
-青少年运动科学参考：建议平均每天至少60分钟中高强度身体活动，每周至少3天加入较高强度有氧和增强肌肉骨骼的活动。训练应循序渐进，强调动作质量、基础力量、运动素养、恢复和安全。不提倡过早专项化和过度训练。学校体育要"教会、勤练、常赛"。
+# 替代表达映射
+- "差/不及格" → "有提升空间/值得关注"
+- "肥胖/超重" → "BMI指标值得关注"
+- "诊断/治疗/处方" → "建议/参考/锻炼方案"
 
-分析模式有两种：
-1. 专项分析模式（单项目）：当学生只录入了一个体能项目时，针对该项目进行深入的技术分析。
-2. 综合分析模式（多项目）：当学生录入了多个项目时，进行全面的体质画像分析。
-3. 正式体测全维度分析模式（batch_report）：生成完整、有厚度的正式体测分析报告，必须包含所有要求的板块。
+# 数据来源规则（严格遵守）
+1. official_test = 阶段性基线 → 等级评价 + 维度分析
+2. daily_training = 过程观察 → 趋势判断 + 训练习惯分析
+3. 日常训练不参与正式体测评分，不补全缺失项目
+4. batch_report 只使用正式体测数据
+5. item_report = 正式体测基线 + 同项目日常训练 + 问答反馈
 
-【正式体测全维度报告要求 — batch_report 专用】
-当 reportType 为 batch_report 时，你必须生成一份"大体量全维度报告"，而不是简单摘要：
-- dimensions 必须返回全部6个维度（身体形态、心肺耐力、速度能力、爆发力、柔韧性、肌肉力量），不允许空数组。
-- 每个维度必须包含 relatedItems（关联项目中文名）、analysis（2-3句分析）、suggestion（提升建议）。
-- 必须逐项分析所有6个正式体测项目（itemScores），缺失项目标记"暂无数据"。
-- 必须分析项目间的关系（relationshipAnalysis），至少2-3条。
-- 必须输出3阶段训练方案（stageTrainingPlan），不要只给单周计划。
-- 必须给出3条教学参考（teachingSuggestions），每条包含教师观察要点。
-- safetyReminders 必须至少6条，覆盖热身、强度递进、身体不适处理、装备、恢复等方面。
-- 摘要（summary）必须至少5句话，涵盖整体评价、优势、短板、与上次的对比变化。
-
-【数据不完整处理规则 — 必须严格遵守】
-- 只分析学生实际提供了数据的项目，严禁推测、假设或填补缺失项目的数据。
-- 未录入项目必须在报告中明确标注"暂无数据"或"建议后续补充记录"。
-- 数据完整度不足时，只能生成局部分析和有限的训练建议，不得生成完整的体质综合评价。
-- 综合评分（overallScore）仅基于实际录入项目计算，不得推断。
-- 训练计划优先围绕已录入项目和学生目标生成，可建议补充记录项目但不可假定其成绩。
-- 在 fitnessProfile.summary 中，如果数据不完整，第一句话必须说明"本次分析仅基于已录入的N个项目"。
-- 对于正式体测记录，对比国家标准给出等级评价；对于日常训练记录，关注进步趋势而非绝对评分。
-
-训练计划要循序渐进，适合校园体育锻炼场景（高中）。
-如果学生体感疲劳较高（≥7/10），必须在训练建议中明确提醒降低强度，并建议告知体育教师。
-如果学生有身体不适状况，训练计划中必须避免可能加重不适的动作。
-所有训练建议必须标注"需经体育教师审核授权后实施"。
-输出结构化JSON，不要输出任何其他内容。`;
+输出严格 JSON，不要输出其他任何内容。`;
 }
 
 function buildStudentUserPrompt(data: Record<string, unknown>): string {
@@ -282,210 +274,190 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
   const completeness = data.completeness as { recordedCount: number; expectedCount: number; completionRate: number; missingItems: string[] } | undefined;
   const totalExpectedItems = completeness?.expectedCount ?? 6;
 
-  // 反馈摘要
   const feedbackLines = currentRecord?.items
     ?.filter(i => i.feedbackJson)
     .map(i => `- ${i.itemId}: ${i.feedbackJson}`) ?? [];
 
   const completenessNote = itemCount < totalExpectedItems
-    ? `\n⚠️ 数据完整性提醒：该记录仅包含 ${itemCount}/${totalExpectedItems} 项体测数据。分析时只分析已录入项目，不得推断未录入项目。`
+    ? `\n⚠️ 数据完整性：仅包含 ${itemCount}/${totalExpectedItems} 项数据。只分析已录入项目，不得推断缺失项目。`
     : "";
 
   const recordTypeNote = recordType === "daily_training"
-    ? `\n【记录类型：日常训练】关注训练感受和过程追踪，不需严格对比国家标准。`
-    : `\n【记录类型：正式体测】参考国家学生体质健康标准。`;
+    ? `\n【记录类型：日常训练】关注训练感受和过程追踪，不严格对比国家标准。`
+    : `\n【记录类型：正式体测】参考国家学生体质健康标准高中部分。`;
 
   const reportTypeInstructions: Record<string, string> = {
-    item_report: `\n【报告类型：单项专项报告】
-仅分析 ${currentRecord?.items?.[0]?.itemId ?? "该项目"} 这一个项目：
-- 正式体测成绩是该项目的阶段性基线，请先说明正式体测表现
-- relatedDailyRecords 是该项目的日常训练过程数据，请结合训练次数、最近训练、疲劳/恢复/酸痛等信息观察过程变化
-- 可以把正式体测表现与日常训练过程分开说明，也可以综合判断下一步训练重点
-- 结合项目级反馈（如下）生成针对性建议
-- trainingPlan 聚焦该项目，输出2-3个专项训练动作
-- weaknessAnalysis 只分析该项目
-- 不要把日常训练当作正式体测评分，不要用日常训练补全其他缺失项目
-- 不评价其他未录入项目
-- **必须输出 itemDeepAnalysis**：包含 abilityBreakdown（4-6项能力拆解）、influencingFactors（3-4个影响因素）、relatedItems（2-3条项目关系）、progressiveGoals（短期/中期/长期目标）`,
-    record_report: `\n【报告类型：本次记录分析报告】
-分析本次录入的 ${itemCount} 个项目：
-- 每个项目逐一分析，不要生成完整体质综合评价
+    item_report: `\n【报告类型：item_report 单项深度分析】
+仅分析该项目。正式体测为阶段性基线 + 同项目日常训练为过程观察 + 问答反馈为体感洞察。
+
+必须输出的模块：
+1. dataSourceSummary — 说明本报告使用的数据源
+2. headlineInsight — 一句话结论（学生可读）
+3. fitnessProfile.summary — 3-5句专项总览
+4. formalBaseline — { itemName, valueText, score, grade, date, analysis } 正式体测基线分析
+5. dailyTrainingTrend — { recordCount, latestDate, trend("提升中"|"基本稳定"|"有波动"|"数据不足"), stability, fatigueSummary, sorenessSummary, note }
+   若日常训练为0条，trend="数据不足"，note="暂无同项目日常训练记录，仅基于正式体测基线分析"
+6. itemDeepAnalysis.abilityBreakdown — 4-6项能力拆解 { ability, description, currentLevel, improvement }
+7. itemDeepAnalysis.influencingFactors — 3-4个因素 { factor(动作质量|节奏|力量|柔韧|耐力|恢复|训练频率|体感), status, suggestion }
+8. itemDeepAnalysis.relatedItems — 2-3条 { itemName(中文), relationship }
+9. itemDeepAnalysis.progressiveGoals — 短期(1-2周)/中期(3-6周)/长期(6-12周) { stage, target, timeline, actions[] }
+10. feedbackInsights — [ { factor, observation, implication } ] 基于问答反馈的洞察
+11. trainingPlan — 2-4个专项训练动作 { name, description, sets, frequency, duration, notes }
+12. safetyReminders — 至少5条该项目专项安全提醒
+13. teacherReviewNotes — 至少2条需要教师重点审核的内容`,
+    record_report: `\n【报告类型：record_report 本次记录反馈】
+分析本次录入的${itemCount}个项目：
+- 每个项目逐一分析，不生成完整体质综合评价
 - 结合项目级反馈给出个性化建议
 - 明确标注未录入项目为"待补充"
 - trainingPlan 围绕已录项目生成`,
-    batch_report: `\n【报告类型：正式体测全维度分析报告】
+    batch_report: `\n【报告类型：batch_report 正式体测全维度分析】
+这是正式体测全维度画像报告。只使用正式体测数据，严禁混入日常训练。
 
-⚠️ 这是正式体测综合报告，必须生成完整的全维度分析内容。只使用正式体测数据，不要混入日常训练。
+必须生成以下所有13个模块（不允许省略任何模块）：
 
-你必须做到：
-1. **逐项分析**：对每个正式体测项目（肺活量、50米跑、立定跳远、坐位体前屈、引体向上/仰卧起坐、1000米/800米跑）给出成绩、得分、等级、分析、建议。缺失项目标记"暂无数据"。
-2. **六维评价**：必须返回6个维度（身体形态、心肺耐力、速度能力、爆发力、柔韧性、肌肉力量），每个维度包含relatedItems、analysis、suggestion字段。不允许返回空dimensions数组。
-3. **项目关系分析**：分析项目间的关联（如速度+爆发力、心肺+耐力、柔韧+跑步动作），至少给出2-3条关系分析。
-4. **优势项目分析**：分析表现好的项目为什么好，以及如何作为其他训练的基础。
-5. **阶段训练方案**：输出3个训练阶段（适应→强化→巩固），每阶段包含目标、时长、训练动作、恢复建议。
-6. **教学参考**：给体育教师3条课堂指导建议，包含观察要点。
-7. **安全提醒**：至少6条，覆盖热身、强度递进、不适处理、装备、恢复等方面。
-8. 所有内容必须标注"需经体育教师审核后使用"。`,
+[模块1] dataSourceSummary — 数据来源说明(批次+日期+项目数+完整度)
+[模块2] headlineInsight — 一句话结论(学生可读)：当前整体状态+最值得保持的优势+最值得关注的方向
+[模块3] completeness — { recordedCount, expectedCount, completionRate, missingItems[], note }
+[模块4] fitnessProfile.summary — 至少5句：整体体质表现+优势维度+关注维度+与上次变化+训练方向+教师审核提醒
+[模块5] fitnessProfile.dimensions — 6个维度全部返回(不允许空数组)：
+  身体形态/心肺耐力/速度能力/爆发力/柔韧性/肌肉力量
+  每个维度：{ key, label, score, grade, classAverage, relatedItems[], analysis(2-3句), suggestion }
+[模块6] itemScores — 逐项分析每个正式体测项目：
+  肺活量/50米跑/立定跳远/坐位体前屈/引体向上(男)/仰卧起坐(女)/1000米跑(男)/800米跑(女)
+  每项：{ itemId, itemName, valueText, score, grade, statusLabel(优势项|稳定项|需关注项), analysis, suggestion }
+  缺失项目statusLabel="暂无数据"
+[模块7] relationshipAnalysis — 至少3条项目关系分析：
+  { title, relatedItems[], analysis, suggestion }
+  例如：50米跑与立定跳远共同反映下肢爆发力；肺活量与中长跑共同反映心肺耐力基础
+[模块8] strengthsAnalysis — 每个优势项：{ item(名称+分数), reason(为什么好), foundationFor(可支撑哪些能力) }
+[模块9] weaknessAnalysis — 按优先级排序的需关注项目：
+  { item, currentLevel, possibleCauses[], improvementPotential, priority("high"|"medium"), relatedDimensions[] }
+[模块10] stageTrainingPlan — 3阶段(适应→强化→巩固)：
+  每阶段：{ stage, goal, duration, focus, exercises[{name,description,sets,frequency,duration,notes}], recoveryAdvice }
+[模块11] teachingSuggestions — 至少3条：{ scenario(课堂教学|分层指导|练习形式|家校协同), suggestion, observationPoint }
+[模块12] safetyReminders — 至少6条字符串：热身+强度递进+不适处理+恢复+睡眠+装备+教师沟通
+[模块13] teacherReviewNotes — 至少3条教师需重点审核的内容
+
+如有历史批次数据，生成 comparisonWithPreviousBatch：
+{ previousBatchName, previousDate, changes[{item,previous,current,trend("up"|"stable"|"down"),note}], summary }
+
+⚠️ 所有训练建议必须标注"需经体育教师审核后使用"。`,
   };
 
   const feedbackNote = feedbackLines.length > 0
-    ? `\n【项目级反馈】\n${feedbackLines.join("\n")}\n训练建议请结合上述反馈。`
+    ? `\n【项目级反馈（问答数据）】\n${feedbackLines.join("\n")}\n请在分析中使用这些反馈数据判断动作质量、疲劳、恢复、体感状态。`
     : "";
   const dailyNote = reportType === "item_report"
-    ? `\n【同项目日常训练记录】共 ${relatedDailyRecords.length} 条。若为空，请只基于正式体测和项目反馈分析；若不为空，请作为训练过程观察依据。`
+    ? `\n【同项目日常训练记录】共${relatedDailyRecords.length}条。若为空则dailyTrainingTrend.trend="数据不足"；若不为空则分析训练频率、成绩变化、疲劳与恢复模式。`
     : "";
 
   const scopeNote = analysisScope
-    ? `\n【分析范围】${analysisScope === "formal_overall" ? "正式体测全维度分析 — 仅使用正式体测数据" : analysisScope === "item_assessment" ? "单项评估 — 正式体测为基线，日常训练为过程观察" : analysisScope === "record_report" ? "本次记录反馈 — 针对当前记录局部分析" : ""}`
+    ? `\n【分析范围】${analysisScope === "formal_overall" ? "正式体测全维度分析" : analysisScope === "item_assessment" ? "单项深度分析" : "本次记录反馈"}`
     : "";
+
+  const schema = buildReportSchema(reportType);
 
   return `请分析以下学生体测数据：
 ${JSON.stringify(data, null, 2)}
 ${scopeNote}${completenessNote}${recordTypeNote}${reportTypeInstructions[reportType] ?? reportTypeInstructions.record_report}${feedbackNote}${dailyNote}
 
-请以JSON格式返回（严格按照此结构，所有字段必须填写）：
+请严格按以下 JSON 结构返回（所有中文文本字段必须用中文填写，不要省略任何模块）：
+${schema}
 
-${
-  reportType === "batch_report"
-    ? `{
+所有训练建议必须标注"需经体育教师审核后使用"。`;
+}
+
+function buildReportSchema(reportType: string): string {
+  if (reportType === "batch_report") {
+    return `{
   "reportType": "batch_report",
+  "dataSourceSummary": "本报告基于[批次名]正式体测数据生成，包含N个项目，完整度N%。日常训练未参与评分。",
+  "headlineInsight": "一句话总结当前体质状态和最重要的下一步方向",
+  "completeness": { "recordedCount": 0, "expectedCount": 6, "completionRate": 0, "missingItems": ["项目名"], "note": "完整度说明" },
   "fitnessProfile": {
-    "summary": "完整摘要（不少于5句话，涵盖整体表现、优势、短板、与上次对比）",
-    "bmiStatus": "BMI值和状态说明",
-    "overallScore": 0,
-    "overallGrade": "excellent|good|pass|improve",
+    "summary": "至少5句整体评价：整体表现+优势维度+关注维度+与上次对比+训练方向+审核提醒",
+    "bmiStatus": "BMI值和状态",
+    "overallScore": 0, "overallGrade": "excellent|good|pass|improve",
     "dimensions": [
-      {
-        "key": "body_composition|cardiorespiratory|speed|explosive_power|flexibility|muscle_strength",
-        "label": "身体形态|心肺耐力|速度能力|爆发力|柔韧性|肌肉力量",
-        "score": 0,
-        "grade": "excellent|good|pass|improve",
-        "classAverage": 0,
-        "relatedItems": ["关联项目中文名"],
-        "analysis": "维度分析（2-3句话）",
-        "suggestion": "提升建议（1-2句话）"
-      }
+      { "key": "body_composition", "label": "身体形态", "score": 0, "grade": "excellent|good|pass|improve", "classAverage": 0, "relatedItems": ["身高体重"], "analysis": "2-3句维度分析", "suggestion": "提升建议" },
+      { "key": "cardiorespiratory", "label": "心肺耐力", "score": 0, "grade": "...", "classAverage": 0, "relatedItems": ["肺活量","1000米跑或800米跑"], "analysis": "...", "suggestion": "..." },
+      { "key": "speed", "label": "速度能力", "score": 0, "grade": "...", "classAverage": 0, "relatedItems": ["50米跑"], "analysis": "...", "suggestion": "..." },
+      { "key": "explosive_power", "label": "爆发力", "score": 0, "grade": "...", "classAverage": 0, "relatedItems": ["立定跳远"], "analysis": "...", "suggestion": "..." },
+      { "key": "flexibility", "label": "柔韧性", "score": 0, "grade": "...", "classAverage": 0, "relatedItems": ["坐位体前屈"], "analysis": "...", "suggestion": "..." },
+      { "key": "muscle_strength", "label": "肌肉力量", "score": 0, "grade": "...", "classAverage": 0, "relatedItems": ["引体向上(男)或仰卧起坐(女)"], "analysis": "...", "suggestion": "..." }
     ],
-    "strengths": ["优势项1", "优势项2"],
-    "improvements": ["待提升项1", "待提升项2"]
+    "strengths": ["优势项"], "improvements": ["待提升项"]
   },
   "itemScores": [
-    {
-      "itemId": "vital_capacity|50m_run|standing_long_jump|sit_and_reach|pull_up|sit_up|1000m_run|800m_run",
-      "itemName": "中文项目名",
-      "valueText": "成绩值和单位",
-      "score": 0,
-      "grade": "excellent|good|pass|improve",
-      "statusLabel": "优势项|稳定项|需关注项",
-      "analysis": "项目分析说明",
-      "suggestion": "训练建议"
-    }
+    { "itemId": "vital_capacity", "itemName": "肺活量", "valueText": "3200ml", "score": 78, "grade": "pass", "statusLabel": "稳定项", "analysis": "项目分析", "suggestion": "建议" }
   ],
   "relationshipAnalysis": [
-    {
-      "title": "关系分析标题",
-      "relatedItems": ["项目1", "项目2"],
-      "analysis": "关系分析说明",
-      "suggestion": "针对性建议"
-    }
+    { "title": "关系标题(如速度与爆发力的协同)", "relatedItems": ["50米跑","立定跳远"], "analysis": "关系分析说明", "suggestion": "针对性建议" }
   ],
   "strengthsAnalysis": [
-    {
-      "item": "优势项目名和分数",
-      "reason": "为什么表现好",
-      "foundationFor": "可作为哪些项目的训练基础"
-    }
+    { "item": "优势项名称和分数", "reason": "为什么表现好", "foundationFor": "可作为哪些项目的基础" }
   ],
   "weaknessAnalysis": [
-    {
-      "item": "项目名",
-      "currentLevel": "当前等级和成绩",
-      "possibleCauses": ["原因1", "原因2"],
-      "improvementPotential": "提升方向和潜力",
-      "priority": "high|medium",
-      "relatedDimensions": ["关联维度"]
-    }
-  ],
-  "trainingPlan": [
-    {
-      "weekNumber": 1,
-      "focus": "本周训练重点",
-      "exercises": [{ "name": "", "description": "", "sets": "", "frequency": "", "duration": "", "notes": "" }],
-      "recoveryAdvice": ""
-    }
+    { "item": "需关注的项目名", "currentLevel": "当前成绩和等级", "possibleCauses": ["可能原因"], "improvementPotential": "提升方向和潜力", "priority": "high|medium", "relatedDimensions": ["关联维度"] }
   ],
   "stageTrainingPlan": [
-    {
-      "stage": "第1阶段：适应与动作质量",
-      "goal": "阶段目标",
-      "duration": "2-3周",
-      "focus": "训练重点",
-      "exercises": [{ "name": "", "description": "", "sets": "", "frequency": "", "duration": "", "notes": "" }],
-      "recoveryAdvice": ""
-    },
-    {
-      "stage": "第2阶段：能力强化",
-      "goal": "阶段目标",
-      "duration": "3-4周",
-      "focus": "训练重点",
-      "exercises": [{ "name": "", "description": "", "sets": "", "frequency": "", "duration": "", "notes": "" }],
-      "recoveryAdvice": ""
-    },
-    {
-      "stage": "第3阶段：综合巩固",
-      "goal": "阶段目标",
-      "duration": "2-3周",
-      "focus": "训练重点",
-      "exercises": [{ "name": "", "description": "", "sets": "", "frequency": "", "duration": "", "notes": "" }],
-      "recoveryAdvice": ""
-    }
+    { "stage": "第1阶段：适应与动作质量", "goal": "目标", "duration": "2-3周", "focus": "重点", "exercises": [{ "name": "动作名", "description": "描述", "sets": "组数", "frequency": "频率", "duration": "时长", "notes": "注意" }], "recoveryAdvice": "恢复建议" },
+    { "stage": "第2阶段：能力强化", "goal": "目标", "duration": "3-4周", "focus": "重点", "exercises": [...], "recoveryAdvice": "..." },
+    { "stage": "第3阶段：综合巩固", "goal": "目标", "duration": "2-3周", "focus": "重点", "exercises": [...], "recoveryAdvice": "..." }
   ],
   "teachingSuggestions": [
-    {
-      "scenario": "课堂教学|分层指导|练习形式",
-      "suggestion": "给教师的具体建议",
-      "observationPoint": "教师需观察的要点"
-    }
+    { "scenario": "课堂教学|分层指导|练习形式|家校协同", "suggestion": "建议", "observationPoint": "教师观察要点" }
   ],
-  "safetyReminders": ["安全提醒1", "安全提醒2", "安全提醒3", "安全提醒4", "安全提醒5", "安全提醒6"]
-}`
-    : reportType === "item_report"
-    ? `{
+  "safetyReminders": ["至少6条安全提醒字符串"],
+  "teacherReviewNotes": ["至少3条教师需重点审核的内容"]
+}`;
+  }
+  if (reportType === "item_report") {
+    return `{
   "reportType": "item_report",
-  "fitnessProfile": { "summary": "专项总览（3-5句话）", "bmiStatus": "", "overallScore": 0, "overallGrade": "excellent|good|pass|improve", "dimensions": [], "strengths": [], "improvements": [] },
+  "dataSourceSummary": "本报告基于[正式体测日期]正式体测+N条同项目日常训练+问答反馈生成",
+  "headlineInsight": "一句话：当前水平+最近趋势+下一步重点",
+  "fitnessProfile": { "summary": "3-5句专项总览", "bmiStatus": "", "overallScore": 0, "overallGrade": "excellent|good|pass|improve", "dimensions": [], "strengths": [], "improvements": [] },
+  "formalBaseline": { "itemName": "项目中文名", "valueText": "值+单位", "score": 0, "grade": "excellent|good|pass|improve", "date": "正式体测日期", "analysis": "基线分析说明" },
+  "dailyTrainingTrend": { "recordCount": 0, "latestDate": "最近日期或null", "trend": "提升中|基本稳定|有波动|数据不足", "stability": "稳定|轻微波动|明显波动", "fatigueSummary": "疲劳观察", "sorenessSummary": "酸痛观察", "note": "趋势总结" },
+  "feedbackInsights": [
+    { "factor": "因素(如RPE/恢复/动作质量)", "observation": "从反馈中观察到的现象", "implication": "对训练的启示" }
+  ],
   "weaknessAnalysis": [
-    { "item": "正式体测表现", "currentLevel": "当前成绩和等级", "possibleCauses": ["阶段性基线说明"], "improvementPotential": "短期努力方向" },
-    { "item": "日常训练观察", "currentLevel": "训练次数/最近日期", "possibleCauses": ["训练频率/疲劳/恢复观察"], "improvementPotential": "训练习惯调整建议" }
+    { "item": "正式体测基线", "currentLevel": "成绩+等级", "possibleCauses": ["基线说明"], "improvementPotential": "短期努力方向" },
+    { "item": "日常训练观察", "currentLevel": "训练N次/最近日期", "possibleCauses": ["趋势/疲劳/恢复观察"], "improvementPotential": "训练习惯建议" }
   ],
   "itemDeepAnalysis": {
     "abilityBreakdown": [
-      { "ability": "能力名称", "description": "在此项目中的作用", "currentLevel": "当前水平估计", "improvement": "提升建议" }
+      { "ability": "能力名称", "description": "在此项目中的作用", "currentLevel": "当前水平描述", "improvement": "提升建议" }
     ],
     "influencingFactors": [
-      { "factor": "动作质量|节奏|力量|柔韧|耐力|恢复", "status": "当前状态", "suggestion": "改进建议" }
+      { "factor": "动作质量|节奏|力量|柔韧|耐力|恢复|训练频率|体感", "status": "当前状态描述", "suggestion": "改进建议" }
     ],
     "relatedItems": [
-      { "itemName": "关联项目名", "relationship": "与当前项目的关联" }
+      { "itemName": "关联项目中文名", "relationship": "与当前项目的联系" }
     ],
     "progressiveGoals": [
-      { "stage": "短期保持", "target": "目标", "timeline": "1-2周", "actions": ["行动1", "行动2"] },
-      { "stage": "中期提升", "target": "目标", "timeline": "3-6周", "actions": ["行动1", "行动2"] },
-      { "stage": "长期巩固", "target": "目标", "timeline": "6-12周", "actions": ["行动1", "行动2"] }
+      { "stage": "短期(1-2周)", "target": "目标", "timeline": "1-2周", "actions": ["行动"] },
+      { "stage": "中期(3-6周)", "target": "目标", "timeline": "3-6周", "actions": ["行动"] },
+      { "stage": "长期(6-12周)", "target": "目标", "timeline": "6-12周", "actions": ["行动"] }
     ]
   },
-  "trainingPlan": [{ "weekNumber": 1, "focus": "专项训练重点", "exercises": [{ "name": "训练动作", "description": "描述", "sets": "组数", "frequency": "频率", "duration": "时长", "notes": "注意" }], "recoveryAdvice": "恢复建议" }],
-  "safetyReminders": ["安全提醒1", "安全提醒2", "安全提醒3", "安全提醒4", "安全提醒5"]
-}`
-    : `{
-  "reportType": "${reportType}",
-  "fitnessProfile": { "summary": "", "bmiStatus": "", "overallScore": 0, "overallGrade": "", "dimensions": [], "strengths": [], "improvements": [] },
-  "weaknessAnalysis": [{ "item": "", "currentLevel": "", "possibleCauses": [], "improvementPotential": "" }],
-  "trainingPlan": [{ "weekNumber": 1, "focus": "", "exercises": [{ "name": "", "description": "", "sets": "", "frequency": "", "duration": "", "notes": "" }], "recoveryAdvice": "" }],
-  "safetyReminders": [""]
-}`
-}
-
-训练计划必须标注"需经体育教师审核授权后实施训练计划"。`;
+  "trainingPlan": [
+    { "weekNumber": 1, "focus": "训练重点", "exercises": [{ "name": "动作名", "description": "描述", "sets": "组数", "frequency": "频率", "duration": "时长", "notes": "注意" }], "recoveryAdvice": "恢复建议" }
+  ],
+  "safetyReminders": ["至少5条项目专项安全提醒"],
+  "teacherReviewNotes": ["至少2条教师需重点审核的内容"]
+}`;
+  }
+  return `{
+  "reportType": "record_report",
+  "fitnessProfile": { "summary": "本次记录总览", "bmiStatus": "", "overallScore": 0, "overallGrade": "excellent|good|pass|improve", "dimensions": [], "strengths": [], "improvements": [] },
+  "weaknessAnalysis": [{ "item": "项目名", "currentLevel": "成绩+等级", "possibleCauses": ["分析"], "improvementPotential": "方向" }],
+  "trainingPlan": [{ "weekNumber": 1, "focus": "重点", "exercises": [{ "name": "动作", "description": "描述", "sets": "组数", "frequency": "频率", "duration": "时长", "notes": "注意" }], "recoveryAdvice": "恢复建议" }],
+  "safetyReminders": ["安全提醒"]
+}`;
 }
 
 function buildClassSystemPrompt(): string {

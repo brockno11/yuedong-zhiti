@@ -9,7 +9,10 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  FileText,
+  GraduationCap,
   History,
+  Loader2,
   ShieldCheck,
   Sparkles,
   Target,
@@ -39,6 +42,7 @@ interface ReportDetailProps {
   onGenerateForBatch?: (_batchId: string) => void;
   onView?: (_report: StudentReportHistoryItem) => void;
   onDeleteReport?: (_reportId: string) => void;
+  onRegenerate?: () => void;
 }
 
 function itemName(id: string): string {
@@ -78,6 +82,18 @@ function reportTypeLabel(type?: string): string {
   return "AI 分析";
 }
 
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function reviewBadge(status: string) {
   if (status === "approved") return { label: "已审核", variant: "excellent" as const };
   if (status === "rejected") return { label: "已退回", variant: "improve" as const };
@@ -98,11 +114,14 @@ export function AIReportDetail({
   allBatchReports,
   onView: onViewHistory,
   onDeleteReport,
+  onRegenerate,
 }: ReportDetailProps) {
   const status = report.status || "pending_review";
   const StatusIcon = status === "approved" ? CheckCircle2 : status === "rejected" ? AlertTriangle : Clock;
   const review = reviewBadge(status);
   const profile = report.fitnessProfile;
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   // ===== BATCH REPORT — 全维度正式体测分析 =====
   if (report.reportType === "batch_report") {
@@ -132,6 +151,10 @@ export function AIReportDetail({
               </Badge>
             )}
             <Badge variant={review.variant} className="text-[10px]">{review.label}</Badge>
+          </div>
+          <div className="rounded-xl border bg-muted/20 px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">本次生成时间</p>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums">{formatDateTime(report.generatedAt)}</p>
           </div>
         </div>
 
@@ -179,7 +202,31 @@ export function AIReportDetail({
               </Card>
             )}
 
-            {/* 2. Overview Card */}
+            {/* 2. Data Source & Completeness */}
+            {report.dataSourceSummary && (
+              <Card className="rounded-xl border border-primary/10 bg-primary/5 shadow-sm">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold">报告来源</span>
+                  </div>
+                  <p className="text-sm font-semibold leading-relaxed">{report.headlineInsight || profile.summary.slice(0, 80) + "…"}</p>
+                  <p className="text-xs text-muted-foreground">{report.dataSourceSummary}</p>
+                  {report.completeness && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Badge variant={report.completeness.completionRate >= 100 ? "excellent" : "pass"} className="text-[9px]">
+                        完整度 {report.completeness.completionRate}%
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        {report.completeness.recordedCount}/{report.completeness.expectedCount} 项已录入
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 3. Overview Card */}
             <Card className="rounded-xl shadow-sm">
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-center gap-2">
@@ -334,6 +381,41 @@ export function AIReportDetail({
               </CardContent>
             </Card>
 
+            {/* 7.5 Comparison with Previous Batch */}
+            {report.comparisonWithPreviousBatch && report.comparisonWithPreviousBatch.changes.length > 0 && (
+              <Card className="rounded-xl shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <History className="h-4 w-4 text-primary" />
+                    与上次体测对比
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    对比批次：{report.comparisonWithPreviousBatch.previousBatchName}（{report.comparisonWithPreviousBatch.previousDate}）
+                  </p>
+                  <div className="space-y-2">
+                    {report.comparisonWithPreviousBatch.changes.map((change, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
+                        <span className="text-xs font-medium">{change.item}</span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground">{change.previous}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className={change.trend === "up" ? "text-level-excellent font-semibold" : change.trend === "down" ? "text-level-improve font-semibold" : "text-muted-foreground"}>
+                            {change.current}
+                          </span>
+                          <Badge variant={change.trend === "up" ? "excellent" : change.trend === "down" ? "improve" : "secondary"} className="text-[9px]">
+                            {change.trend === "up" ? "↑提升" : change.trend === "down" ? "↓下降" : "→持平"}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{report.comparisonWithPreviousBatch.summary}</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* 8. Stage Training Plan */}
             {(report.stageTrainingPlan && report.stageTrainingPlan.length > 0) || report.trainingPlan.length > 0 ? (
               <Card className="rounded-xl shadow-sm">
@@ -408,6 +490,29 @@ export function AIReportDetail({
               </Card>
             )}
 
+            {/* 9.5 Teacher Review Notes */}
+            {report.teacherReviewNotes && report.teacherReviewNotes.length > 0 && (
+              <Card className="rounded-xl shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <AlertTriangle className="h-4 w-4 text-primary" />
+                    教师审核须知
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {report.teacherReviewNotes.map((note, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
+                      <p className="text-xs text-muted-foreground">{normalizeReportText(note)}</p>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-muted-foreground pt-1">
+                    AI 生成的审核建议，供体育教师参考。
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* 10. Safety Reminders */}
             {report.safetyReminders.length > 0 && (
               <Card className="rounded-xl shadow-sm">
@@ -458,6 +563,48 @@ export function AIReportDetail({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Regenerate button — update old reports to new format */}
+            <div className="rounded-xl border border-dashed p-4 text-center space-y-3">
+              <p className="text-xs text-muted-foreground">
+                如果当前报告是旧版格式，可以重新生成以获取最新的全维度分析内容。
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 gap-1.5"
+                onClick={() => setConfirmRegenerate(true)}
+                disabled={regenerating}
+              >
+                {regenerating ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" />重新生成中...</>
+                ) : (
+                  <><Sparkles className="h-3.5 w-3.5" />重新生成报告</>
+                )}
+              </Button>
+              <p className="text-[10px] text-muted-foreground">
+                旧报告将被删除，使用相同的体测数据生成新报告。
+              </p>
+            </div>
+
+            {/* Regenerate confirmation dialog */}
+            {confirmRegenerate && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmRegenerate(false)}>
+                <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-base font-semibold">确定重新生成报告吗？</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    旧版报告将被删除，使用相同的正式体测数据调用最新的 AI 分析引擎生成新报告。此操作不可撤销。
+                  </p>
+                  <div className="mt-5 flex gap-3">
+                    <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>
+                    <Button className="h-11 flex-1 gap-1.5" onClick={() => { setConfirmRegenerate(false); setRegenerating(true); onRegenerate?.(); }}
+                      disabled={regenerating}>
+                      <Sparkles className="h-4 w-4" />确认重新生成
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -489,7 +636,25 @@ export function AIReportDetail({
           )}
           <Badge variant={review.variant} className="text-[10px]">{review.label}</Badge>
         </div>
+        <div className="rounded-xl border bg-muted/20 px-3 py-2">
+          <p className="text-[11px] text-muted-foreground">本次生成时间</p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums">{formatDateTime(report.generatedAt)}</p>
+        </div>
       </div>
+
+      {/* Data Source Summary Card (item_report) */}
+      {report.dataSourceSummary && (
+        <Card className="rounded-xl border border-primary/10 bg-primary/5 shadow-sm">
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <span className="text-xs font-semibold">报告来源</span>
+            </div>
+            <p className="text-sm font-semibold leading-relaxed">{report.headlineInsight || profile.summary}</p>
+            <p className="text-xs text-muted-foreground">{report.dataSourceSummary}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary */}
       <Card className="rounded-xl border border-primary/10 bg-primary/5 shadow-sm">
@@ -498,13 +663,97 @@ export function AIReportDetail({
             <StatusIcon className="h-5 w-5 text-primary" />
             <span className="text-sm font-semibold">{review.label}</span>
           </div>
-          <p className="text-base font-semibold leading-relaxed">{normalizeReportText(profile.summary)}</p>
+          <p className="text-sm leading-relaxed">{normalizeReportText(profile.summary)}</p>
           <p className="text-xs text-muted-foreground">
             来源：{viewingItemId ? `正式体测 · ${itemName(viewingItemId)} + 同项目日常训练` : reportTypeLabel(report.reportType)}
             。日常训练用于辅助观察，不参与正式评分。
           </p>
         </CardContent>
       </Card>
+
+      {/* Formal Baseline Card (item_report) */}
+      {report.formalBaseline && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <GraduationCap className="h-4 w-4 text-primary" />
+              正式体测基线
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-medium">{report.formalBaseline.valueText}</span>
+              <span>{report.formalBaseline.score}分</span>
+              <Badge variant={
+                report.formalBaseline.grade === "excellent" || report.formalBaseline.grade === "good" ? "excellent"
+                : report.formalBaseline.grade === "pass" ? "pass" : "improve"
+              } className="text-[9px]">{gradeLabel(report.formalBaseline.grade as GradeTier)}</Badge>
+              <span className="ml-auto text-[10px] text-muted-foreground">{report.formalBaseline.date}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{normalizeReportText(report.formalBaseline.analysis)}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Daily Training Trend Card (item_report) */}
+      {report.dailyTrainingTrend && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              日常训练趋势
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-lg bg-muted/30 p-2.5">
+                <p className="text-[10px] text-muted-foreground">训练次数</p>
+                <p className="mt-1 font-semibold tabular-nums">{report.dailyTrainingTrend.recordCount} 次</p>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-2.5">
+                <p className="text-[10px] text-muted-foreground">趋势</p>
+                <p className="mt-1 font-semibold">{report.dailyTrainingTrend.trend}</p>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-2.5">
+                <p className="text-[10px] text-muted-foreground">稳定性</p>
+                <p className="mt-1 font-semibold">{report.dailyTrainingTrend.stability}</p>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-2.5">
+                <p className="text-[10px] text-muted-foreground">最近训练</p>
+                <p className="mt-1 font-semibold">{report.dailyTrainingTrend.latestDate || "暂无"}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{report.dailyTrainingTrend.note}</p>
+            {report.dailyTrainingTrend.fatigueSummary && (
+              <p className="text-[11px] text-muted-foreground">疲劳：{report.dailyTrainingTrend.fatigueSummary}</p>
+            )}
+            {report.dailyTrainingTrend.sorenessSummary && (
+              <p className="text-[11px] text-muted-foreground">酸痛：{report.dailyTrainingTrend.sorenessSummary}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Feedback Insights Card (item_report) */}
+      {report.feedbackInsights && report.feedbackInsights.length > 0 && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Sparkles className="h-4 w-4 text-primary" />
+              问答反馈洞察
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {report.feedbackInsights.map((fi, i) => (
+              <div key={i} className="rounded-lg bg-muted/20 p-3">
+                <p className="text-xs font-semibold">{fi.factor}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{fi.observation}</p>
+                <p className="mt-0.5 text-[11px] text-primary">{fi.implication}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Analysis */}
       {report.weaknessAnalysis.length > 0 && (
@@ -695,6 +944,29 @@ export function AIReportDetail({
         </Card>
       )}
 
+      {/* Teacher Review Notes (item_report) */}
+      {report.teacherReviewNotes && report.teacherReviewNotes.length > 0 && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              教师审核须知
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {report.teacherReviewNotes.map((note, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
+                <p className="text-xs text-muted-foreground">{normalizeReportText(note)}</p>
+              </div>
+            ))}
+            <p className="text-[10px] text-muted-foreground pt-1">
+              AI 生成的审核建议，供体育教师参考。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Safety reminders */}
       {report.safetyReminders.length > 0 && (
         <Card className="rounded-xl shadow-sm">
@@ -727,6 +999,48 @@ export function AIReportDetail({
           </div>
         </CardContent>
       </Card>
+
+      {/* Regenerate button for item_report */}
+      <div className="rounded-xl border border-dashed p-4 text-center space-y-3">
+        <p className="text-xs text-muted-foreground">
+          如果当前报告是旧版格式，可以重新生成以获取最新的深度分析内容。
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-10 gap-1.5"
+          onClick={() => setConfirmRegenerate(true)}
+          disabled={regenerating}
+        >
+          {regenerating ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" />重新生成中...</>
+          ) : (
+            <><Sparkles className="h-3.5 w-3.5" />重新生成报告</>
+          )}
+        </Button>
+        <p className="text-[10px] text-muted-foreground">
+          旧报告将被删除，使用相同的体测数据生成新报告。
+        </p>
+      </div>
+
+      {/* Regenerate confirmation dialog */}
+      {confirmRegenerate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmRegenerate(false)}>
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-semibold">确定重新生成报告吗？</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              旧版报告将被删除，使用相同的体测和训练数据调用最新的 AI 分析引擎生成新报告。此操作不可撤销。
+            </p>
+            <div className="mt-5 flex gap-3">
+              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>
+              <Button className="h-11 flex-1 gap-1.5" onClick={() => { setConfirmRegenerate(false); setRegenerating(true); onRegenerate?.(); }}
+                disabled={regenerating}>
+                <Sparkles className="h-4 w-4" />确认重新生成
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

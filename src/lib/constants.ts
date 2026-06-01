@@ -168,7 +168,8 @@ export const STUDENT_NAV_ITEMS = [
   { href: "/profile", label: "我的", icon: "User" },
 ] as const;
 
-// ---- 项目级反馈模板 ----
+// ---- 项目级反馈模板（专项观察表 v2）----
+// 所有运动类项目共享"通用运动体感"问题组 + 各项目专项技术问题
 export interface FeedbackQuestion {
   key: string;
   label: string;
@@ -176,58 +177,153 @@ export interface FeedbackQuestion {
   options?: { value: string; label: string }[];
   min?: number;
   max?: number;
+  /** 问题分组，前端按组折叠展示 */
+  group?: "通用体感" | "专项技术" | "测试配合";
 }
 
+// 通用运动体感（所有需跑/跳/力量的体力项目共享）
+const COMMON_PHYSICAL_FEEDBACK: FeedbackQuestion[] = [
+  {
+    key: "trainingPurpose", group: "通用体感",
+    label: "本次训练目的",
+    type: "choice",
+    options: [
+      { value: "official_test", label: "正式测试" },
+      { value: "technique", label: "技术练习" },
+      { value: "speed", label: "速度练习" },
+      { value: "strength", label: "力量练习" },
+      { value: "endurance", label: "耐力练习" },
+      { value: "recovery", label: "恢复性练习" },
+    ],
+  },
+  {
+    key: "rpe", group: "通用体感",
+    label: "主观用力程度（1=很轻松，10=竭尽全力）",
+    type: "slider", min: 1, max: 10,
+  },
+  {
+    key: "recoverySpeed", group: "通用体感",
+    label: "运动后恢复速度",
+    type: "choice",
+    options: [
+      { value: "quick", label: "恢复很快" },
+      { value: "normal", label: "恢复正常" },
+      { value: "slow", label: "恢复较慢" },
+    ],
+  },
+  {
+    key: "hasSoreness", group: "通用体感",
+    label: "运动后是否出现肌肉酸痛？",
+    type: "choice",
+    options: [
+      { value: "none", label: "无酸痛" },
+      { value: "slight", label: "轻微酸痛" },
+      { value: "moderate", label: "明显酸痛" },
+    ],
+  },
+  {
+    key: "hasDiscomfort", group: "通用体感",
+    label: "运动中或运动后是否有身体不适？",
+    type: "boolean",
+  },
+];
+
 export const ITEM_FEEDBACK_CONFIG: Record<string, FeedbackQuestion[]> = {
-  // 非运动类：不问疲劳
+  // ===== 非运动类：肺活量（测试配合问题）=====
   vital_capacity: [
-    { key: "breathTechnique", label: "本次是否连续完成吹气？", type: "choice", options: [{ value: "continuous", label: "连续完成" }, { value: "interrupted", label: "中断过" }, { value: "retry", label: "多次重试" }] },
-    { key: "recentExercise", label: "测试前是否刚进行剧烈运动？", type: "boolean" },
-    { key: "breathDifficulty", label: "吹气过程是否感觉憋气或呼吸不顺？", type: "boolean" },
+    {
+      key: "trainingPurpose", group: "测试配合",
+      label: "本次测试目的",
+      type: "choice",
+      options: [
+        { value: "official_test", label: "正式测试" },
+        { value: "technique", label: "吹气技术练习" },
+        { value: "endurance", label: "呼吸耐力练习" },
+      ],
+    },
+    { key: "breathTechnique", group: "测试配合", label: "是否连续完成吹气？", type: "choice", options: [{ value: "continuous", label: "连续完成" }, { value: "interrupted", label: "中途换气或中断" }, { value: "retry", label: "多次重试" }] },
+    { key: "recentExercise", group: "测试配合", label: "测试前是否刚进行剧烈运动？", type: "boolean" },
+    { key: "breathDifficulty", group: "测试配合", label: "吹气过程中是否感觉呼吸不顺？", type: "boolean" },
+    { key: "understandTechnique", group: "测试配合", label: "是否理解测试动作要领？", type: "boolean" },
   ],
+
+  // ===== 非运动类：坐位体前屈（专项技术问题）=====
   sit_and_reach: [
-    { key: "warmedUp", label: "测试前是否进行了热身？", type: "boolean" },
-    { key: "hamstringTight", label: "腿后侧是否感觉紧张？", type: "choice", options: [{ value: "none", label: "没有" }, { value: "slight", label: "轻微" }, { value: "tight", label: "明显紧张" }] },
-    { key: "backDiscomfort", label: "腰背是否有不适？", type: "boolean" },
+    {
+      key: "trainingPurpose", group: "通用体感",
+      label: "本次测试/训练目的",
+      type: "choice",
+      options: [
+        { value: "official_test", label: "正式测试" },
+        { value: "technique", label: "柔韧练习" },
+        { value: "recovery", label: "恢复拉伸" },
+      ],
+    },
+    { key: "warmedUp", group: "专项技术", label: "测试前是否进行了热身？", type: "boolean" },
+    { key: "hamstringTight", group: "专项技术", label: "腿后侧紧张程度", type: "choice", options: [{ value: "none", label: "不紧张" }, { value: "slight", label: "轻微紧张" }, { value: "tight", label: "明显紧张" }] },
+    { key: "backDiscomfort", group: "专项技术", label: "腰背是否有不适？", type: "boolean" },
+    { key: "pushSmooth", group: "专项技术", label: "动作是否能平稳前伸（非突然发力）？", type: "boolean" },
+    { key: "breathHold", group: "专项技术", label: "是否出现憋气或突然用力？", type: "boolean" },
   ],
-  // 运动类：问运动体感
+
+  // ===== 50米跑 =====
   "50m_run": [
-    { key: "startQuality", label: "起跑是否顺畅？", type: "choice", options: [{ value: "smooth", label: "顺畅" }, { value: "ok", label: "一般" }, { value: "slow", label: "反应偏慢" }] },
-    { key: "fatigueLevel", label: "冲刺后疲劳程度", type: "slider", min: 1, max: 10 },
-    { key: "recoverySpeed", label: "呼吸恢复速度", type: "choice", options: [{ value: "quick", label: "快速恢复" }, { value: "normal", label: "正常" }, { value: "slow", label: "恢复较慢" }] },
-    { key: "legSoreness", label: "腿部是否酸胀？", type: "boolean" },
+    ...COMMON_PHYSICAL_FEEDBACK,
+    { key: "startQuality", group: "专项技术", label: "起跑是否顺畅？", type: "choice", options: [{ value: "smooth", label: "顺畅" }, { value: "ok", label: "一般" }, { value: "slow", label: "反应偏慢" }] },
+    { key: "first20m", group: "专项技术", label: "前20米加速是否有力？", type: "choice", options: [{ value: "strong", label: "有力" }, { value: "ok", label: "一般" }, { value: "weak", label: "不够有力" }] },
+    { key: "midPace", group: "专项技术", label: "途中跑节奏是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "ok", label: "一般" }, { value: "unstable", label: "不太稳" }] },
+    { key: "last10m", group: "专项技术", label: "最后10米是否能保持速度？", type: "boolean" },
+    { key: "legSoreness", group: "专项技术", label: "腿部是否有酸痛或紧张？", type: "boolean" },
   ],
+
+  // ===== 立定跳远 =====
   standing_long_jump: [
-    { key: "takeoffStable", label: "起跳是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "ok", label: "一般" }, { value: "unstable", label: "不太稳" }] },
-    { key: "armCoordination", label: "摆臂配合是否顺畅？", type: "boolean" },
-    { key: "landingStable", label: "落地是否稳定？", type: "boolean" },
-    { key: "kneeDiscomfort", label: "膝盖或脚踝是否不适？", type: "boolean" },
+    ...COMMON_PHYSICAL_FEEDBACK,
+    { key: "armCoordination", group: "专项技术", label: "摆臂是否协调？", type: "boolean" },
+    { key: "takeoffExtend", group: "专项技术", label: "起跳是否充分蹬伸？", type: "choice", options: [{ value: "full", label: "充分蹬伸" }, { value: "ok", label: "一般" }, { value: "insufficient", label: "蹬伸不足" }] },
+    { key: "legTuck", group: "专项技术", label: "空中收腿是否自然？", type: "choice", options: [{ value: "natural", label: "自然" }, { value: "ok", label: "一般" }, { value: "stiff", label: "不太自然" }] },
+    { key: "landingStable", group: "专项技术", label: "落地是否稳定？", type: "boolean" },
+    { key: "kneeDiscomfort", group: "专项技术", label: "膝盖或脚踝是否不适？", type: "boolean" },
   ],
+
+  // ===== 引体向上（男生）=====
   pull_up: [
-    { key: "hardestPhase", label: "哪个阶段最吃力？", type: "choice", options: [{ value: "start", label: "启动阶段" }, { value: "middle", label: "中段" }, { value: "lockout", label: "下巴过杠" }] },
-    { key: "formBreakdown", label: "动作后半程是否明显变形？", type: "boolean" },
-    { key: "shoulderDiscomfort", label: "肩部、腰背是否不适？", type: "boolean" },
-    { key: "fatigueLevel", label: "训练后酸痛程度", type: "slider", min: 1, max: 10 },
+    ...COMMON_PHYSICAL_FEEDBACK,
+    { key: "hardestPhase", group: "专项技术", label: "最吃力阶段？", type: "choice", options: [{ value: "start", label: "启动阶段" }, { value: "middle", label: "中段" }, { value: "lockout", label: "下巴过杠" }] },
+    { key: "formBreakdown", group: "专项技术", label: "动作后半程是否明显变形？", type: "boolean" },
+    { key: "controlDescent", group: "专项技术", label: "是否能控制下降过程？", type: "boolean" },
+    { key: "shoulderDiscomfort", group: "专项技术", label: "肩背是否不适？", type: "boolean" },
+    { key: "gripInsufficient", group: "专项技术", label: "握力是否明显不足？", type: "boolean" },
   ],
+
+  // ===== 仰卧起坐（女生）=====
   sit_up: [
-    { key: "hardestPhase", label: "哪个阶段最吃力？", type: "choice", options: [{ value: "start", label: "前期" }, { value: "middle", label: "中段" }, { value: "end", label: "后期力竭" }] },
-    { key: "coreStrength", label: "是否感觉核心力量不足？", type: "boolean" },
-    { key: "backDiscomfort", label: "腰背是否不适？", type: "boolean" },
-    { key: "fatigueLevel", label: "训练后酸痛程度", type: "slider", min: 1, max: 10 },
+    ...COMMON_PHYSICAL_FEEDBACK,
+    { key: "paceStable", group: "专项技术", label: "前半程和后半程节奏是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "someDrop", label: "后程略慢" }, { value: "bigDrop", label: "明显掉速" }] },
+    { key: "backDiscomfort", group: "专项技术", label: "是否出现腰背不适？", type: "boolean" },
+    { key: "coreStrength", group: "专项技术", label: "是否感觉核心力量不足？", type: "boolean" },
+    { key: "momentumHelp", group: "专项技术", label: "是否靠摆动借力明显？", type: "boolean" },
+    { key: "last15sDrop", group: "专项技术", label: "最后15秒是否明显掉速？", type: "boolean" },
   ],
+
+  // ===== 1000米跑（男生）=====
   "1000m_run": [
-    { key: "fatigueLevel", label: "跑后疲劳程度", type: "slider", min: 1, max: 10 },
-    { key: "recoverySpeed", label: "呼吸恢复速度", type: "choice", options: [{ value: "quick", label: "快速恢复" }, { value: "normal", label: "正常" }, { value: "slow", label: "恢复较慢" }] },
-    { key: "paceStable", label: "配速是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "someDrop", label: "后半程略慢" }, { value: "bigDrop", label: "明显降速" }] },
-    { key: "legSoreness", label: "腿部酸痛情况", type: "choice", options: [{ value: "none", label: "无" }, { value: "slight", label: "轻微" }, { value: "moderate", label: "明显" }] },
-    { key: "discomfort", label: "是否有胸闷或严重不适？", type: "boolean" },
+    ...COMMON_PHYSICAL_FEEDBACK,
+    { key: "paceStable", group: "专项技术", label: "配速是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "someDrop", label: "后半程略慢" }, { value: "bigDrop", label: "明显降速" }] },
+    { key: "secondHalfDrop", group: "专项技术", label: "后半程是否明显下降？", type: "boolean" },
+    { key: "breathRhythm", group: "专项技术", label: "呼吸节奏是否顺畅？", type: "choice", options: [{ value: "smooth", label: "顺畅" }, { value: "ok", label: "一般" }, { value: "labored", label: "吃力" }] },
+    { key: "legSoreness", group: "专项技术", label: "腿部酸痛程度", type: "choice", options: [{ value: "none", label: "无" }, { value: "slight", label: "轻微" }, { value: "moderate", label: "明显" }] },
+    { key: "chestDiscomfort", group: "专项技术", label: "是否出现胸闷、头晕等明显不适？", type: "boolean" },
   ],
+
+  // ===== 800米跑（女生）=====
   "800m_run": [
-    { key: "fatigueLevel", label: "跑后疲劳程度", type: "slider", min: 1, max: 10 },
-    { key: "recoverySpeed", label: "呼吸恢复速度", type: "choice", options: [{ value: "quick", label: "快速恢复" }, { value: "normal", label: "正常" }, { value: "slow", label: "恢复较慢" }] },
-    { key: "paceStable", label: "配速是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "someDrop", label: "后半程略慢" }, { value: "bigDrop", label: "明显降速" }] },
-    { key: "legSoreness", label: "腿部酸痛情况", type: "choice", options: [{ value: "none", label: "无" }, { value: "slight", label: "轻微" }, { value: "moderate", label: "明显" }] },
-    { key: "discomfort", label: "是否有胸闷或严重不适？", type: "boolean" },
+    ...COMMON_PHYSICAL_FEEDBACK,
+    { key: "paceStable", group: "专项技术", label: "配速是否稳定？", type: "choice", options: [{ value: "stable", label: "稳定" }, { value: "someDrop", label: "后半程略慢" }, { value: "bigDrop", label: "明显降速" }] },
+    { key: "secondHalfDrop", group: "专项技术", label: "后半程是否明显下降？", type: "boolean" },
+    { key: "breathRhythm", group: "专项技术", label: "呼吸节奏是否顺畅？", type: "choice", options: [{ value: "smooth", label: "顺畅" }, { value: "ok", label: "一般" }, { value: "labored", label: "吃力" }] },
+    { key: "legSoreness", group: "专项技术", label: "腿部酸痛程度", type: "choice", options: [{ value: "none", label: "无" }, { value: "slight", label: "轻微" }, { value: "moderate", label: "明显" }] },
+    { key: "chestDiscomfort", group: "专项技术", label: "是否出现胸闷、头晕等明显不适？", type: "boolean" },
   ],
 };
 

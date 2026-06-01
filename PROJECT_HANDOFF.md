@@ -1,6 +1,13 @@
 # 跃动智体 — 项目交接文档（AI 审查用超详细版）
 
-> 生成日期：2026-06-01 | 版本：MVP 0.9.3 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23 | 提交：见 git log
+## 2026-06-01 本轮修复记录（Codex）
+
+- AI 指导页报告详情新增“本次生成时间”，覆盖正式体测分析与专项分析详情。
+- 修复专项分析“新数据”角标误判：优先使用 `sourceMeta.includedRecordIds/latestDataDate`，并回退到 `sourceRecordId/sourceRecordDate/generatedAt`，避免无新记录时仍提示更新。
+- AI 提示词补充 WHO/CDC 青少年身体活动建议与 NSCA 青少年训练原则，并强化“不得推测、不得补全缺失项目”的输出约束。
+- 数据映射层新增 AI 报告文本净化，旧报告读取时自动替换医学化、标签化、推测性表达，保证学生端展示更符合“教师主导、AI 辅助、反标签化”原则。
+
+> 生成日期：2026-06-01 | 版本：MVP 0.9.4 | 构建状态：✅ 通过 | 类型检查：✅ 0 错误 | Lint：✅ 0 警告 | 路由：✅ 23/23 | AI 分析体系重构 ✅ | 记录问答 v2 ✅
 
 本文档为 AI Agent 审查和接手项目提供最完整的项目信息。**阅读时长约 15 分钟**。
 
@@ -189,36 +196,37 @@ noRecord → hasRecordNoReport → [用户点击生成] → hasCurrentReport
 1. 优先 `sourceRecordId === latestRecord.id`
 2. 其次 `sourceRecordDate === latestRecord.date`
 
-### 页面结构（从上到下，v0.9.2 — 全维度报告中心）
+### 页面结构（从上到下，v0.9.4 — AI 分析体系重构）
 1. **页面标题**：AI 智能指导 + 简要描述，简洁不臃肿
 2. **正式体测分析**：完成度/最新日期/报告状态，操作按钮（查看/生成/更新），批次列表可点击进入对应报告
 3. **单项分析**：6 个性别适配项目卡片，每卡含正式得分、日常训练次数、趋势、新数据角标
 4. **训练情况**：近 7/30 天训练、最近训练、训练节奏、项目分布、轻量建议
 5. **历史报告**：底部折叠，按类型分组（正式体测分析/单项分析/其他报告）
-6. **报告详情**（v0.9.2 全维度）：
-   1. 顶部操作区（返回按钮+Badge行+批次切换器）
-   2. 报告总览（摘要/评分/等级）
-   3. 各项目成绩表（6项完整展示）
-   4. 各维度表现（6维度，AI未返回时前端兜底计算）
-   5. 项目关系分析（速度+爆发力、心肺+耐力等）
-   6. 重点关注项目（全部展示，含优先级Badge）
-   7. 优势与提升空间（含优势深度分析）
-   8. 阶段训练参考（3阶段可折叠：适应→强化→巩固）
-   9. 教学参考（给体育教师的课堂指导）
-   10. 恢复与安全提醒（5-6条）
-   11. 审核状态说明
+6. **batch_report 正式体测全维度画像报告**（13 模块）：
+   1. 报告头部（类型/批次/审核状态/完整度/数据来源）
+   2. 数据来源与完整度卡片（完整度% + headlineInsight 一句话结论）
+   3. 总体画像摘要（≥5句）
+   4. 各项目成绩表（逐项分析+折叠分析）
+   5. 六维度体质画像（6维度必然完整，含关联项目/分析/建议，前端兜底）
+   6. 项目关系分析（≥3条）
+   7. 优势能力分析（含基础支撑说明）
+   8. 重点关注项目（按优先级排序）
+   9. 与上一批次对比（含趋势箭头）
+   10. 阶段训练参考（3阶段可折叠）
+   11. 体育教师教学参考（≥3条）
+   12. 教师审核须知（AI标注需重点审核内容）
+   13. 恢复与安全提醒（≥6条）
+7. **item_report 单项深度分析报告**（13 模块）：
+   1. 报告头部 → 2. 一句话结论 → 3. 数据来源摘要 → 4. 正式体测基线 → 5. 日常训练趋势 → 6. 专项能力拆解(4-6项) → 7. 问答反馈洞察 → 8. 影响因素分析 → 9. 与其他项目关系 → 10. 专项训练方案 → 11. 短中长进阶目标 → 12. 专项安全提醒 → 13. 教师审核须知
 
-### 新增特性（v0.9.2）
-- **批次切换生效**：建立批次-报告映射(sourceRecordId→record→batchId)，点击不同批次切换对应报告
-- **数据预览兜底**：批次无AI报告时基于实际记录自动计算预览(computeDimensionsFromItems)，含黄色提示横幅+生成AI分析按钮
-- **完整度按批次绑定**：正式体测完整度只统计最新批次内项目，不跨批次聚合(避免多批次混合显示6/6)
-- **recordType严格筛选**：`officialRecords` 改为正向匹配 `recordType === "official_test"`(不再用排除法)
-- **analysisScope解析**：API 读取前端传入的 `analysisScope`(formal_overall/item_assessment/record_report)注入提示词
-- **底部导航返回**：Tab re-click 自定义事件重置报告详情回到报告中心
-- **维度兜底**：AI 未返回完整 dimensions 时基于正式体测项目自动计算 6 维度
-- **无截断**：所有 slice() 截断已移除，长内容用折叠/展开替代
-- **新类型字段**：`itemScores[]`、`relationshipAnalysis[]`、`strengthsAnalysis[]`、`stageTrainingPlan[]`、`teachingSuggestions[]`
-- **返回按钮升级**：outline + ArrowLeft 图标，两行布局
+### 新增特性（v0.9.4）
+- **AI 提示词深度重构**：系统提示词按国家标准+核心素养+数据安全重写；用户提示词按 batch_report(13模块)/item_report(13模块)/record_report 分类型详细展开JSON schema
+- **记录问答系统 v2**：通用体感组(训练目的/RPE/恢复/酸痛/不适) + 专项技术组(各项目专用5题)，按组折叠展示，高风险反馈弹温和警告
+- **报告元信息**：新增 dataSourceSummary/headlineInsight/completeness/teacherReviewNotes/comparisonWithPreviousBatch 字段
+- **item_report 增强**：新增 formalBaseline/dailyTrainingTrend/feedbackInsights 展示卡片
+- **无截断展示**：所有报告内容完整展示，长内容用折叠/展开替代
+- **前端兜底计算**：AI 未返回完整 dimensions 时自动计算 6 维度
+- **表达合规**：所有报告 normalizeReportText() 自动替换 raw enum 为中文
 
 ## 6. 学生端功能详解
 
@@ -325,7 +333,7 @@ noRecord → hasRecordNoReport → [用户点击生成] → hasCurrentReport
 - 验证：所有已选项目必须有值（> 0）
 
 **Step 3 — 逐项体感**（仅体力项目时显示）：
-- 组件：`record-feeling-step.tsx`
+- 组件：`record-feeling-step.tsx`（v2：通用体感+专项技术分组，RPE滑块带标签，高风险温和警告）
 - **每个项目独立卡片**：
   - 疲劳程度：1-10 滑杆（`feeling-slider.tsx`），1=轻松、10=很累
   - 恢复感觉：3 档按钮（恢复很快/恢复正常/恢复较慢）
@@ -841,13 +849,13 @@ src/components/
     ├── onboarding-steps.tsx       — 5 步引导：年级/性别/年龄/身高/体重/目标/基础/健康
     ├── record-project-select.tsx  — 项目选择：9 个卡片网格，性别过滤
     ├── record-score-input.tsx     — 成绩输入：每个已选项目一个滚轮
-    ├── record-feeling-step.tsx    — 逐项体感：每个项目独立疲劳/恢复/酸痛卡片
+    ├── record-feeling-step.tsx    — 逐项体感v2：通用体感+专项技术分组/RPE滑块/高风险警告
     ├── record-complete.tsx        — 完成页：确认摘要 + 跳转
     ├── ai-student-report.tsx       — AI 报告中心主控：状态管理+生成逻辑+4区域编排
     │   ├── ai-formal-analysis.tsx   — 正式体测分析区：完成度/批次列表/报告操作
     │   ├── ai-item-cards.tsx        — 单项分析卡组：6项目卡片+新数据角标
     │   ├── ai-training-observation.tsx — 训练情况区：近7/30天/节奏/项目分布
-    │   ├── ai-report-detail.tsx     — 报告详情：全维度10板块 batch_report + 简版 item_report
+    │   ├── ai-report-detail.tsx     — 报告详情：batch_report 13模块 + item_report 13模块 + 完整展示无截断
     │   └── ai-generation-status.tsx — 生成状态：分步进度条+骨架屏+错误/回退态
     ├── ai-class-report-view.tsx   — AI 班级报告视图
     ├── ai-generation-status.tsx   — AI 生成状态：3 步进度+进度条+骨架屏+错误/回退状态
@@ -1113,4 +1121,4 @@ npm run build       # 应 15/15 路由通过
 
 > 📋 **本文档目标**：让 AI Agent 能够在 15 分钟内完整理解项目全貌、当前进度、架构决策、安全红线和开发规范，并知道从哪里继续工作。
 >
-> **最后更新**：2026-05-31 · 版本 MVP 0.7.0
+> **最后更新**：2026-06-01 · 版本 MVP 0.9.4 · AI 分析体系深度重构

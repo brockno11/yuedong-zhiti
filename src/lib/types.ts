@@ -215,7 +215,62 @@ export interface AIStudentReport {
     }[];
   };
 
+  // ---- 报告元信息（所有报告类型）----
+  // 数据来源摘要：AI 描述本报告使用了哪些数据
+  dataSourceSummary?: string;
+  // 数据完整度说明
+  completeness?: {
+    recordedCount: number;
+    expectedCount: number;
+    completionRate: number;
+    missingItems: string[];
+    note: string;
+  };
+  // 一句话结论（学生可读）
+  headlineInsight?: string;
+
+  // ---- 扩展字段（item_report 专项深度分析）----
+  // 正式体测基线分析
+  formalBaseline?: {
+    itemName: string;
+    valueText: string;
+    score: number;
+    grade: string;
+    date: string;
+    analysis: string;
+  };
+  // 日常训练趋势分析
+  dailyTrainingTrend?: {
+    recordCount: number;
+    latestDate: string | null;
+    trend: string;
+    stability: string;
+    fatigueSummary: string;
+    sorenessSummary: string;
+    note: string;
+  };
+  // 问答反馈洞察
+  feedbackInsights?: {
+    factor: string;
+    observation: string;
+    implication: string;
+  }[];
+
   // ---- 扩展字段（batch_report 全维度报告）----
+  // 与上一批次对比
+  comparisonWithPreviousBatch?: {
+    previousBatchName: string;
+    previousDate: string;
+    changes: {
+      item: string;
+      previous: string;
+      current: string;
+      trend: "up" | "stable" | "down";
+      note: string;
+    }[];
+    summary: string;
+  };
+
   // 逐项分析：每个正式体测项目的成绩详情
   itemScores?: {
     itemId: FitnessItemId;
@@ -266,6 +321,9 @@ export interface AIStudentReport {
     suggestion: string;
     observationPoint?: string;
   }[];
+
+  // 教师审核须知（AI 标注需要教师重点审核的内容）
+  teacherReviewNotes?: string[];
 }
 
 // ---- AI 班级报告 ----

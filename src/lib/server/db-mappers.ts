@@ -100,7 +100,8 @@ export function mapTeacherReview(row: TeacherReviewRow): TeacherReview {
 }
 
 export function mapAIReport(row: AIReportRow): AIStudentReport | AIClassReport {
-  return JSON.parse(row.contentJson) as AIStudentReport | AIClassReport;
+  const parsed = JSON.parse(row.contentJson) as unknown;
+  return sanitizeReportValue(parsed) as AIStudentReport | AIClassReport;
 }
 
 export function mapFitnessRecordItem(
@@ -122,6 +123,33 @@ export function parseJsonArray<T>(value: string, fallback: T[]): T[] {
   } catch {
     return fallback;
   }
+}
+
+function sanitizeReportText(value: string): string {
+  return value
+    .replace(/诊断/g, "判断")
+    .replace(/治疗/g, "干预建议")
+    .replace(/处方/g, "锻炼方案")
+    .replace(/肥胖/g, "BMI 指标值得关注")
+    .replace(/超重/g, "BMI 指标值得关注")
+    .replace(/很差/g, "有较大提升空间")
+    .replace(/不行/g, "还可继续提升")
+    .replace(/排名/g, "表现分布")
+    .replace(/倒数/g, "需要重点关注")
+    .replace(/推测/g, "建议教师进一步观察")
+    .replace(/推断/g, "建议教师进一步观察")
+    .replace(/补全/g, "补充记录");
+}
+
+function sanitizeReportValue(value: unknown): unknown {
+  if (typeof value === "string") return sanitizeReportText(value);
+  if (Array.isArray(value)) return value.map(sanitizeReportValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, sanitizeReportValue(entry)])
+    );
+  }
+  return value;
 }
 
 export type StudentListItem = {

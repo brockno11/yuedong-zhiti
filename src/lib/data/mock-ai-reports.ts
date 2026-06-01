@@ -7,22 +7,36 @@ export const mockAIStudentReport: AIStudentReport = {
   generatedAt: "2025-03-16T08:00:00Z",
   version: 1,
   status: "pending_review",
+  reportType: "batch_report",
+
+  // 新增：报告元信息
+  dataSourceSummary: "本报告基于2026春季学期正式体测数据生成，包含6/6个项目，完整度100%。日常训练未参与正式体测评分。",
+  headlineInsight: "当前体质整体良好，上肢力量是明显优势，建议将心肺耐力作为下一阶段重点提升方向。",
+
+  completeness: {
+    recordedCount: 6,
+    expectedCount: 6,
+    completionRate: 100,
+    missingItems: [],
+    note: "已完整录入全部6个正式体测项目",
+  },
 
   fitnessProfile: {
     summary:
-      "学生A的整体体质水平处于良好阶段，其中上肢力量表现突出，有氧耐力方面有提升空间。与上学期相比，各项成绩均有进步，展现出积极锻炼的态度和良好的运动潜力。",
-    bmiStatus: "19.5，属于正常范围，体重控制良好",
+      "本次正式体测分析基于6个完整项目。学生A的整体体质水平处于良好阶段，上肢力量表现突出（引体向上85分），是本次体测的最大亮点。有氧耐力方面有提升空间，1000米跑（68分）和肺活量（78分）均处于及格偏上水平，建议作为下一阶段重点突破方向。与上学期相比，各项成绩均有进步，展现出积极锻炼的态度和良好的运动潜力。体育教师可针对耐力项目进行分层指导。",
+    bmiStatus: "BMI 19.5，属于常见范围，体重管理良好",
     overallScore: 78,
     overallGrade: "good",
     dimensions: [
-      { key: "speed", label: "速度素质", score: 78, grade: "pass", classAverage: 72 },
-      { key: "strength", label: "力量素质", score: 80, grade: "good", classAverage: 68 },
-      { key: "endurance", label: "耐力素质", score: 72, grade: "pass", classAverage: 66 },
-      { key: "flexibility", label: "柔韧素质", score: 78, grade: "pass", classAverage: 72 },
-      { key: "body_composition", label: "身体形态", score: 82, grade: "good", classAverage: 74 },
+      { key: "body_composition", label: "身体形态", score: 85, grade: "good", classAverage: 74, relatedItems: ["身高体重"], analysis: "BMI处于常见范围，身体形态指标良好。良好的体重管理为跑跳类项目提供了有利的身体条件。", suggestion: "保持当前体重管理习惯，继续规律运动" },
+      { key: "cardiorespiratory", label: "心肺耐力", score: 72, grade: "pass", classAverage: 66, relatedItems: ["肺活量", "1000米跑"], analysis: "肺活量(78分)和1000米跑(68分)说明心肺耐力有提升空间。日常有氧训练频率偏低可能是主要原因。", suggestion: "每周安排3次有氧训练，从低强度慢跑开始逐步建立有氧基础" },
+      { key: "speed", label: "速度能力", score: 70, grade: "pass", classAverage: 72, relatedItems: ["50米跑"], analysis: "50米跑(70分)处于及格偏上水平，起跑反应和加速能力有待提升。与下肢爆发力(立定跳远82分)存在不匹配，可能与起跑技术有关。", suggestion: "在爆发力训练中融入起跑反应练习，将力量优势转化为速度表现" },
+      { key: "explosive_power", label: "爆发力", score: 82, grade: "good", classAverage: 68, relatedItems: ["立定跳远"], analysis: "立定跳远(82分)表现良好，下肢爆发力和协调性是整体体能的一个亮点。", suggestion: "继续保持跳远训练，可结合深蹲和跳跃练习进一步提升" },
+      { key: "flexibility", label: "柔韧性", score: 78, grade: "pass", classAverage: 72, relatedItems: ["坐位体前屈"], analysis: "坐位体前屈(78分)处于中等水平。柔韧性不足可能影响跑步步幅和动作效率，特别是中长跑后半程。", suggestion: "将柔韧训练融入每次训练的热身和放松环节" },
+      { key: "muscle_strength", label: "肌肉力量", score: 85, grade: "good", classAverage: 68, relatedItems: ["引体向上"], analysis: "引体向上(85分)表现优秀，上肢拉力、背部力量和核心稳定性基础扎实。这是整体体能的明显优势项。", suggestion: "在保持引体向上的基础上，可将上肢力量优势应用到其他综合性训练中" },
     ],
-    strengths: ["引体向上（上肢力量）", "身高体重指标健康"],
-    improvements: ["1000米跑（耐力）", "50米跑（速度）"],
+    strengths: ["引体向上（上肢力量突出）", "立定跳远（下肢爆发力良好）", "身高体重指标处于常见范围"],
+    improvements: ["1000米跑（心肺耐力有提升空间）", "50米跑（起跑技术与速度表现可加强）"],
   },
 
   weaknessAnalysis: [
@@ -194,6 +208,23 @@ export const mockAIStudentReport: AIStudentReport = {
     { scenario: "课堂教学", suggestion: "该生在有氧耐力方面需要重点关注。体育课上可安排中长跑训练时的分组配速，让该生从较慢组开始逐步建立信心和节奏感。", observationPoint: "观察跑步后半程动作是否明显变形，呼吸节奏是否稳定" },
     { scenario: "分层指导", suggestion: "该生上肢力量（引体向上85分）是班级中的优势项，可作为小组力量训练的示范者，带动其他同学训练积极性。", observationPoint: "关注动作规范性，避免追求数量导致代偿" },
     { scenario: "练习形式", suggestion: "建议在课堂中引入间歇跑和趣味追逐游戏，提高该生对耐力训练的兴趣。可结合跳绳、障碍跑等形式增加趣味性。", observationPoint: "注意强度递进，不要一次性增加过多训练量" },
+  ],
+
+  comparisonWithPreviousBatch: {
+    previousBatchName: "2025秋季学期体测",
+    previousDate: "2025-10-15",
+    changes: [
+      { item: "引体向上", previous: "6次(72分)", current: "8次(85分)", trend: "up", note: "上肢力量有明显进步，与日常力量训练频率增加有关" },
+      { item: "50米跑", previous: "8.3秒(68分)", current: "8.1秒(70分)", trend: "up", note: "速度略有提升，但进展幅度偏小" },
+      { item: "1000米跑", previous: "270秒(62分)", current: "260秒(68分)", trend: "up", note: "耐力有改善但仍是主要短板" },
+    ],
+    summary: "与上学期相比整体呈上升趋势，力量项目进步明显。耐力项目虽有改善但仍是主要关注点，建议下一阶段重点突破。",
+  },
+
+  teacherReviewNotes: [
+    "注意该生的耐力训练强度递进，避免因急于提升导致过度训练",
+    "引体向上训练关注动作完整度，特别是下降阶段的控制",
+    "50米跑起跑技术需要教师现场观察和纠正",
   ],
 };
 
@@ -569,6 +600,9 @@ export const mockDeepItemReport: AIStudentReport = {
   status: "pending_review",
   reportType: "item_report",
 
+  dataSourceSummary: "本报告基于2026春季正式体测(50米跑8.1秒) + 4条同项目日常训练记录 + 6项专项问答反馈生成。",
+  headlineInsight: "50米跑当前处于及格偏上水平，日常训练频率稳定但强度偏保守，建议将起跑技术和下肢爆发力作为突破口，有望在4-6周内提升至7.8秒。",
+
   fitnessProfile: {
     summary:
       "学生A的50米跑成绩为8.1秒，处于及格偏上水平。正式体测数据显示起跑反应和途中跑加速能力有提升空间。日常训练方面，近30天有4次50米相关训练记录，训练频率适中但强度偏保守。综合来看，短距离速度是可提升的重点项目，下肢爆发力和起跑技术是两个关键突破口。",
@@ -603,6 +637,33 @@ export const mockDeepItemReport: AIStudentReport = {
       improvementPotential: "建议将训练频率提升至每周2次，每次增加2-3组起跑专项练习",
       priority: "medium",
     },
+  ],
+
+  // 新增：item_report 专项字段
+  formalBaseline: {
+    itemName: "50米跑",
+    valueText: "8.1秒",
+    score: 70,
+    grade: "pass",
+    date: "2026-03-12",
+    analysis: "正式体测成绩处于及格偏上水平。起跑反应（约0.25-0.30秒）和加速阶段是主要瓶颈。与同年级男生相比，起跑技术和步频有提升空间。考虑到立定跳远（82分）表现良好，下肢基础力量尚可，问题可能更多在于技术转化而非力量不足。",
+  },
+
+  dailyTrainingTrend: {
+    recordCount: 4,
+    latestDate: "2025-03-14",
+    trend: "基本稳定",
+    stability: "轻微波动",
+    fatigueSummary: "近4次训练RPE评分在4-5/10之间，恢复速度正常，说明当前训练负荷偏保守，有增加强度的空间。",
+    sorenessSummary: "未报告明显酸痛，训练后腿部感觉良好。",
+    note: "训练频率稳定但单次训练量偏少（每次仅2-3组冲刺），建议增加至每周2次且每次增加专项练习内容。近3次成绩轻微波动（8.3→8.1→8.2秒），处于技术调整期。",
+  },
+
+  feedbackInsights: [
+    { factor: "RPE（主观用力程度）", observation: "近4次训练RPE平均4.5/10，训练后恢复速度正常", implication: "当前训练强度偏保守，有适度提升空间，但需循序渐进" },
+    { factor: "起跑反应", observation: "学生自评起跑反应偏慢，前20米加速不够有力", implication: "需加强起跑专项练习和反应训练，而非单纯增加跑量" },
+    { factor: "途中跑节奏", observation: "途中跑节奏基本稳定，但最后10米有降速", implication: "速度耐力有提升空间，可增加30-50米段的重复训练" },
+    { factor: "摆臂技术", observation: "学生反馈摆臂配合不够顺畅", implication: "摆臂效率直接影响步频，应加入摆臂专项练习" },
   ],
 
   // Deep item analysis
@@ -705,6 +766,12 @@ export const mockDeepItemReport: AIStudentReport = {
     "起跑练习时注意不要过度用力导致肌肉拉伤",
     "若感觉大腿后侧或小腿紧张疼痛，立即停止并告知教师",
     "高强度速度训练后至少休息48小时再进行下一次速度训练",
+  ],
+
+  teacherReviewNotes: [
+    "关注该生起跑技术动作规范，特别是前几步的发力方向和后腿蹬伸角度",
+    "注意训练强度递进，从当前RPE 4-5逐步提升至6-7，避免一次性增加过多负荷",
+    "50米跑成绩提升需结合立定跳远已有的下肢力量基础，重点做技术转化而非单纯力量训练",
   ],
 };
 

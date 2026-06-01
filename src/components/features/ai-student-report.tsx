@@ -71,6 +71,22 @@ function formatTime(value: string | null): string {
   return date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function getReportSourceSnapshot(report: StudentReportHistoryItem): { includedIds: Set<string>; cutoffTime: number } {
+  const meta = report.report.sourceMeta;
+  const includedIds = new Set(meta?.includedRecordIds ?? []);
+  if (report.sourceRecordId) includedIds.add(report.sourceRecordId);
+
+  const sourceTime = report.sourceRecordDate ? new Date(report.sourceRecordDate).getTime() : Number.NaN;
+  const metaTime = meta?.latestDataDate ? new Date(meta.latestDataDate).getTime() : Number.NaN;
+  const generatedTime = new Date(report.generatedAt).getTime();
+  const validTimes = [metaTime, sourceTime, generatedTime].filter((time) => Number.isFinite(time));
+
+  return {
+    includedIds,
+    cutoffTime: validTimes.length > 0 ? Math.max(...validTimes) : Number.NaN,
+  };
+}
+
 function daysSince(value: string): number {
   const date = new Date(value).getTime();
   if (Number.isNaN(date)) return Number.POSITIVE_INFINITY;
@@ -110,10 +126,8 @@ function itemTrendLabel(scores: number[], higherIsBetter: boolean): ItemTrend | 
 
 function computeFreshness(report: StudentReportHistoryItem | null, officialRecord: FitnessRecord | null, dailyRecords: FitnessRecord[]): FreshnessState {
   if (!report) return "current";
-  // Use sourceMeta.includedRecordIds to know exactly which records were already analyzed
-  const includedIds = new Set(report.report.sourceMeta?.includedRecordIds ?? []);
-  const latestDataDate = report.report.sourceMeta?.latestDataDate ?? report.generatedAt;
-  const cutoffTime = new Date(latestDataDate).getTime();
+  const { includedIds, cutoffTime } = getReportSourceSnapshot(report);
+  if (!Number.isFinite(cutoffTime)) return "current";
 
   const hasNewOfficial = officialRecord && !includedIds.has(officialRecord.id) && new Date(officialRecord.date).getTime() > cutoffTime;
   const newDailyCount = dailyRecords.filter((r) => !includedIds.has(r.id) && new Date(r.date).getTime() > cutoffTime).length;
@@ -125,11 +139,8 @@ function computeFreshness(report: StudentReportHistoryItem | null, officialRecor
 
 function computeNewDataCount(report: StudentReportHistoryItem | null, officialRecords: FitnessRecord[], dailyRecords: FitnessRecord[], itemId?: FitnessItemId): number {
   if (!report) return 0;
-  // Exclude records already analyzed in this report (via sourceMeta.includedRecordIds)
-  const includedIds = new Set(report.report.sourceMeta?.includedRecordIds ?? []);
-  const latestDataDate = report.report.sourceMeta?.latestDataDate ?? report.generatedAt;
-  const cutoffTime = new Date(latestDataDate).getTime();
-  if (Number.isNaN(cutoffTime)) return 0;
+  const { includedIds, cutoffTime } = getReportSourceSnapshot(report);
+  if (!Number.isFinite(cutoffTime)) return 0;
   let count = 0;
 
   for (const record of officialRecords) {
@@ -520,6 +531,22 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
         onView={(report) => openReport(report)}
         onDeleteReport={(reportId) => {
           fetch(`/api/reports/${reportId}`, { method: "DELETE" }).then(() => router.refresh());
+        }}
+        onRegenerate={() => {
+          const reportId = viewingReport.id;
+          const reportType = viewingReport.reportType;
+          const targetItemId = viewingItemId;
+          // Delete old report, then regenerate with same params
+          fetch(`/api/reports/${reportId}`, { method: "DELETE" }).then(() => {
+            router.refresh();
+            // Small delay to let DB settle, then regenerate
+            setTimeout(() => {
+              generateReport({
+                itemId: targetItemId ?? undefined,
+                reportType: reportType ?? (targetItemId ? "item_report" : "batch_report"),
+              });
+            }, 500);
+          });
         }}
       />
     );
