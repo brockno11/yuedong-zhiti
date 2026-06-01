@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { calculateRecordCompleteness } from "@/lib/scoring";
-import { Clock, GraduationCap, Dumbbell, Sparkles, BarChart3, PlusCircle, Trash2, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { Clock, GraduationCap, Dumbbell, Sparkles, BarChart3, PlusCircle, Trash2, ChevronDown, ChevronUp, Pencil, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { RecordEditDialog } from "@/components/features/record-edit-dialog";
 import type { FitnessRecord } from "@/lib/types";
@@ -37,6 +38,10 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
   const [editingRecord, setEditingRecord] = useState<FitnessRecord | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [localRecords, setLocalRecords] = useState(records);
+  // Batch delete (daily training only — students cannot delete official_test records)
+  const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   // 提取可用的月份
   const availableMonths = useMemo(() => {
@@ -84,6 +89,32 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
     return items;
   }, [localRecords, filter, semesterFilter, dailyMonthFilter]);
 
+  // Batch delete — only daily_training records (students cannot delete official_test)
+  const deletableFiltered = useMemo(() => filtered.filter(r => r.recordType === "daily_training"), [filtered]);
+  const allDeletableSelected = deletableFiltered.length > 0 && deletableFiltered.every(r => batchSelectedIds.has(r.id));
+
+  const toggleBatchSelect = (id: string) => {
+    setBatchSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+
+  const toggleSelectAllDeletable = () => {
+    if (allDeletableSelected) setBatchSelectedIds(new Set());
+    else setBatchSelectedIds(new Set(deletableFiltered.map(r => r.id)));
+  };
+
+  const handleBatchDelete = useCallback(async () => {
+    setBatchDeleting(true);
+    const ids = Array.from(batchSelectedIds);
+    try {
+      let allOk = true;
+      for (const id of ids) {
+        const res = await fetch(`/api/fitness-records/${id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: "student" }) });
+        if (res.ok) { setLocalRecords(prev => prev.filter(r => r.id !== id)); } else { allOk = false; }
+      }
+      if (allOk) { setBatchSelectedIds(new Set()); setConfirmBatchDelete(false); router.refresh(); }
+    } finally { setBatchDeleting(false); }
+  }, [batchSelectedIds, router]);
+
   return (
     <div className="space-y-4">
       {/* 类型筛选 */}
@@ -120,6 +151,31 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
         </div>
       )}
 
+      {/* Batch delete bar (daily training only) */}
+      {batchSelectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <span className="text-sm font-medium text-destructive">
+            已选 <span className="tabular-nums">{batchSelectedIds.size}</span> 条
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs" onClick={() => setBatchSelectedIds(new Set())}>
+              <X className="h-3.5 w-3.5" />取消
+            </Button>
+            <Button size="sm" variant="destructive" className="h-8 gap-1 text-xs" onClick={() => setConfirmBatchDelete(true)}>
+              <Trash2 className="h-3.5 w-3.5" />批量删除
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Select all (only for deletable daily records) */}
+      {deletableFiltered.length > 0 && (
+        <label className="flex items-center gap-2 cursor-pointer select-none px-1">
+          <Checkbox checked={allDeletableSelected} onCheckedChange={toggleSelectAllDeletable} aria-label="全选可删除记录" />
+          <span className="text-xs text-muted-foreground">全选日常训练（正式体测不可删除）</span>
+        </label>
+      )}
+
       {/* 记录列表 */}
       {filtered.length === 0 ? (
         <div className="py-8 text-center text-sm text-muted-foreground">暂无该类记录</div>
@@ -132,9 +188,20 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
           const isExpanded = expandedIds.has(record.id);
 
           return (
-            <Card key={record.id} className="rounded-xl shadow-sm">
+            <Card key={record.id} className={`rounded-xl shadow-sm ${batchSelectedIds.has(record.id) ? "ring-2 ring-primary/30" : ""}`}>
               <CardContent className="p-0">
-                <button type="button" onClick={() => toggleExpand(record.id)} className="w-full p-4 text-left">
+                <div className="flex items-center gap-1.5">
+                  {/* Checkbox — only for daily training (students cannot delete official_test) */}
+                  {isDaily && (
+                    <div className="shrink-0 pl-3">
+                      <Checkbox
+                        checked={batchSelectedIds.has(record.id)}
+                        onCheckedChange={() => toggleBatchSelect(record.id)}
+                        aria-label={`选择 ${formatTime(record.date)} 的记录`}
+                      />
+                    </div>
+                  )}
+                  <button type="button" onClick={() => toggleExpand(record.id)} className="w-full p-4 text-left">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Clock className="h-3.5 w-3.5" />{formatTime(record.date)}
@@ -163,6 +230,7 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
                     <span className="font-medium">均分 {avgScore}</span>
                   </div>
                 </button>
+                </div>
 
                 {isExpanded && (
                   <div className="border-t px-4 py-3 space-y-2">
@@ -219,6 +287,24 @@ export function RecordsList({ records, gender }: { records: FitnessRecord[]; gen
           onClose={() => setEditingRecord(null)}
           onSaved={() => { setEditingRecord(null); router.refresh(); }}
         />
+      )}
+
+      {/* Batch delete confirmation dialog */}
+      {confirmBatchDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmBatchDelete(false)}>
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-semibold">确定批量删除 {batchSelectedIds.size} 条日常训练记录吗？</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              此操作不可撤销。正式体测记录不会被删除（学生不可删除正式体测数据）。
+            </p>
+            <div className="mt-5 flex gap-3">
+              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
+              <Button variant="destructive" className="h-11 flex-1" onClick={handleBatchDelete} disabled={batchDeleting}>
+                {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${batchSelectedIds.size} 条`}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

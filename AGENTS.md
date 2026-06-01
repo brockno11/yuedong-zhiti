@@ -2,7 +2,7 @@
 
 > 本文档约束 Claude Code 和 Codex 两个 AI Agent 在本项目中的协作行为。所有 Agent 在开始工作前必须阅读并遵守。
 >
-> 项目阶段：MVP 0.9.2 | 技术栈：Next.js 14 + TypeScript + shadcn/ui + Prisma + SQLite + DeepSeek
+> 项目阶段：MVP 0.9.3 | 技术栈：Next.js 14 + TypeScript + shadcn/ui + Prisma + SQLite + DeepSeek
 
 ---
 
@@ -27,7 +27,7 @@
 | 目标学段 | 中学（高中段：高一/高二/高三），15-18 岁。当前演示场景以高二(1)班为例。 |
 | 演示班级 | 高二(1)班 |
 | 学生数量 | 20 名（S001-S020，匿名） |
-| 教师数量 | 1 名（周老师，`zhoulaoshi`） |
+| 教师数量 | 1 名（张老师，账号 `zhoulaoshi`） |
 | 演示密码 | `demo123`（明文，仅演示） |
 | 数据源 | SQLite（`prisma/dev.db`，不入库） |
 | AI 引擎 | DeepSeek V4 Flash（支持 Mock 回退） |
@@ -229,7 +229,7 @@ npm run dev
 
 ```
 关键目录：
-src/app/                      # 15 个路由页面 + API（见 HANDOFF §4）
+src/app/                      # 23 个路由 + API（见 HANDOFF §4）
 src/components/ui/            # 21 个 shadcn/ui 组件
 src/components/layout/        # 4 个布局组件（app-shell, ios-liquid-nav, desktop-sidebar, page-header）
 src/components/forms/         # 2 个表单组件（wheel-picker, feeling-slider）
@@ -256,4 +256,4 @@ prisma/
 
 > 📋 **本文档目标**：让 Claude Code 和 Codex 在协作开发中保持一致的规范认知，避免各自为政。
 >
-> **最后更新**：2026-06-01 · 项目版本 MVP 0.9.2 · 提交 960da26
+> **最后更新**：2026-06-01 · 项目版本 MVP 0.9.3

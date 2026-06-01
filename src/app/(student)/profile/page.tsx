@@ -2,8 +2,7 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { getFitnessRecords, getStudentProfile } from "@/lib/server/data-service";
+import { getFitnessRecords, getStudentProfile, getStudentReportHistory } from "@/lib/server/data-service";
 import { SPORT_GOAL_OPTIONS, SPORT_BASE_OPTIONS, DISCOMFORT_OPTIONS } from "@/lib/constants";
 import {
   User,
@@ -14,12 +13,12 @@ import {
   Sparkles,
   FileText,
   ChevronRight,
-  Weight,
-  Ruler,
   AlertCircle,
+  ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/features/logout-button";
+import { ProfileBodyEditor } from "@/components/features/profile-body-editor";
 import { cookies } from "next/headers";
 
 function getDemoStudentId(): string {
@@ -31,10 +30,18 @@ function getDemoStudentId(): string {
   }
 }
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "暂无";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+}
+
 export default async function ProfilePage() {
   const studentId = getDemoStudentId();
   const student = studentId ? await getStudentProfile(studentId) : null;
   const records = studentId ? await getFitnessRecords(studentId) : [];
+  const reportHistory = studentId ? await getStudentReportHistory(studentId) : [];
 
   if (!student) {
     return (
@@ -54,6 +61,12 @@ export default async function ProfilePage() {
     .map(
       (d) => DISCOMFORT_OPTIONS.find((o) => o.value === d)?.label ?? d
     );
+
+  // Context stats
+  const officialRecords = records.filter((r) => r.recordType === "official_test");
+  const latestOfficial = officialRecords[0] ?? null;
+  const dailyRecords = records.filter((r) => r.recordType === "daily_training");
+  const latestDaily = dailyRecords[0] ?? null;
 
   return (
     <div className="mx-auto max-w-lg space-y-5">
@@ -75,30 +88,73 @@ export default async function ProfilePage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-              <Ruler className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-lg font-bold tabular-nums">
-                  {student.height}
-                </p>
-                <p className="text-xs text-muted-foreground">身高 (cm)</p>
-              </div>
+      </Card>
+
+      {/* 身体数据 — editable */}
+      <ProfileBodyEditor
+        studentId={studentId}
+        height={student.height}
+        weight={student.weight}
+        bmi={student.bmi}
+        age={student.age}
+      />
+
+      {/* 体测与训练概况 */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">体测与训练概况</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="rounded-lg bg-muted/30 p-3">
+              <p className="text-[11px] text-muted-foreground">正式体测</p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{officialRecords.length}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {latestOfficial ? `最近：${formatDate(latestOfficial.date)}` : "暂无记录"}
+              </p>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-              <Weight className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-lg font-bold tabular-nums">
-                  {student.weight}
-                </p>
-                <p className="text-xs text-muted-foreground">体重 (kg)</p>
-              </div>
+            <div className="rounded-lg bg-muted/30 p-3">
+              <p className="text-[11px] text-muted-foreground">日常训练</p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{dailyRecords.length}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {latestDaily ? `最近：${formatDate(latestDaily.date)}` : "暂无记录"}
+              </p>
             </div>
           </div>
-          <div className="mt-3 rounded-lg bg-muted/50 p-3 text-center">
-            <p className="text-lg font-bold tabular-nums">{student.bmi}</p>
-            <p className="text-xs text-muted-foreground">BMI (kg/m²)</p>
+
+          {/* Clickable entries — AI报告 + 历史记录 */}
+          <div className="space-y-2">
+            <Link href="/ai-reports">
+              <div className="flex items-center justify-between rounded-lg bg-muted/20 p-3 cursor-pointer transition-colors hover:bg-muted/40 active:scale-[0.98]">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs font-medium">AI 报告</p>
+                    <p className="text-[10px] text-muted-foreground">查看所有 AI 生成的分析报告</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold tabular-nums">{reportHistory.length} 份</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/records">
+              <div className="flex items-center justify-between rounded-lg bg-muted/20 p-3 cursor-pointer transition-colors hover:bg-muted/40 active:scale-[0.98]">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs font-medium">历史记录</p>
+                    <p className="text-[10px] text-muted-foreground">查看所有体测与训练记录</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold tabular-nums">{records.length} 次</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -153,52 +209,6 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
       )}
-
-      {/* 历史记录入口 */}
-      <Link href="/records">
-        <Card className="cursor-pointer transition-all hover:shadow-md active:scale-[0.98]">
-          <CardContent className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-semibold">历史记录</p>
-                <p className="text-xs text-muted-foreground">
-                  共 {records.length} 次体测记录
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </Link>
-
-      <Separator />
-
-      {/* 教师入口 */}
-      <Link href="/teacher">
-        <Card className="cursor-pointer rounded-xl border shadow-sm transition-shadow hover:shadow-md">
-          <CardContent className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold flex items-center gap-1.5">
-                  教师工作台
-                  <Badge variant="secondary" className="text-[9px] py-0 px-1">演示入口</Badge>
-                </p>
-                <p className="text-xs text-muted-foreground">班级总览 · 学生管理 · AI 审核</p>
-              </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </Link>
-
-      <Separator />
 
       {/* 隐私说明 */}
       <Card>

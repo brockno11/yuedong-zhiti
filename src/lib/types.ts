@@ -50,6 +50,7 @@ export interface StudentProfile {
   sportGoal: SportGoal;
   sportBase: SportBase;
   discomforts: DiscomfortType[];
+  classId?: string; // 所属班级 ID
   createdAt: string;
   updatedAt: string;
 }
@@ -189,6 +190,31 @@ export interface AIStudentReport {
     latestDataDate: string;           // 本次报告分析数据中最新的日期
   };
 
+  // ---- 扩展字段（item_report 专项深度分析）----
+  itemDeepAnalysis?: {
+    abilityBreakdown: {
+      ability: string;
+      description: string;
+      currentLevel: string;
+      improvement: string;
+    }[];
+    influencingFactors: {
+      factor: string;
+      status: string;
+      suggestion: string;
+    }[];
+    relatedItems: {
+      itemName: string;
+      relationship: string;
+    }[];
+    progressiveGoals: {
+      stage: string;
+      target: string;
+      timeline: string;
+      actions: string[];
+    }[];
+  };
+
   // ---- 扩展字段（batch_report 全维度报告）----
   // 逐项分析：每个正式体测项目的成绩详情
   itemScores?: {
@@ -298,6 +324,8 @@ export interface TeacherReview {
     modified: string;
     reason: string;
   }[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // ---- 班级概述 ----

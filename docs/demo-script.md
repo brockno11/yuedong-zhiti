@@ -80,7 +80,7 @@ npm install && npx prisma db push && npm run db:seed && npm run build && npm run
 
 ## 5:00-6:00 教师端（1 分钟）
 
-1. 退出 → 选"我是教师" → 周老师 → 登录
+1. 退出 → 选"我是教师" → 张老师 → 登录
 2. `/teacher` → 展示班级总览
    > "教师端顶部有体测批次筛选器，所有统计数据按批次变化。"
 3. 今日教学建议

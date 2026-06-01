@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
@@ -14,6 +15,7 @@ import {
   Target,
   Trash2,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -531,6 +533,91 @@ export function AIReportDetail({
         </Card>
       )}
 
+      {/* Deep Item Analysis — 能力拆解 + 影响因素 + 项目关系 */}
+      {report.itemDeepAnalysis && (
+        <>
+          {/* Ability Breakdown */}
+          {report.itemDeepAnalysis.abilityBreakdown.length > 0 && (
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Zap className="h-4 w-4 text-primary" />
+                  能力拆解
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-[11px] text-muted-foreground">
+                  {viewingItemId ? `${itemName(viewingItemId)}` : "该项目"}依赖以下能力维度，每项能力的提升都可能直接改善整体表现。
+                </p>
+                {report.itemDeepAnalysis.abilityBreakdown.map((ab, i) => (
+                  <div key={ab.ability} className="rounded-xl border p-3">
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {i + 1}
+                      </span>
+                      <p className="text-sm font-semibold">{ab.ability}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{ab.description}</p>
+                    <div className="mt-2 flex items-start gap-2 rounded-lg bg-muted/20 p-2">
+                      <span className="shrink-0 text-[10px] font-medium text-muted-foreground">当前：</span>
+                      <span className="text-[10px] text-muted-foreground">{ab.currentLevel}</span>
+                    </div>
+                    <div className="mt-1 flex items-start gap-2 rounded-lg bg-primary/5 p-2">
+                      <span className="shrink-0 text-[10px] font-medium text-primary">提升：</span>
+                      <span className="text-[10px] text-primary">{ab.improvement}</span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Influencing Factors */}
+          {report.itemDeepAnalysis.influencingFactors.length > 0 && (
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Activity className="h-4 w-4 text-primary" />
+                  影响因素分析
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {report.itemDeepAnalysis.influencingFactors.map((f) => (
+                  <div key={f.factor} className="rounded-lg bg-muted/20 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold">{f.factor}</span>
+                      <Badge variant="outline" className="text-[9px]">{f.status.slice(0, 4)}</Badge>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{f.status}</p>
+                    <p className="mt-1 text-[11px] text-primary">{f.suggestion}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Related Items */}
+          {report.itemDeepAnalysis.relatedItems.length > 0 && (
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  与其他项目关系
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {report.itemDeepAnalysis.relatedItems.map((ri) => (
+                  <div key={ri.itemName} className="rounded-lg bg-muted/20 p-3">
+                    <p className="text-xs font-semibold">{ri.itemName}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{ri.relationship}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
       {/* Training plan */}
       {report.trainingPlan.length > 0 && (
         <Card className="rounded-xl shadow-sm">
@@ -567,6 +654,43 @@ export function AIReportDetail({
                 AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。
               </p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Progressive Goals — 进阶目标（item_report 专用）*/}
+      {report.itemDeepAnalysis?.progressiveGoals && report.itemDeepAnalysis.progressiveGoals.length > 0 && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              进阶目标
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {report.itemDeepAnalysis.progressiveGoals.map((goal) => (
+              <div key={goal.stage} className="rounded-xl border p-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant={
+                    goal.stage.includes("短期") ? "excellent"
+                    : goal.stage.includes("中期") ? "pass"
+                    : "secondary"
+                  } className="text-[10px]">{goal.stage}</Badge>
+                  <span className="text-[10px] text-muted-foreground">{goal.timeline}</span>
+                </div>
+                <p className="mt-2 text-xs font-semibold">{goal.target}</p>
+                {goal.actions.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {goal.actions.map((action, j) => (
+                      <div key={j} className="flex items-start gap-1.5">
+                        <span className="mt-0.5 text-[10px] text-muted-foreground">{j + 1}.</span>
+                        <span className="text-[11px] text-muted-foreground">{action}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

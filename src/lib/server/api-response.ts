@@ -21,5 +21,13 @@ export function handleApiError(error: unknown) {
     return fail("未找到学生", 404);
   }
 
+  if (error instanceof Error && error.message === "NON_PENDING_REVIEWS") {
+    return fail("只能审核待处理的记录", 400);
+  }
+
+  if (error instanceof Error && error.message === "REVIEWS_NOT_FOUND") {
+    return fail("部分审核记录未找到", 404);
+  }
+
   return fail("服务暂时不可用，请稍后重试", 500);
 }

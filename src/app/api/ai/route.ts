@@ -228,9 +228,17 @@ export async function POST(request: NextRequest) {
 // ===== 提示词构建 =====
 
 function buildStudentSystemPrompt(): string {
-  return `你是中学（高中）体育教师助手。你只提供体育锻炼建议，不进行任何医学诊断。
+  return `你是中学（高中）体育教师助手，依据《国家学生体质健康标准（2014年修订）》为高中生提供体育锻炼建议。
+
+你遵循"健康第一"的学校体育工作方针，帮助学生享受乐趣、增强体质、健全人格、锤炼意志。
+
+你只提供体育锻炼建议，不进行任何医学诊断。
 语言要积极、鼓励、保护学生自尊。不要使用"诊断""治疗""处方""肥胖""差""不行""排名"等表达。
 使用"有提升空间""待提升""值得关注""锻炼建议""训练参考"等积极表达。
+
+核心素养关注：运动能力、健康行为、体育品德。报告应包含动作能力分析、锻炼习惯观察、教师教学参考。
+
+青少年运动科学参考：建议平均每天至少60分钟中高强度身体活动，每周至少3天加入较高强度有氧和增强肌肉骨骼的活动。训练应循序渐进，强调动作质量、基础力量、运动素养、恢复和安全。不提倡过早专项化和过度训练。学校体育要"教会、勤练、常赛"。
 
 分析模式有两种：
 1. 专项分析模式（单项目）：当学生只录入了一个体能项目时，针对该项目进行深入的技术分析。
@@ -297,7 +305,8 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
 - trainingPlan 聚焦该项目，输出2-3个专项训练动作
 - weaknessAnalysis 只分析该项目
 - 不要把日常训练当作正式体测评分，不要用日常训练补全其他缺失项目
-- 不评价其他未录入项目`,
+- 不评价其他未录入项目
+- **必须输出 itemDeepAnalysis**：包含 abilityBreakdown（4-6项能力拆解）、influencingFactors（3-4个影响因素）、relatedItems（2-3条项目关系）、progressiveGoals（短期/中期/长期目标）`,
     record_report: `\n【报告类型：本次记录分析报告】
 分析本次录入的 ${itemCount} 个项目：
 - 每个项目逐一分析，不要生成完整体质综合评价
@@ -440,6 +449,33 @@ ${
   ],
   "safetyReminders": ["安全提醒1", "安全提醒2", "安全提醒3", "安全提醒4", "安全提醒5", "安全提醒6"]
 }`
+    : reportType === "item_report"
+    ? `{
+  "reportType": "item_report",
+  "fitnessProfile": { "summary": "专项总览（3-5句话）", "bmiStatus": "", "overallScore": 0, "overallGrade": "excellent|good|pass|improve", "dimensions": [], "strengths": [], "improvements": [] },
+  "weaknessAnalysis": [
+    { "item": "正式体测表现", "currentLevel": "当前成绩和等级", "possibleCauses": ["阶段性基线说明"], "improvementPotential": "短期努力方向" },
+    { "item": "日常训练观察", "currentLevel": "训练次数/最近日期", "possibleCauses": ["训练频率/疲劳/恢复观察"], "improvementPotential": "训练习惯调整建议" }
+  ],
+  "itemDeepAnalysis": {
+    "abilityBreakdown": [
+      { "ability": "能力名称", "description": "在此项目中的作用", "currentLevel": "当前水平估计", "improvement": "提升建议" }
+    ],
+    "influencingFactors": [
+      { "factor": "动作质量|节奏|力量|柔韧|耐力|恢复", "status": "当前状态", "suggestion": "改进建议" }
+    ],
+    "relatedItems": [
+      { "itemName": "关联项目名", "relationship": "与当前项目的关联" }
+    ],
+    "progressiveGoals": [
+      { "stage": "短期保持", "target": "目标", "timeline": "1-2周", "actions": ["行动1", "行动2"] },
+      { "stage": "中期提升", "target": "目标", "timeline": "3-6周", "actions": ["行动1", "行动2"] },
+      { "stage": "长期巩固", "target": "目标", "timeline": "6-12周", "actions": ["行动1", "行动2"] }
+    ]
+  },
+  "trainingPlan": [{ "weekNumber": 1, "focus": "专项训练重点", "exercises": [{ "name": "训练动作", "description": "描述", "sets": "组数", "frequency": "频率", "duration": "时长", "notes": "注意" }], "recoveryAdvice": "恢复建议" }],
+  "safetyReminders": ["安全提醒1", "安全提醒2", "安全提醒3", "安全提醒4", "安全提醒5"]
+}`
     : `{
   "reportType": "${reportType}",
   "fitnessProfile": { "summary": "", "bmiStatus": "", "overallScore": 0, "overallGrade": "", "dimensions": [], "strengths": [], "improvements": [] },
@@ -453,7 +489,8 @@ ${
 }
 
 function buildClassSystemPrompt(): string {
-  return `你是高中体育教研助手。根据班级（高中生）体测数据生成班级体质健康分析报告。
+  return `你是高中体育教研助手，依据《国家学生体质健康标准（2014年修订）》生成班级体质健康分析报告。
+遵循"健康第一"的学校体育工作方针和"教会、勤练、常赛"的教学理念。
 分析整体表现、共性薄弱项目、学生分层指导建议。
 提出课堂训练重点和分层运动指导建议。
 不给任何学生贴负面标签，不点名具体学生。

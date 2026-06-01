@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/features/empty-state";
+import { BatchReviewBar } from "@/components/features/batch-review-bar";
 import type { ReviewWithReport } from "@/lib/server/db-mappers";
 import {
   CheckCircle2,
@@ -18,6 +20,8 @@ import {
   AlertTriangle,
   Users,
   ClipboardCheck,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import type { AIClassReport, AIStudentReport, TeacherReview } from "@/lib/types";
 
@@ -39,6 +43,10 @@ export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
   const [editNotes, setEditNotes] = useState("");
   const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
   const [rejectionErrorId, setRejectionErrorId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Batch delete
+  const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Cleanup timers on unmount
@@ -144,7 +152,78 @@ export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
     }
   };
 
+  // --- Batch selection handlers ---
+  const handleToggleSelect = (reviewId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(reviewId)) {
+        next.delete(reviewId);
+      } else {
+        next.add(reviewId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllPending = () => {
+    setSelectedIds((prev) => {
+      if (prev.size === pendingItems.length && pendingItems.length > 0) {
+        return new Set(); // Deselect all
+      }
+      return new Set(pendingItems.map((item) => item.review.id));
+    });
+  };
+
+  // Batch delete reports (teacher side)
+  const handleBatchDelete = useCallback(async () => {
+    setBatchDeleting(true);
+    const selectedItems = pendingItems.filter(item => selectedIds.has(item.review.id));
+    const reportIds = selectedItems.map(item => item.review.reportId);
+    try {
+      let allOk = true;
+      for (const id of reportIds) {
+        const res = await fetch(`/api/reports/${id}`, { method: "DELETE" });
+        if (!res.ok) allOk = false;
+      }
+      if (allOk) {
+        setSelectedIds(new Set());
+        setConfirmBatchDelete(false);
+        // Refresh list
+        const response = await fetch("/api/reviews");
+        if (response.ok) {
+          const payload = await response.json() as { data: ReviewWithReport[] };
+          setItems(payload.data);
+        }
+      }
+    } finally {
+      setBatchDeleting(false);
+    }
+  }, [selectedIds, pendingItems]);
+
+  const handleBatchSuccess = async () => {
+    // Clear selection
+    setSelectedIds(new Set());
+    // Refresh the list from server
+    try {
+      const response = await fetch("/api/reviews");
+      if (response.ok) {
+        const payload = (await response.json()) as { data: ReviewWithReport[] };
+        setItems(payload.data);
+      }
+    } catch {
+      // Silently fail — the batch bar already showed success
+    }
+  };
+
+  const isAllPendingSelected =
+    pendingItems.length > 0 && selectedIds.size === pendingItems.length;
+
+  const selectedPendingIds = pendingItems
+    .filter((item) => selectedIds.has(item.review.id))
+    .map((item) => item.review.id);
+
   return (
+    <>
     <Tabs defaultValue="pending" className="w-full">
       <TabsList className="w-full max-w-xs">
         <TabsTrigger value="pending" className="flex-1 gap-1.5">
@@ -174,7 +253,42 @@ export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
             description="所有 AI 报告已处理完毕"
           />
         ) : (
-          pendingItems.map(({ review, report }) => {
+          <>
+            {/* Selection controls */}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all-pending"
+                checked={isAllPendingSelected}
+                onCheckedChange={handleSelectAllPending}
+                aria-label="全选待审核报告"
+              />
+              <label
+                htmlFor="select-all-pending"
+                className="text-sm font-medium cursor-pointer select-none"
+              >
+                全选
+              </label>
+            </div>
+            <BatchReviewBar
+              selectedCount={selectedIds.size}
+              selectedIds={selectedPendingIds}
+              onSuccess={handleBatchSuccess}
+            />
+            {/* Batch delete — teacher can delete reports */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 gap-1 text-xs text-muted-foreground hover:text-destructive"
+                  onClick={() => setConfirmBatchDelete(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  批量删除报告
+                </Button>
+              </div>
+            )}
+            {pendingItems.map(({ review, report }) => {
             const reportTitle =
               review.reportType === "student"
                 ? "学生个人 AI 体质报告"
@@ -204,18 +318,25 @@ export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
 
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        {review.reportType === "student" ? (
-                          <Sparkles className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Users className="h-4 w-4 text-primary" />
-                        )}
-                        {reportTitle}
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {review.reviewerName} · 待审核
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selectedIds.has(review.id)}
+                        onCheckedChange={() => handleToggleSelect(review.id)}
+                        aria-label={`选择 ${reportTitle}`}
+                      />
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          {review.reportType === "student" ? (
+                            <Sparkles className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Users className="h-4 w-4 text-primary" />
+                          )}
+                          {reportTitle}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {review.reviewerName} · 待审核
+                        </p>
+                      </div>
                     </div>
                     <Badge variant="pass" className="gap-1">
                       <Clock className="h-3 w-3" />
@@ -342,7 +463,8 @@ export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
                 </CardContent>
               </Card>
             );
-          })
+          })}
+          </>
         )}
       </TabsContent>
 
@@ -414,5 +536,24 @@ export function ReviewWorkflow({ initialItems }: ReviewWorkflowProps) {
         )}
       </TabsContent>
     </Tabs>
+
+      {/* Batch delete confirmation dialog */}
+      {confirmBatchDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmBatchDelete(false)}>
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-semibold">确定删除选中的 {selectedIds.size} 份报告吗？</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              此操作将永久删除 AI 报告及其审核记录，原始体测数据不受影响。此操作不可撤销。
+            </p>
+            <div className="mt-5 flex gap-3">
+              <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmBatchDelete(false)} disabled={batchDeleting}>取消</Button>
+              <Button variant="destructive" className="h-11 flex-1" onClick={handleBatchDelete} disabled={batchDeleting}>
+                {batchDeleting ? <><Loader2 className="h-4 w-4 animate-spin" />删除中...</> : `删除 ${selectedIds.size} 份`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { mockStudents } from "../src/lib/data/mock-students";
-import { mockFitnessRecords } from "../src/lib/data/mock-fitness-records";
+import { SEED_STUDENTS } from "./seed-data";
 import {
   mockAIClassReport,
   mockAIStudentReport,
@@ -62,7 +61,7 @@ async function main() {
     where: { role: "teacher", username: { not: "zhoulaoshi" } },
   });
 
-  for (const student of mockStudents) {
+  for (const student of SEED_STUDENTS) {
     await prisma.student.upsert({
       where: { id: student.id },
       update: {
@@ -121,7 +120,7 @@ async function main() {
     where: { username: "zhoulaoshi" },
     update: {
       role: "teacher",
-      displayName: "周老师",
+      displayName: "张老师",
       passwordHash: DEMO_PASSWORD,
       classId: CLASS_ID,
     },
@@ -129,7 +128,7 @@ async function main() {
       id: "teacher-zhou",
       role: "teacher",
       username: "zhoulaoshi",
-      displayName: "周老师",
+      displayName: "张老师",
       passwordHash: DEMO_PASSWORD,
       classId: CLASS_ID,
     },
@@ -359,7 +358,7 @@ async function main() {
       update: {
         reportId: review.reportId,
         reportType: review.reportType,
-      reviewerName: "周老师",
+      reviewerName: "张老师",
         status: review.status,
         teacherNotes: review.teacherNotes,
         reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : null,
@@ -369,7 +368,7 @@ async function main() {
         id: review.id,
         reportId: review.reportId,
         reportType: review.reportType,
-        reviewerName: "周老师",
+        reviewerName: "张老师",
         status: review.status,
         teacherNotes: review.teacherNotes,
         reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : null,
@@ -380,9 +379,9 @@ async function main() {
 }
 
 function buildSeedRecords(): FitnessRecord[] {
-  const existing = [...mockFitnessRecords];
+  const existing: FitnessRecord[] = [];
   const existingStudentIds = new Set(existing.map((record) => record.studentId));
-  const generated = mockStudents
+  const generated = SEED_STUDENTS
     .filter((student) => !existingStudentIds.has(student.id))
     .map((student, index) => createRecordForStudent(student.id, student.gender, student.grade, index));
 

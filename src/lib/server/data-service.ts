@@ -347,6 +347,48 @@ export async function updateTeacherReview(
   return mapTeacherReview(row);
 }
 
+export async function batchUpdateReviews(
+  ids: string[],
+  action: "approve" | "reject",
+  notes?: string
+): Promise<{ updatedCount: number }> {
+  // 获取所有指定 ID 的审核记录
+  const reviews = await prisma.teacherReview.findMany({
+    where: { id: { in: ids } },
+  });
+
+  // 检查所有 ID 是否存在
+  if (reviews.length !== ids.length) {
+    throw new Error("REVIEWS_NOT_FOUND");
+  }
+
+  // 检查所有记录是否均为 pending 状态
+  const nonPending = reviews.filter((r) => r.status !== "pending");
+  if (nonPending.length > 0) {
+    throw new Error("NON_PENDING_REVIEWS");
+  }
+
+  const newStatus = action === "approve" ? "approved" : "rejected";
+  const reportIds = reviews.map((r) => r.reportId);
+
+  await prisma.$transaction([
+    prisma.teacherReview.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        status: newStatus,
+        teacherNotes: notes ?? "",
+        reviewedAt: new Date(),
+      },
+    }),
+    prisma.aIReport.updateMany({
+      where: { id: { in: reportIds } },
+      data: { status: newStatus },
+    }),
+  ]);
+
+  return { updatedCount: reviews.length };
+}
+
 export async function getLatestClassReport() {
   const row = await prisma.aIReport.findFirst({
     where: { reportKind: "class", classId: DEFAULT_CLASS_ID },
@@ -425,7 +467,7 @@ export async function upsertAIReportForReview(
       reportId,
       reportType: reportKind,
       status: "pending",
-      reviewerName: "周老师",
+      reviewerName: "张老师",
       teacherNotes: "",
       reviewedAt: null,
       modificationsJson: null,
@@ -435,7 +477,7 @@ export async function upsertAIReportForReview(
       reportId,
       reportType: reportKind,
       status: "pending",
-      reviewerName: "周老师",
+      reviewerName: "张老师",
       teacherNotes: "",
     },
   });
