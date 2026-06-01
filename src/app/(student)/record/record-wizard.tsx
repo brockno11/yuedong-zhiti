@@ -40,6 +40,7 @@ export function RecordWizard() {
   const [studentGender, setStudentGender] = useState<"male" | "female">("male");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const [batchItemCounts, setBatchItemCounts] = useState<Record<string, number>>({});
   const EXPECTED_COUNT = 6;
   const savedRef = useRef(false);
@@ -198,11 +199,12 @@ export function RecordWizard() {
 
     if (!response.ok) {
       setIsSaving(false);
-      savedRef.current = true;
       setSaveError("保存失败，请检查网络后重试。");
       return;
     }
 
+    const payload = await response.json() as { data?: { id?: string } };
+    setSavedRecordId(payload.data?.id ?? null);
     localStorage.removeItem("ai_analysis_cache");
     setIsSaving(false);
     savedRef.current = true;
@@ -409,6 +411,11 @@ export function RecordWizard() {
             <RecordComplete
               itemCount={selectedItems.length}
               hasPhysicalItems={hasPhysicalItems}
+              selectedItems={selectedItems}
+              recordType={recordType}
+              savedRecordId={savedRecordId}
+              isSaving={isSaving}
+              hasSaveError={Boolean(saveError)}
             />
           </CardContent>
         ) : null}

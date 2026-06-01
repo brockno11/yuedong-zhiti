@@ -120,7 +120,7 @@ export async function getFitnessRecords(studentId: string, batchId?: string): Pr
   const rows = await prisma.fitnessRecord.findMany({
     where: { studentId, ...(batchId ? { batchId } : {}) },
     include: { items: true, batch: true },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
   return rows.map(mapFitnessRecord);
 }
@@ -129,7 +129,7 @@ export async function getLatestFitnessRecord(studentId: string, batchId?: string
   const row = await prisma.fitnessRecord.findFirst({
     where: { studentId, ...(batchId ? { batchId } : {}) },
     include: { items: true, batch: true },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
   return row ? mapFitnessRecord(row) : null;
 }
@@ -138,7 +138,7 @@ export async function getStudentListItems(): Promise<StudentListItem[]> {
   const students = await getStudentProfiles();
   const records = await prisma.fitnessRecord.findMany({
     include: { items: true, batch: true },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
   // 优先取正式体测记录，避免日常训练混入班级统计
   const latestOfficialByStudent = new Map<string, FitnessRecord>();
@@ -669,7 +669,7 @@ export async function getNextStudentId(): Promise<string> {
 // 班级项目均值
 export async function getClassAverages() {
   const students = await prisma.student.findMany({ select: { id: true, gender: true } });
-  const records = await prisma.fitnessRecord.findMany({ include: { items: true }, orderBy: { date: "desc" } });
+  const records = await prisma.fitnessRecord.findMany({ include: { items: true }, orderBy: [{ date: "desc" }, { createdAt: "desc" }] });
   const latestByStudent = new Map<string, (typeof records)[0]>();
   for (const r of records) { if (!latestByStudent.has(r.studentId)) latestByStudent.set(r.studentId, r); }
 
@@ -752,8 +752,8 @@ export async function getClassSummaryWithBatch(batchId?: string): Promise<ClassS
   const reviews = await getTeacherReviews();
 
   const recordsQuery = batchId
-    ? prisma.fitnessRecord.findMany({ where: { batchId }, include: { items: true, batch: true }, orderBy: { date: "desc" } })
-    : prisma.fitnessRecord.findMany({ include: { items: true, batch: true }, orderBy: { date: "desc" } });
+    ? prisma.fitnessRecord.findMany({ where: { batchId }, include: { items: true, batch: true }, orderBy: [{ date: "desc" }, { createdAt: "desc" }] })
+    : prisma.fitnessRecord.findMany({ include: { items: true, batch: true }, orderBy: [{ date: "desc" }, { createdAt: "desc" }] });
   const allRecords = (await recordsQuery).map(mapFitnessRecord);
 
   const latestByStudent = new Map<string, FitnessRecord>();

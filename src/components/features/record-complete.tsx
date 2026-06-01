@@ -3,13 +3,34 @@
 import { CheckCircle2, Sparkles, BarChart3, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import type { FitnessItemId, RecordType } from "@/lib/types";
 
 interface RecordCompleteProps {
   itemCount: number;
   hasPhysicalItems: boolean;
+  selectedItems: FitnessItemId[];
+  recordType: RecordType;
+  savedRecordId: string | null;
+  isSaving: boolean;
+  hasSaveError: boolean;
 }
 
-export function RecordComplete({ itemCount, hasPhysicalItems }: RecordCompleteProps) {
+export function RecordComplete({
+  itemCount,
+  hasPhysicalItems,
+  selectedItems,
+  recordType,
+  savedRecordId,
+  isSaving,
+  hasSaveError,
+}: RecordCompleteProps) {
+  const firstItemId = selectedItems[0];
+  const canGenerate = hasPhysicalItems && Boolean(savedRecordId) && !isSaving && !hasSaveError;
+  const reportType = selectedItems.length === 1 ? "item_report" : "record_report";
+  const aiHref = canGenerate
+    ? `/ai-guide?generate=1&recordId=${encodeURIComponent(savedRecordId ?? "")}&recordType=${recordType}&reportType=${reportType}${firstItemId ? `&itemId=${firstItemId}` : ""}`
+    : "/ai-guide";
+
   return (
     <div className="text-center space-y-5">
       <div className="flex justify-center">
@@ -46,12 +67,19 @@ export function RecordComplete({ itemCount, hasPhysicalItems }: RecordCompletePr
             查看体质画像
           </Button>
         </Link>
-        <Link href="/ai-guide">
-          <Button variant="outline" className="h-11 w-full gap-1.5">
+        {canGenerate ? (
+          <Link href={aiHref}>
+            <Button variant="outline" className="h-11 w-full gap-1.5">
+              <Sparkles className="h-4 w-4" />
+              生成 AI 分析
+            </Button>
+          </Link>
+        ) : (
+          <Button variant="outline" className="h-11 w-full gap-1.5" disabled>
             <Sparkles className="h-4 w-4" />
-            生成 AI 分析
+            {isSaving ? "正在保存记录..." : hasSaveError ? "保存失败，暂不能生成" : "生成 AI 分析"}
           </Button>
-        </Link>
+        )}
         <div className="flex gap-2">
           <Link href="/record" className="flex-1">
             <Button variant="ghost" size="sm" className="w-full gap-1">

@@ -47,6 +47,8 @@ export function mapFitnessRecord(row: FitnessRecordRow): FitnessRecord {
     id: row.id,
     studentId: row.studentId,
     date: row.date.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
     semester: row.semester,
     batchId: row.batchId ?? undefined,
     batchName: (row.batch as { name?: string } | null)?.name ?? undefined,

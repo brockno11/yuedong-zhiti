@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Brain,
@@ -77,7 +77,7 @@ function formatTime(value: string | null): string {
   return date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function getReportSourceSnapshot(report: StudentReportHistoryItem): { includedIds: Set<string>; cutoffTime: number; hasSourceMeta: boolean } {
+function getReportSourceSnapshot(report: StudentReportHistoryItem): { includedIds: Set<string>; cutoffTime: number; generatedTime: number; hasSourceMeta: boolean } {
   const meta = report.report.sourceMeta;
   const includedIds = new Set(meta?.includedRecordIds ?? []);
   if (report.sourceRecordId) includedIds.add(report.sourceRecordId);
@@ -90,8 +90,25 @@ function getReportSourceSnapshot(report: StudentReportHistoryItem): { includedId
   return {
     includedIds,
     cutoffTime: validTimes.length > 0 ? Math.max(...validTimes) : Number.NaN,
+    generatedTime,
     hasSourceMeta: Boolean(meta?.includedRecordIds?.length),
   };
+}
+
+function getRecordCreatedTime(record: FitnessRecord): number {
+  const createdTime = record.createdAt ? new Date(record.createdAt).getTime() : Number.NaN;
+  if (Number.isFinite(createdTime)) return createdTime;
+  return new Date(record.date).getTime();
+}
+
+function isRecordNewForReport(record: FitnessRecord, snapshot: ReturnType<typeof getReportSourceSnapshot>): boolean {
+  if (snapshot.includedIds.has(record.id)) return false;
+  const recordDateTime = new Date(record.date).getTime();
+  const recordCreatedTime = getRecordCreatedTime(record);
+  return (
+    (Number.isFinite(recordDateTime) && Number.isFinite(snapshot.cutoffTime) && recordDateTime >= snapshot.cutoffTime) ||
+    (Number.isFinite(recordCreatedTime) && Number.isFinite(snapshot.generatedTime) && recordCreatedTime > snapshot.generatedTime)
+  );
 }
 
 function daysSince(value: string): number {
@@ -133,15 +150,11 @@ function itemTrendLabel(scores: number[], higherIsBetter: boolean): ItemTrend | 
 
 function computeFreshness(report: StudentReportHistoryItem | null, officialRecord: FitnessRecord | null, dailyRecords: FitnessRecord[]): FreshnessState {
   if (!report) return "current";
-  const { includedIds, cutoffTime } = getReportSourceSnapshot(report);
-  if (!Number.isFinite(cutoffTime)) return "current";
+  const snapshot = getReportSourceSnapshot(report);
+  if (!Number.isFinite(snapshot.cutoffTime) && !Number.isFinite(snapshot.generatedTime)) return "current";
 
-  const hasNewOfficial = officialRecord && !includedIds.has(officialRecord.id) && new Date(officialRecord.date).getTime() >= cutoffTime;
-  const newDailyCount = dailyRecords.filter((r) => {
-    if (includedIds.has(r.id)) return false;
-    // >= 而非 >：同日新增的记录也应计数（record.date 只有日期，cutoffTime 可能含时分秒）
-    return new Date(r.date).getTime() >= cutoffTime;
-  }).length;
+  const hasNewOfficial = officialRecord ? isRecordNewForReport(officialRecord, snapshot) : false;
+  const newDailyCount = dailyRecords.filter((record) => isRecordNewForReport(record, snapshot)).length;
 
   if (hasNewOfficial || newDailyCount >= 2) return "suggest_update";
   if (newDailyCount > 0) return "new_data";
@@ -150,14 +163,12 @@ function computeFreshness(report: StudentReportHistoryItem | null, officialRecor
 
 function computeNewDataCount(report: StudentReportHistoryItem | null, officialRecords: FitnessRecord[], dailyRecords: FitnessRecord[], itemId?: FitnessItemId): number {
   if (!report) return 0;
-  const { includedIds, cutoffTime } = getReportSourceSnapshot(report);
-  if (!Number.isFinite(cutoffTime)) return 0;
+  const snapshot = getReportSourceSnapshot(report);
+  if (!Number.isFinite(snapshot.cutoffTime) && !Number.isFinite(snapshot.generatedTime)) return 0;
   let count = 0;
 
   for (const record of officialRecords) {
-    if (includedIds.has(record.id)) continue; // already analyzed
-    // >= 而非 >：同日新增的记录也应计数
-    if (new Date(record.date).getTime() >= cutoffTime) {
+    if (isRecordNewForReport(record, snapshot)) {
       if (itemId) {
         if (getRecordItem(record, itemId)) count++;
       } else {
@@ -167,8 +178,7 @@ function computeNewDataCount(report: StudentReportHistoryItem | null, officialRe
   }
 
   for (const record of dailyRecords) {
-    if (includedIds.has(record.id)) continue; // already analyzed
-    if (new Date(record.date).getTime() >= cutoffTime) {
+    if (isRecordNewForReport(record, snapshot)) {
       if (itemId) {
         if (getRecordItem(record, itemId)) count++;
       } else {
@@ -405,6 +415,7 @@ function buildItemAnalysisRecord(record: FitnessRecord, itemId: FitnessItemId): 
 
 export function AIStudentReportView({ studentId, student, records, reportHistory, batches, onViewingChange }: AIStudentReportProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const latestRecord = records[0] ?? null;
   const genderItems = student?.gender === "female" ? FEMALE_ITEMS : MALE_ITEMS;
   const officialRecords = useMemo(() => records.filter((r) => r.recordType === "official_test"), [records]);
@@ -477,6 +488,9 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
       const officialRecord = officialRecords.find((r) => getRecordItem(r, itemId));
       const officialItem = officialRecord ? getRecordItem(officialRecord, itemId) : null;
       const itemDailyRecords = dailyRecords.filter((r) => getRecordItem(r, itemId));
+      const latestDailyRecord = itemDailyRecords
+        .slice()
+        .sort((a, b) => getRecordCreatedTime(b) - getRecordCreatedTime(a))[0] ?? null;
       const report = findItemReport(reportHistory, itemId);
       const scores = getItemScores(records, itemId);
       const newDataCount = computeNewDataCount(report, officialRecords, dailyRecords, itemId);
@@ -486,7 +500,7 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
         def,
         officialItem,
         dailyCount: itemDailyRecords.length,
-        latestDailyDate: itemDailyRecords[0]?.date ?? null,
+        latestDailyDate: latestDailyRecord?.date ?? null,
         trend: itemTrendLabel(scores, def.higherIsBetter),
         report,
         freshness: computeFreshness(report, officialRecord ?? null, itemDailyRecords),
@@ -507,6 +521,7 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const mountedRef = useRef(true);
+  const autoGenerateKeyRef = useRef<string | null>(null);
 
   const buildFormalBaseline = useCallback((itemId: FitnessItemId): NonNullable<AIStudentReport["formalBaseline"]> | null => {
     const officialRecord = officialRecords.find((record) => getRecordItem(record, itemId));
@@ -695,6 +710,26 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
       }
     }
   }, [buildFormalBaseline, completeness, dailyRecords, enrichItemReport, latestOfficialRecord, latestRecord, officialRecords, records, student, studentId]);
+
+  useEffect(() => {
+    if (searchParams.get("generate") !== "1" || status !== "idle") return;
+
+    const recordId = searchParams.get("recordId") ?? "";
+    const itemIdParam = searchParams.get("itemId");
+    const reportTypeParam = searchParams.get("reportType") as AIStudentReport["reportType"] | null;
+    const itemId = FITNESS_ITEMS.some((item) => item.id === itemIdParam)
+      ? itemIdParam as FitnessItemId
+      : null;
+    const autoKey = `${recordId || "no-record"}:${itemId ?? "all"}:${reportTypeParam ?? "auto"}`;
+    if (autoGenerateKeyRef.current === autoKey) return;
+    autoGenerateKeyRef.current = autoKey;
+
+    generateReport({
+      itemId: itemId ?? undefined,
+      reportType: reportTypeParam ?? (itemId ? "item_report" : "record_report"),
+    });
+    router.replace("/ai-guide", { scroll: false });
+  }, [generateReport, router, searchParams, status]);
 
   // Open existing report from history
   const openReport = useCallback((report: StudentReportHistoryItem, itemId?: FitnessItemId) => {

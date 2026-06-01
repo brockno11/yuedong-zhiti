@@ -92,6 +92,8 @@ export interface FitnessRecord {
   id: string;
   studentId: string;
   date: string;
+  createdAt?: string;
+  updatedAt?: string;
   semester: string;
   batchId?: string;
   batchName?: string;
