@@ -110,26 +110,31 @@ function itemTrendLabel(scores: number[], higherIsBetter: boolean): ItemTrend | 
 
 function computeFreshness(report: StudentReportHistoryItem | null, officialRecord: FitnessRecord | null, dailyRecords: FitnessRecord[]): FreshnessState {
   if (!report) return "current";
-  // Use generatedAt as baseline: "new" means data appeared AFTER the report was generated
-  const reportTime = new Date(report.generatedAt).getTime();
-  const officialTime = officialRecord ? new Date(officialRecord.date).getTime() : 0;
-  const newDailyCount = dailyRecords.filter((record) => new Date(record.date).getTime() > reportTime).length;
+  // Use sourceMeta.includedRecordIds to know exactly which records were already analyzed
+  const includedIds = new Set(report.report.sourceMeta?.includedRecordIds ?? []);
+  const latestDataDate = report.report.sourceMeta?.latestDataDate ?? report.generatedAt;
+  const cutoffTime = new Date(latestDataDate).getTime();
 
-  if (officialTime > reportTime || newDailyCount >= 2) return "suggest_update";
+  const hasNewOfficial = officialRecord && !includedIds.has(officialRecord.id) && new Date(officialRecord.date).getTime() > cutoffTime;
+  const newDailyCount = dailyRecords.filter((r) => !includedIds.has(r.id) && new Date(r.date).getTime() > cutoffTime).length;
+
+  if (hasNewOfficial || newDailyCount >= 2) return "suggest_update";
   if (newDailyCount > 0) return "new_data";
   return "current";
 }
 
 function computeNewDataCount(report: StudentReportHistoryItem | null, officialRecords: FitnessRecord[], dailyRecords: FitnessRecord[], itemId?: FitnessItemId): number {
   if (!report) return 0;
-  // Use generatedAt as baseline: only records AFTER report generation count as "new"
-  const reportTime = new Date(report.generatedAt).getTime();
-  if (Number.isNaN(reportTime)) return 0;
+  // Exclude records already analyzed in this report (via sourceMeta.includedRecordIds)
+  const includedIds = new Set(report.report.sourceMeta?.includedRecordIds ?? []);
+  const latestDataDate = report.report.sourceMeta?.latestDataDate ?? report.generatedAt;
+  const cutoffTime = new Date(latestDataDate).getTime();
+  if (Number.isNaN(cutoffTime)) return 0;
   let count = 0;
 
-  // Count new official records for this item (or all items for batch)
   for (const record of officialRecords) {
-    if (new Date(record.date).getTime() > reportTime) {
+    if (includedIds.has(record.id)) continue; // already analyzed
+    if (new Date(record.date).getTime() > cutoffTime) {
       if (itemId) {
         if (getRecordItem(record, itemId)) count++;
       } else {
@@ -138,9 +143,9 @@ function computeNewDataCount(report: StudentReportHistoryItem | null, officialRe
     }
   }
 
-  // Count new daily training records for this item
   for (const record of dailyRecords) {
-    if (new Date(record.date).getTime() > reportTime) {
+    if (includedIds.has(record.id)) continue; // already analyzed
+    if (new Date(record.date).getTime() > cutoffTime) {
       if (itemId) {
         if (getRecordItem(record, itemId)) count++;
       } else {
@@ -357,6 +362,19 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
     const currentRecord = targetId ? buildItemAnalysisRecord(sourceRecord, targetId) : sourceRecord;
     const sourceSummary = buildSourceSummary(reportType ?? "record_report", sourceRecord, targetId ?? undefined, itemDailyRecords.length);
 
+    // Build sourceMeta: records exactly which data was analyzed
+    const includedOfficialIds = targetId && itemOfficialRecord ? [itemOfficialRecord.id] : reportType === "batch_report" ? officialRecords.filter(r => r.batchId === sourceRecord.batchId).map(r => r.id) : [sourceRecord.id];
+    const includedDailyIds = itemDailyRecords.map(r => r.id);
+    const allIncludedIds = [...includedOfficialIds, ...includedDailyIds];
+    const allDates = [sourceRecord.date, ...itemDailyRecords.map(r => r.date)];
+    const latestDataDate = allDates.reduce((max, d) => (d > max ? d : max), sourceRecord.date);
+    const sourceMeta = {
+      includedRecordIds: allIncludedIds,
+      includedDailyRecordIds: includedDailyIds,
+      includedOfficialRecordIds: includedOfficialIds,
+      latestDataDate,
+    };
+
     setStatus("analyzing");
     setGeneratingLabel(targetId ? `正在生成 ${itemName(targetId)} 专项分析` : "正在生成正式体测分析");
     mountedRef.current = true;
@@ -392,6 +410,7 @@ export function AIStudentReportView({ studentId, student, records, reportHistory
           sourceRecordDate: sourceRecord.date,
           sourceSummary,
           sourceBatchId: sourceRecord.batchId,
+          sourceMeta,
           studentData: {
             student,
             currentRecord,

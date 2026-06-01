@@ -181,6 +181,14 @@ export interface AIStudentReport {
 
   safetyReminders: string[];
 
+  // 报告数据源快照（用于新数据检测）
+  sourceMeta?: {
+    includedRecordIds: string[];      // 本次报告已分析的所有记录 ID
+    includedDailyRecordIds: string[]; // 本次报告已分析的日常训练记录 ID
+    includedOfficialRecordIds: string[]; // 本次报告已分析的正式体测记录 ID
+    latestDataDate: string;           // 本次报告分析数据中最新的日期
+  };
+
   // ---- 扩展字段（batch_report 全维度报告）----
   // 逐项分析：每个正式体测项目的成绩详情
   itemScores?: {

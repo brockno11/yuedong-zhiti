@@ -9,6 +9,7 @@ interface AIRequest {
   sourceRecordDate?: string;
   sourceSummary?: string;
   sourceBatchId?: string;
+  sourceMeta?: Record<string, unknown>;
   studentData?: Record<string, unknown>;
   classData?: Record<string, unknown>;
 }
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
           sourceBatchId: body.sourceBatchId,
+          sourceMeta: body.sourceMeta as AIStudentReport["sourceMeta"],
           generatedAt: new Date().toISOString(),
           _mode: "mock" as const,
         };
@@ -146,6 +148,7 @@ export async function POST(request: NextRequest) {
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
           sourceBatchId: body.sourceBatchId,
+          sourceMeta: body.sourceMeta as AIStudentReport["sourceMeta"],
         } : {}),
         generatedAt: new Date().toISOString(),
         _mode: "mock" as const,
@@ -172,6 +175,7 @@ export async function POST(request: NextRequest) {
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
           sourceBatchId: body.sourceBatchId,
+          sourceMeta: body.sourceMeta as AIStudentReport["sourceMeta"],
           generatedAt: new Date().toISOString(),
           version: mockAIStudentReport.version + 1,
           status: "pending_review" as const,
@@ -209,6 +213,7 @@ export async function POST(request: NextRequest) {
         sourceRecordDate: body?.sourceRecordDate,
         sourceSummary: body?.sourceSummary,
         sourceBatchId: body?.sourceBatchId,
+        sourceMeta: body?.sourceMeta,
       } : {}),
       generatedAt: new Date().toISOString(),
       _mode: "mock" as const,
