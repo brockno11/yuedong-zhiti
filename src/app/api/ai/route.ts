@@ -30,9 +30,129 @@ const DEEPSEEK_MODEL =
 const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 30000);
 
 // Mock 报告（从数据层导入）
-import { mockAIStudentReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";
+import { mockAIStudentReport, mockDeepItemReport, mockAIClassReport } from "@/lib/data/mock-ai-reports";
+import { FITNESS_ITEMS } from "@/lib/constants";
 import { upsertAIReportForReview } from "@/lib/server/data-service";
 import type { AIClassReport, AIStudentReport } from "@/lib/types";
+
+function getMockStudentReport(reportType: AIStudentReport["reportType"], studentData?: Record<string, unknown>): AIStudentReport {
+  if (reportType === "item_report") {
+    const targetItemId = typeof studentData?.targetItemId === "string" ? studentData.targetItemId : null;
+    const itemDef = FITNESS_ITEMS.find((item) => item.id === targetItemId);
+    if (itemDef) return buildServerItemFallbackReport(itemDef.id, studentData);
+  }
+  return reportType === "item_report" ? mockDeepItemReport : mockAIStudentReport;
+}
+
+function buildServerItemFallbackReport(itemId: (typeof FITNESS_ITEMS)[number]["id"], studentData?: Record<string, unknown>): AIStudentReport {
+  const itemDef = FITNESS_ITEMS.find((item) => item.id === itemId);
+  const itemName = itemDef?.name ?? "该项目";
+  const currentRecord = studentData?.currentRecord as { date?: string; items?: { itemId?: string; value?: number | string; score?: number; grade?: string }[] } | undefined;
+  const currentItem = currentRecord?.items?.find((item) => item.itemId === itemId);
+  const valueText = currentItem?.value !== undefined ? `${currentItem.value}${itemDef?.unit ?? ""}` : "暂无数据";
+  const score = typeof currentItem?.score === "number" ? currentItem.score : 0;
+  const grade = typeof currentItem?.grade === "string" ? currentItem.grade : "improve";
+  const actionNames = [`${itemName}技术分解练习`, `${itemName}基础能力练习`, `${itemName}节奏与稳定练习`];
+
+  return {
+    ...mockDeepItemReport,
+    headlineInsight: `${itemName}专项分析暂时使用本地回退模板：当前基线为${valueText}，${score}分。AI 服务恢复后可重新生成完整分析。`,
+    dataSourceSummary: `${itemName}专项 · 本地回退模板`,
+    formalBaseline: {
+      itemName,
+      valueText,
+      score,
+      grade,
+      date: currentRecord?.date?.slice(0, 10) ?? "暂无数据",
+      analysis: "本卡片基于已录入的正式体测项目展示评分定位；缺失数据不推测、不补全。",
+    },
+    dailyTrainingTrend: {
+      recordCount: 0,
+      latestDate: null,
+      trend: "数据不足",
+      stability: "数据不足",
+      fatigueSummary: "暂无足够训练反馈用于判断疲劳变化。",
+      sorenessSummary: "暂无足够训练反馈用于判断酸痛变化。",
+      note: "本地回退模板仅用于避免页面空白；完整趋势请在 AI 服务可用后重新生成。",
+    },
+    feedbackInsights: [],
+    itemDeepAnalysis: {
+      abilityBreakdown: [
+        {
+          ability: "动作质量",
+          description: `${itemName}提升首先依赖动作稳定和技术细节。`,
+          currentLevel: `${valueText}，${score}分`,
+          improvement: "先掌握动作节奏，再逐步提高训练量或难度。",
+        },
+        {
+          ability: "专项基础能力",
+          description: `${itemName}需要相应的力量、速度、柔韧或心肺基础共同支撑。`,
+          currentLevel: "需结合训练记录继续观察",
+          improvement: "使用下方动作库中的基础练习建立稳定能力。",
+        },
+      ],
+      influencingFactors: [
+        { factor: "动作质量", status: "需教师观察", suggestion: "训练时优先让体育教师确认动作是否规范。" },
+        { factor: "训练节奏", status: "循序渐进", suggestion: "每次训练保留余力，动作变形时先降阶。" },
+      ],
+      relatedItems: [],
+      progressiveGoals: [],
+    },
+    trainingActionLibrary: actionNames.map((actionName, index) => ({
+      name: actionName,
+      purpose: index === 0 ? `学习并稳定${itemName}的关键技术` : index === 1 ? `提升支撑${itemName}表现的基础能力` : `提升${itemName}练习中的节奏控制和稳定输出`,
+      suitableStage: index === 2 ? ["巩固期", "强化期"] : ["适应期", "巩固期"],
+      steps: ["确认场地安全后开始练习", "先用较低强度完成动作", "保持呼吸自然，不憋气", "每组结束后记录体感和动作质量"],
+      volume: index === 0 ? "3组×6-8次" : "3组×8-10次",
+      duration: "每次约5-8分钟",
+      intensity: "中等强度，动作质量优先",
+      keyPoints: ["动作过程保持稳定", "疲劳时先减少次数", "每组之间充分休息"],
+      commonMistakes: ["一开始强度过高：先降低次数或距离", "只追求数量忽视动作：每组都以不变形为标准"],
+      progression: "动作稳定后，小幅增加次数、距离或持续时间。",
+      regression: "如果动作变形或体感疲劳，减少组数并延长休息。",
+      selfCheck: "完成后动作不明显变形，主观用力可控，第二天无明显不适。",
+      safetyNote: "AI 生成内容需经体育教师审核后使用。",
+    })),
+    itemStagePlan: [
+      {
+        stage: "适应期",
+        goal: "熟悉动作并建立稳定练习习惯",
+        duration: "第1-2周",
+        studentFitReason: `先用低风险动作确认${itemName}的技术基础，避免一开始过度加量。`,
+        recommendedActions: actionNames.slice(0, 2),
+        weeklyFrequency: "每周2次",
+        sessionLength: "每次10-15分钟",
+        minimumVersion: `只做${actionNames[0]}，完成2组即可。`,
+        normalVersion: `${actionNames[0]} + ${actionNames[1]}，各3组。`,
+        recoveryVersion: "疲劳偏高时减少为2组，并延长组间休息。",
+        progressCriteria: ["动作稳定不变形", "训练后无明显不适"],
+      },
+      {
+        stage: "巩固期",
+        goal: "组合动作库中的练习，提高专项稳定性",
+        duration: "第3-4周",
+        studentFitReason: "在动作质量稳定后，再逐步提高训练完整度。",
+        recommendedActions: actionNames,
+        weeklyFrequency: "每周2-3次",
+        sessionLength: "每次15-20分钟",
+        minimumVersion: `选择${actionNames[0]}和${actionNames[2]}各2组。`,
+        normalVersion: "三个动作按顺序完成，各3组。",
+        recoveryVersion: "保留技术动作，减少高强度或快速动作。",
+        progressCriteria: ["能连续完成正常版本", "主观用力保持在可控范围"],
+      },
+    ],
+    safetyReminders: [
+      "训练前确认场地安全并充分热身。",
+      "动作出现明显变形时先停止，不硬撑完成数量。",
+      "如出现疼痛、头晕或明显不适，应立即停止并告知教师。",
+      "AI 建议仅作锻炼参考，需经体育教师审核后使用。",
+    ],
+    teacherReviewNotes: [
+      `请教师结合${itemName}正式体测成绩确认训练重点。`,
+      "本报告为本地回退模板，建议 AI 服务恢复后重新生成完整专项分析。",
+    ],
+  };
+}
 
 // DeepSeek 真实 API Key 特征：以 sk- 开头，长度 ≥ 32 字符，不含占位关键词
 const API_KEY_PLACEHOLDERS = ["your-deepseek-api-key", "sk-your-api-key-here", "your-api-key", "sk-your-key"];
@@ -65,10 +185,11 @@ export async function POST(request: NextRequest) {
       if (type === "student-report") {
         const studentData = body.studentData as Record<string, unknown> | undefined;
         const reportType = (studentData?.reportType as AIStudentReport["reportType"]) || "record_report";
+        const mockReport = getMockStudentReport(reportType, studentData);
         const report = {
-          ...mockAIStudentReport,
+          ...mockReport,
           id: `AI-S-${body.studentId ?? "001"}-mock-${Date.now()}`,
-          studentId: body.studentId ?? mockAIStudentReport.studentId,
+          studentId: body.studentId ?? mockReport.studentId,
           reportType,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
@@ -138,10 +259,11 @@ export async function POST(request: NextRequest) {
 
       const studentDataFail = body.studentData as Record<string, unknown> | undefined;
       const failReportType: AIStudentReport["reportType"] = (studentDataFail?.reportType as AIStudentReport["reportType"]) || "record_report";
+      const failMockReport = getMockStudentReport(failReportType, studentDataFail);
       const report = {
-        ...(type === "student-report" ? mockAIStudentReport : mockAIClassReport),
+        ...(type === "student-report" ? failMockReport : mockAIClassReport),
         ...(type === "student-report" ? {
-          studentId: body.studentId ?? mockAIStudentReport.studentId,
+          studentId: body.studentId ?? failMockReport.studentId,
           reportType: failReportType,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
@@ -163,20 +285,21 @@ export async function POST(request: NextRequest) {
     const parsed = tryParseAIResponse(aiContent, type);
     const realStudentData = body.studentData as Record<string, unknown> | undefined;
     const realReportType: AIStudentReport["reportType"] = (realStudentData?.reportType as AIStudentReport["reportType"]) || "record_report";
+    const realMockReport = getMockStudentReport(realReportType, realStudentData);
     const report = type === "student-report"
       ? {
-          ...mockAIStudentReport,
+          ...realMockReport,
           reportType: realReportType,
           ...parsed,
           id: `AI-S-${body.studentId ?? "001"}-${Date.now()}`,
-          studentId: body.studentId ?? mockAIStudentReport.studentId,
+          studentId: body.studentId ?? realMockReport.studentId,
           sourceRecordId: body.sourceRecordId,
           sourceRecordDate: body.sourceRecordDate,
           sourceSummary: body.sourceSummary,
           sourceBatchId: body.sourceBatchId,
           sourceMeta: body.sourceMeta as AIStudentReport["sourceMeta"],
           generatedAt: new Date().toISOString(),
-          version: mockAIStudentReport.version + 1,
+          version: realMockReport.version + 1,
           status: "pending_review" as const,
           _mode: "ai" as const,
           _model: DEEPSEEK_MODEL,
@@ -202,10 +325,11 @@ export async function POST(request: NextRequest) {
     const fallbackType = body?.type === "class-report" ? "class" : "student";
     const errorStudentData = body?.studentData as Record<string, unknown> | undefined;
     const errorReportType: AIStudentReport["reportType"] = (errorStudentData?.reportType as AIStudentReport["reportType"]) || "record_report";
+    const errorMockReport = getMockStudentReport(errorReportType, errorStudentData);
     const report = {
-      ...(fallbackType === "class" ? mockAIClassReport : mockAIStudentReport),
+      ...(fallbackType === "class" ? mockAIClassReport : errorMockReport),
       ...(fallbackType === "student" ? {
-        studentId: body?.studentId ?? mockAIStudentReport.studentId,
+        studentId: body?.studentId ?? errorMockReport.studentId,
         reportType: errorReportType,
         sourceRecordId: body?.sourceRecordId,
         sourceRecordDate: body?.sourceRecordDate,
@@ -260,6 +384,8 @@ function buildStudentSystemPrompt(): string {
 3. 日常训练不参与正式体测评分，不补全缺失项目
 4. batch_report 只使用正式体测数据
 5. item_report = 正式体测基线 + 同项目日常训练 + 问答反馈
+6. 不要在报告中大段编写国家标准科普（如《国家学生体质健康标准》全文介绍、权重表、等级规则），前端已有独立的"项目科普与评分解读"静态模块展示。AI 只需在 headlineInsight 或 formalBaseline.analysis 中简要引用学生本次表现与等级即可。
+7. 缺失项目只显示"暂无数据"，不得推测、补全或用平均值替代
 
 输出严格 JSON，不要输出其他任何内容。`;
 }
@@ -301,22 +427,56 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
 7. itemDeepAnalysis.influencingFactors — 3-4个因素 { factor(动作质量|节奏|力量|柔韧|耐力|恢复|训练频率|体感), status, suggestion }
 8. itemDeepAnalysis.relatedItems — 2-3条 { itemName(中文), relationship }
 9. itemDeepAnalysis.progressiveGoals — 短期(1-2周)/中期(3-6周)/长期(6-12周) { stage, target, timeline, actions[] }
-10. feedbackInsights — [ { factor, observation, implication } ] 基于问答反馈的洞察
-11. trainingPlan — 2-4个专项训练动作，必须写成“动作教学卡”，每个动作都要让学生知道怎么练、练多久、怎么进阶：
+10. feedbackInsights — [ { factor, observation, implication } ] 基于问答反馈的洞察，每条对应学生提交的一个问答字段。
+   factor格式："问卷题目中文名：学生填写的具体答案"，用冒号连接，体现学生本次记录时的实际状态。
+     将JSON字段key转为中文问卷题目，将英文值转为中文：
+     - boolean: true→"是" / false→"否"
+     - choice值: middle→"中段"、start→"启动阶段"、quick→"恢复很快"、slight→"轻微"等（参考问卷选项label）
+     - slider/数值: 直接写数值如"7/10"
+     正确示例："最吃力阶段：中段"、"动作是否变形：是"、"主观用力程度：7/10"、"肩背不适：否"、"恢复速度：恢复很快"
+     错误示例："动作完成阶段（hardestPhase: middle）"、"疲劳度较高"
+   observation：针对学生的具体回答，结合运动科学原理和中学生体育训练特点进行细致分析，说明该回答反映的运动状态、潜在原因、身体机能表现。
+   implication：基于该分析给出针对性的训练建议和改进方向。
+11. trainingActionLibrary — 3-5个专项训练动作，写成”动作教学库”（不按周拆分，是该项目的标准化动作参考）：
+   每个动作包含：
    {
-     name, purpose, description,
-     actionSteps[4-6条具体动作步骤],
+     name(动作名称),
+     purpose(训练目的：提升什么能力),
+     suitableStage[“适应期”,”巩固期”,”强化期”,”维持期”],
+     steps[4-6条具体动作步骤，写清姿势、节奏、呼吸],
+     volume(训练量，如”3组×8次”或”30秒×4组”),
+     duration(单次时长),
+     intensity(强度建议，如”中等强度，能完整说短句”),
      keyPoints[3-5条训练要点],
-     commonMistakes[2-4条常见错误与纠正],
-     sets, frequency, duration, intensity,
-     progression(2-4周如何增加难度),
+     commonMistakes[2-4条常见错误+纠正方法],
+     progression(只写动作难度如何提高，如增加组数/次数/距离，禁止写”第X周”或”连续X周”),
+     regression(降低难度的替代方式，适合零基础或疲劳偏高时),
      selfCheck(学生自测达标标准),
-     cycleAdvice(建议执行周期与复测节点),
-     notes
+     safetyNote(安全提醒)
    }
-   每个动作说明要具体到姿势、节奏、呼吸、休息和安全提醒，不要只写一句话。
-12. safetyReminders — 至少5条该项目专项安全提醒
-13. teacherReviewNotes — 至少2条需要教师重点审核的内容`,
+   严禁在此字段中出现”第1周””第2周””1-2周””3-6周””连续X周””周期””阶段安排”等计划性表达。
+   此字段只讲”一个动作怎么做”，不讲”什么时候练、练几周”。阶段规划由 itemStagePlan 负责。
+   动作内容要细致具体，适合中学生阅读，不要写成专业运动队训练计划。
+12. itemStagePlan — 4阶段训练安排，必须引用trainingActionLibrary中已有的动作名称：
+   每个阶段包含：
+   {
+     stage(阶段名称，如”适应期”),
+     goal(阶段目标),
+     duration(预计周期，如”第1-2周”),
+     studentFitReason(为什么适合当前学生，需结合其成绩/等级/训练积累/体感数据),
+     recommendedActions[“引用动作库中的动作名称”],
+     weeklyFrequency(每周建议频率),
+     sessionLength(每次建议时长),
+     minimumVersion(时间不足版本：只做1-2个核心动作),
+     normalVersion(正常训练版本),
+     recoveryVersion(疲劳偏高或恢复较慢版本),
+     progressCriteria[“进入下一阶段的条件”]
+   }
+   阶段划分参考：适应期(1-2周)→巩固期(3-4周)→强化期(5-8周)→维持与测试准备期(9周+)。
+   如果学生已有较多训练积累，不要默认从适应期开始，应根据数据判断当前阶段。
+   必须包含minimumVersion和recoveryVersion，人性化考虑中学生时间有限。
+13. safetyReminders — 至少5条该项目专项安全提醒。数组元素直接写提醒内容，不要自带"1."、"2."、"（1）"等编号。
+14. teacherReviewNotes — 至少2条需要教师重点审核的内容。数组元素直接写审核要点，不要自带"1."、"2."、"（1）"等编号。`,
     record_report: `\n【报告类型：record_report 本次记录反馈】
 分析本次录入的${itemCount}个项目：
 - 每个项目逐一分析，不生成完整体质综合评价
@@ -348,8 +508,8 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
 [模块10] stageTrainingPlan — 3阶段(适应→强化→巩固)：
   每阶段：{ stage, goal, duration, focus, exercises[{name,description,sets,frequency,duration,notes}], recoveryAdvice }
 [模块11] teachingSuggestions — 至少3条：{ scenario(课堂教学|分层指导|练习形式|家校协同), suggestion, observationPoint }
-[模块12] safetyReminders — 至少6条字符串：热身+强度递进+不适处理+恢复+睡眠+装备+教师沟通
-[模块13] teacherReviewNotes — 至少3条教师需重点审核的内容
+[模块12] safetyReminders — 至少6条字符串：热身+强度递进+不适处理+恢复+睡眠+装备+教师沟通。数组元素不要自带编号。
+[模块13] teacherReviewNotes — 至少3条教师需重点审核的内容。数组元素不要自带编号。
 
 如有历史批次数据，生成 comparisonWithPreviousBatch：
 { previousBatchName, previousDate, changes[{item,previous,current,trend("up"|"stable"|"down"),note}], summary }
@@ -434,7 +594,7 @@ function buildReportSchema(reportType: string): string {
   "formalBaseline": { "itemName": "项目中文名", "valueText": "值+单位", "score": 0, "grade": "excellent|good|pass|improve", "date": "正式体测日期", "analysis": "基线分析说明" },
   "dailyTrainingTrend": { "recordCount": 0, "latestDate": "最近日期或null", "trend": "提升中|基本稳定|有波动|数据不足", "stability": "稳定|轻微波动|明显波动", "fatigueSummary": "疲劳观察", "sorenessSummary": "酸痛观察", "note": "趋势总结" },
   "feedbackInsights": [
-    { "factor": "因素(如RPE/恢复/动作质量)", "observation": "从反馈中观察到的现象", "implication": "对训练的启示" }
+    { "factor": "问卷题目：学生答案，如'最吃力阶段：中段''动作是否变形：是''主观用力程度：7/10'", "observation": "结合运动科学对该回答进行细致分析", "implication": "针对性训练建议" }
   ],
   "weaknessAnalysis": [
     { "item": "正式体测基线", "currentLevel": "成绩+等级", "possibleCauses": ["基线说明"], "improvementPotential": "短期努力方向" },
@@ -456,29 +616,36 @@ function buildReportSchema(reportType: string): string {
       { "stage": "长期(6-12周)", "target": "目标", "timeline": "6-12周", "actions": ["行动"] }
     ]
   },
-  "trainingPlan": [
+  "trainingActionLibrary": [
     {
-      "weekNumber": 1,
-      "focus": "训练重点",
-      "exercises": [
-        {
-          "name": "动作名",
-          "purpose": "这个动作主要提升什么能力，以及为什么适合当前项目",
-          "description": "动作整体说明，至少2句话",
-          "actionSteps": ["准备姿势", "开始动作", "发力/呼吸", "完成与还原", "组间休息或节奏"],
-          "keyPoints": ["关键要点1", "关键要点2", "关键要点3"],
-          "commonMistakes": ["常见错误1 + 纠正方法", "常见错误2 + 纠正方法"],
-          "sets": "组数/次数，如3组×8次",
-          "frequency": "每周频率",
-          "duration": "单次时长",
-          "intensity": "强度建议，如RPE 5-6/10或能完整说短句",
-          "progression": "2-4周进阶方法，说明何时增加组数/次数/距离/难度",
-          "selfCheck": "学生自测标准，如动作不变形、完成指定次数、成绩稳定提升",
-          "cycleAdvice": "执行周期和复测节点，如连续练习4周后复测一次",
-          "notes": "安全提醒，必须含需经体育教师审核后使用"
-        }
-      ],
-      "recoveryAdvice": "恢复建议"
+      "name": "动作名称",
+      "purpose": "训练目的：提升什么能力",
+      "suitableStage": ["适应期", "强化期"],
+      "steps": ["步骤1：准备姿势", "步骤2：开始动作", "步骤3：发力与呼吸", "步骤4：完成与还原"],
+      "volume": "3组×8次",
+      "duration": "每次约5分钟",
+      "intensity": "中等强度，能完整说短句",
+      "keyPoints": ["要点1", "要点2", "要点3"],
+      "commonMistakes": ["错误1 + 纠正方法", "错误2 + 纠正方法"],
+      "progression": "如何增加难度",
+      "regression": "降低难度的替代方式",
+      "selfCheck": "学生自测达标标准",
+      "safetyNote": "安全提醒"
+    }
+  ],
+  "itemStagePlan": [
+    {
+      "stage": "适应期",
+      "goal": "学习动作、建立习惯",
+      "duration": "第1-2周",
+      "studentFitReason": "为什么适合当前学生",
+      "recommendedActions": ["引用动作库中的动作名称"],
+      "weeklyFrequency": "每周2次",
+      "sessionLength": "每次15-20分钟",
+      "minimumVersion": "时间不足时只做1-2个核心动作",
+      "normalVersion": "正常训练安排",
+      "recoveryVersion": "疲劳偏高时的降阶安排",
+      "progressCriteria": ["进入下一阶段的条件"]
     }
   ],
   "safetyReminders": ["至少5条项目专项安全提醒"],

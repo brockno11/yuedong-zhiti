@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { fail, handleApiError, ok } from "@/lib/server/api-response";
 import { createFitnessRecord, getFitnessRecords, getStudentProfile } from "@/lib/server/data-service";
 
@@ -63,7 +64,12 @@ export async function POST(request: Request) {
       }
     }
 
-    return ok(await createFitnessRecord(input));
+    const result = await createFitnessRecord(input);
+    // 失效相关页面的 RSC 缓存，确保下次导航获取最新数据
+    revalidatePath("/ai-guide");
+    revalidatePath("/portrait");
+    revalidatePath("/dashboard");
+    return ok(result);
   } catch (error) {
     return handleApiError(error);
   }

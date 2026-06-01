@@ -1,6 +1,6 @@
 // ===== 跃动智体 — AI 智能指导页面 =====
 // Server Component — 数据获取层，不添加 'use client'
-import { AIStudentReportView } from "@/components/features/ai-student-report";
+import { AIGuidePageShell } from "@/components/features/ai-guide-page-shell";
 import { getFitnessRecords, getStudentProfile, getStudentReportHistory, getBatchesByClass } from "@/lib/server/data-service";
 import { cookies } from "next/headers";
 
@@ -19,7 +19,12 @@ export default async function AIGuidePage() {
   if (!studentId) {
     return (
       <div className="content-breathing-room max-w-5xl space-y-6">
-        <TitleSection />
+        <div className="space-y-1 px-1">
+          <h1 className="text-xl font-bold tracking-tight">AI 智能指导</h1>
+          <p className="text-sm text-muted-foreground">
+            基于正式体测与日常训练记录生成个性化分析参考
+          </p>
+        </div>
         <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
           <p className="text-sm text-muted-foreground">请先登录以查看 AI 智能指导。</p>
         </div>
@@ -35,28 +40,13 @@ export default async function AIGuidePage() {
   ]);
 
   return (
-    <div className="content-breathing-room max-w-5xl space-y-6">
-      <TitleSection />
-
-      <AIStudentReportView
-        studentId={studentId}
-        student={student}
-        records={records}
-        reportHistory={reportHistory}
-        batches={batches}
-      />
-    </div>
-  );
-}
-
-function TitleSection() {
-  return (
-    <div className="space-y-1 px-1">
-      <h1 className="text-xl font-bold tracking-tight">AI 智能指导</h1>
-      <p className="text-sm text-muted-foreground">
-        基于正式体测与日常训练记录生成个性化分析参考
-      </p>
-    </div>
+    <AIGuidePageShell
+      studentId={studentId}
+      student={student}
+      records={records}
+      reportHistory={reportHistory}
+      batches={batches}
+    />
   );
 }
 

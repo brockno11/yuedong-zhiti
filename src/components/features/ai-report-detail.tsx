@@ -4,13 +4,11 @@ import { useState } from "react";
 import {
   Activity,
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Clock,
   FileText,
-  GraduationCap,
   History,
   Loader2,
   ShieldCheck,
@@ -26,9 +24,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FITNESS_ITEMS } from "@/lib/constants";
 import { computeDimensionsFromItems, type DimensionInput } from "@/lib/scoring";
 import type { AIStudentReport, FitnessItemId, GradeTier } from "@/lib/types";
+import { ItemEducationCard } from "./item-education-card";
+import { StandardEducationOverview } from "./standard-education-overview";
 import type { StudentReportHistoryItem } from "@/lib/server/db-mappers";
 
 type ReportMode = "ai" | "mock" | "fallback";
+type TrainingAction = NonNullable<AIStudentReport["trainingActionLibrary"]>[number];
 
 interface ReportDetailProps {
   report: AIStudentReport;
@@ -38,6 +39,12 @@ interface ReportDetailProps {
   selectedBatchId: string | null;
   batchReportMap?: Map<string, StudentReportHistoryItem | null>;
   allBatchReports?: StudentReportHistoryItem[];
+  /** 学生性别，用于过滤适用项目 */
+  gender?: "male" | "female";
+  /** 已记录的项目 ID 列表 */
+  recordedItemIds?: FitnessItemId[];
+  /** 缺失的项目 ID 列表 */
+  missingItemIds?: FitnessItemId[];
   onBack: () => void;
   onGenerateForBatch?: (_batchId: string) => void;
   onView?: (_report: StudentReportHistoryItem) => void;
@@ -65,6 +72,10 @@ function normalizeReportText(value: string): string {
     result = replaceAllText(result, raw, label);
   }
   return result;
+}
+
+function normalizeListItemText(value: string): string {
+  return normalizeReportText(value).replace(/^\s*(?:\d+[\.\)、]|[（(]\d+[）)])\s*/, "");
 }
 
 function gradeLabel(grade?: GradeTier | null): string {
@@ -100,6 +111,169 @@ function reviewBadge(status: string) {
   return { label: "待审核", variant: "pass" as const };
 }
 
+// ---- 动作教学卡（折叠式） ----
+
+const STAGE_BADGE_VARIANT: Record<string, "excellent" | "good" | "pass" | "secondary"> = {
+  "适应期": "secondary",
+  "巩固期": "pass",
+  "强化期": "good",
+  "维持期": "excellent",
+};
+
+function ActionCard({ action }: { action: TrainingAction }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border p-3.5">
+      <button type="button" onClick={() => setOpen(!open)} className="w-full text-left">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">{normalizeReportText(action.name)}</p>
+            <p className="mt-0.5 text-[11px] text-primary">{normalizeReportText(action.purpose)}</p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {action.suitableStage.map((s) => (
+              <Badge key={s} variant={STAGE_BADGE_VARIANT[s] ?? "secondary"} className="text-[9px]">{s}</Badge>
+            ))}
+            {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+          <div className="rounded-lg bg-muted/30 p-1.5">
+            <p className="text-[10px] text-muted-foreground">训练量</p>
+            <p className="font-medium">{normalizeReportText(action.volume)}</p>
+          </div>
+          <div className="rounded-lg bg-muted/30 p-1.5">
+            <p className="text-[10px] text-muted-foreground">时长</p>
+            <p className="font-medium">{normalizeReportText(action.duration)}</p>
+          </div>
+          <div className="rounded-lg bg-muted/30 p-1.5">
+            <p className="text-[10px] text-muted-foreground">强度</p>
+            <p className="font-medium">{normalizeReportText(action.intensity)}</p>
+          </div>
+        </div>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3 border-t pt-3">
+          <ExerciseList title="动作步骤" items={action.steps} />
+          <ExerciseList title="训练要点" items={action.keyPoints} />
+          <ExerciseList title="常见错误与纠正" items={action.commonMistakes} />
+          <div className="space-y-2 rounded-lg bg-primary/5 p-3">
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-foreground">进阶方式：</span>{normalizeReportText(action.progression)}
+            </p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-foreground">降阶方式：</span>{normalizeReportText(action.regression)}
+            </p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-foreground">自测标准：</span>{normalizeReportText(action.selfCheck)}
+            </p>
+          </div>
+          {action.safetyNote && (
+            <p className="text-[11px] text-muted-foreground">{normalizeReportText(action.safetyNote)}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StageCard({ stage, isFirst }: { stage: NonNullable<AIStudentReport["itemStagePlan"]>[number]; isFirst: boolean }) {
+  const [open, setOpen] = useState(isFirst);
+  return (
+    <div className="rounded-xl border p-3.5">
+      <button type="button" onClick={() => setOpen(!open)} className="w-full text-left">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Badge variant={STAGE_BADGE_VARIANT[stage.stage] ?? "secondary"} className="text-[10px]">{stage.stage}</Badge>
+            <span className="text-[11px] text-muted-foreground">{stage.duration}</span>
+          </div>
+          {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </div>
+        <p className="mt-2 text-xs font-semibold">{stage.goal}</p>
+        {stage.studentFitReason && (
+          <p className="mt-1 text-[11px] text-primary">{normalizeReportText(stage.studentFitReason)}</p>
+        )}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3 border-t pt-3">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded-lg bg-muted/30 p-2">
+              <p className="text-[10px] text-muted-foreground">每周频率</p>
+              <p className="font-medium">{stage.weeklyFrequency}</p>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-2">
+              <p className="text-[10px] text-muted-foreground">每次时长</p>
+              <p className="font-medium">{stage.sessionLength}</p>
+            </div>
+          </div>
+          {stage.recommendedActions.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold mb-1">推荐动作</p>
+              <div className="flex flex-wrap gap-1.5">
+                {stage.recommendedActions.map((a) => (
+                  <Badge key={a} variant="outline" className="text-[10px]">{a}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <div className="rounded-lg bg-muted/30 p-2.5">
+              <p className="text-[10px] font-semibold text-foreground">⏱ 时间不足版本</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{normalizeReportText(stage.minimumVersion)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-2.5">
+              <p className="text-[10px] font-semibold text-foreground">💪 正常训练版本</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{normalizeReportText(stage.normalVersion)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-2.5">
+              <p className="text-[10px] font-semibold text-foreground">🔄 疲劳偏高版本</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{normalizeReportText(stage.recoveryVersion)}</p>
+            </div>
+          </div>
+          {stage.progressCriteria.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold mb-1">进入下一阶段的条件</p>
+              <div className="space-y-1">
+                {stage.progressCriteria.map((c, i) => (
+                  <div key={i} className="flex items-start gap-1.5">
+                    <span className="mt-0.5 text-[10px] text-muted-foreground">{i + 1}.</span>
+                    <span className="text-[11px] text-muted-foreground">{c}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildActionLibraryFromTrainingPlan(trainingPlan: AIStudentReport["trainingPlan"]): TrainingAction[] {
+  const actionMap = new Map<string, TrainingAction>();
+  for (const week of trainingPlan) {
+    for (const exercise of week.exercises) {
+      if (actionMap.has(exercise.name)) continue;
+      actionMap.set(exercise.name, {
+        name: exercise.name,
+        purpose: exercise.purpose ?? exercise.description,
+        suitableStage: ["动作库"],
+        steps: exercise.actionSteps ?? fallbackActionSteps(exercise),
+        volume: exercise.sets,
+        duration: exercise.duration,
+        intensity: exercise.intensity ?? "中等强度，动作质量优先",
+        keyPoints: exercise.keyPoints ?? fallbackKeyPoints(),
+        commonMistakes: exercise.commonMistakes ?? fallbackCommonMistakes(),
+        progression: exercise.progression ?? "先保证动作稳定，再小幅增加次数、距离或持续时间。",
+        regression: "如果疲劳较高或动作变形，先减少组数、缩短距离，保留动作质量。",
+        selfCheck: exercise.selfCheck ?? "完成后动作不明显变形，主观用力可控，第二天无明显不适。",
+        safetyNote: exercise.notes,
+      });
+    }
+  }
+  return Array.from(actionMap.values());
+}
+
 // ===== Main Component =====
 
 export function AIReportDetail({
@@ -109,12 +283,15 @@ export function AIReportDetail({
   formalBatches,
   selectedBatchId,
   batchReportMap,
-  onBack,
+  onBack: _onBack,
   onGenerateForBatch,
   allBatchReports,
   onView: onViewHistory,
   onDeleteReport,
   onRegenerate,
+  gender,
+  recordedItemIds,
+  missingItemIds,
 }: ReportDetailProps) {
   const status = report.status || "pending_review";
   const StatusIcon = status === "approved" ? CheckCircle2 : status === "rejected" ? AlertTriangle : Clock;
@@ -122,6 +299,9 @@ export function AIReportDetail({
   const profile = report.fitnessProfile;
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const actionLibrary = report.trainingActionLibrary?.length
+    ? report.trainingActionLibrary
+    : buildActionLibraryFromTrainingPlan(report.trainingPlan);
 
   // ===== BATCH REPORT — 全维度正式体测分析 =====
   if (report.reportType === "batch_report") {
@@ -134,15 +314,6 @@ export function AIReportDetail({
       <div className="space-y-5 pb-28">
         {/* 1. Top Operation Area */}
         <div className="space-y-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-11 gap-1.5"
-            onClick={onBack}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            返回报告中心
-          </Button>
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant="good" className="text-[10px]">正式体测分析</Badge>
             {mode && (
@@ -225,6 +396,13 @@ export function AIReportDetail({
                 </CardContent>
               </Card>
             )}
+
+            {/* 国家体质健康标准导读 */}
+            <StandardEducationOverview
+              gender={gender}
+              recordedItemIds={recordedItemIds}
+              missingItemIds={missingItemIds}
+            />
 
             {/* 3. Overview Card */}
             <Card className="rounded-xl shadow-sm">
@@ -420,7 +598,7 @@ export function AIReportDetail({
             {(report.stageTrainingPlan && report.stageTrainingPlan.length > 0) || report.trainingPlan.length > 0 ? (
               <Card className="rounded-xl shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">阶段训练参考</CardTitle>
+                  <CardTitle className="text-sm">阶段训练规划指导</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Prefer stageTrainingPlan if available */}
@@ -503,7 +681,7 @@ export function AIReportDetail({
                   {report.teacherReviewNotes.map((note, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
-                      <p className="text-xs text-muted-foreground">{normalizeReportText(note)}</p>
+                      <p className="text-xs text-muted-foreground">{normalizeListItemText(note)}</p>
                     </div>
                   ))}
                   <p className="text-[10px] text-muted-foreground pt-1">
@@ -526,7 +704,7 @@ export function AIReportDetail({
                   {report.safetyReminders.map((reminder, i) => (
                     <div key={`${reminder}-${i}`} className="flex items-start gap-2">
                       <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
-                      <p className="text-xs text-muted-foreground">{normalizeReportText(reminder)}</p>
+                      <p className="text-xs text-muted-foreground">{normalizeListItemText(reminder)}</p>
                     </div>
                   ))}
                 </CardContent>
@@ -583,7 +761,7 @@ export function AIReportDetail({
                 )}
               </Button>
               <p className="text-[10px] text-muted-foreground">
-                旧报告将被删除，使用相同的体测数据生成新报告。
+                将使用相同的体测数据生成新报告，生成过程会停留在当前页面。
               </p>
             </div>
 
@@ -593,7 +771,7 @@ export function AIReportDetail({
                 <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
                   <p className="text-base font-semibold">确定重新生成报告吗？</p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    旧版报告将被删除，使用相同的正式体测数据调用最新的 AI 分析引擎生成新报告。此操作不可撤销。
+                    将使用相同的正式体测数据调用最新的 AI 分析引擎生成新报告，当前页面会直接进入生成进度。
                   </p>
                   <div className="mt-5 flex gap-3">
                     <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>
@@ -616,15 +794,6 @@ export function AIReportDetail({
     <div className="space-y-5 pb-28">
       {/* Header */}
       <div className="space-y-3">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-11 gap-1.5"
-          onClick={onBack}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          返回报告中心
-        </Button>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="good" className="text-[10px]">
             {viewingItemId ? `${itemName(viewingItemId)} 专项分析` : reportTypeLabel(report.reportType)}
@@ -656,6 +825,23 @@ export function AIReportDetail({
         </Card>
       )}
 
+      {/* 项目科普与评分解读 */}
+      {viewingItemId && (
+        <ItemEducationCard
+          itemId={viewingItemId}
+          valueText={report.formalBaseline?.valueText}
+          grade={report.formalBaseline?.grade as GradeTier | undefined}
+          score={report.formalBaseline?.score}
+          formalBaseline={report.formalBaseline ? {
+            valueText: report.formalBaseline.valueText,
+            score: report.formalBaseline.score,
+            grade: report.formalBaseline.grade,
+            date: report.formalBaseline.date,
+            analysis: normalizeReportText(report.formalBaseline.analysis),
+          } : null}
+        />
+      )}
+
       {/* Summary */}
       <Card className="rounded-xl border border-primary/10 bg-primary/5 shadow-sm">
         <CardContent className="space-y-3 p-4">
@@ -670,30 +856,6 @@ export function AIReportDetail({
           </p>
         </CardContent>
       </Card>
-
-      {/* Formal Baseline Card (item_report) */}
-      {report.formalBaseline && (
-        <Card className="rounded-xl shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <GraduationCap className="h-4 w-4 text-primary" />
-              正式体测基线
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center gap-3 text-xs">
-              <span className="font-medium">{report.formalBaseline.valueText}</span>
-              <span>{report.formalBaseline.score}分</span>
-              <Badge variant={
-                report.formalBaseline.grade === "excellent" || report.formalBaseline.grade === "good" ? "excellent"
-                : report.formalBaseline.grade === "pass" ? "pass" : "improve"
-              } className="text-[9px]">{gradeLabel(report.formalBaseline.grade as GradeTier)}</Badge>
-              <span className="ml-auto text-[10px] text-muted-foreground">{report.formalBaseline.date}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">{normalizeReportText(report.formalBaseline.analysis)}</p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Daily Training Trend Card (item_report) */}
       {report.dailyTrainingTrend && (
@@ -746,7 +908,7 @@ export function AIReportDetail({
           <CardContent className="space-y-2">
             {report.feedbackInsights.map((fi, i) => (
               <div key={i} className="rounded-lg bg-muted/20 p-3">
-                <p className="text-xs font-semibold">{fi.factor}</p>
+                <p className="text-xs font-semibold">{normalizeReportText(fi.factor)}</p>
                 <p className="mt-1 text-[11px] text-muted-foreground">{fi.observation}</p>
                 <p className="mt-0.5 text-[11px] text-primary">{fi.implication}</p>
               </div>
@@ -867,11 +1029,57 @@ export function AIReportDetail({
         </>
       )}
 
-      {/* Training plan */}
-      {report.trainingPlan.length > 0 && (
+      {/* Training Action Library (v0.9.5+ 新格式) */}
+      {actionLibrary.length > 0 && (
         <Card className="rounded-xl shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">专项动作训练指导</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Target className="h-4 w-4 text-primary" />
+              专项动作训练指导
+            </CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-1">以下动作是该项目的标准化训练参考，可按阶段灵活组合</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {actionLibrary.map((action) => (
+              <ActionCard key={action.name} action={action} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 阶段训练规划指导（item_report v0.9.5+ 新格式） */}
+      {report.itemStagePlan && report.itemStagePlan.length > 0 && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              阶段训练规划指导
+            </CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-1">根据你的训练积累和当前水平，按阶段组合上方动作</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {report.itemStagePlan.map((stage, i) => (
+              <StageCard key={stage.stage} stage={stage} isFirst={i === 0} />
+            ))}
+            <div className="flex items-start gap-2 rounded-lg bg-muted/30 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <p className="text-xs text-muted-foreground">
+                AI 生成，需经体育教师审核后使用。训练计划须经体育教师审核授权后实施。
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 旧格式 trainingPlan → 归入阶段训练规划指导（历史格式） */}
+      {!report.itemStagePlan && report.trainingPlan.length > 0 && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              阶段训练规划指导
+            </CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-1">以下为历史报告格式的训练规划，按周展示</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {report.trainingPlan.map((week) => (
@@ -913,7 +1121,7 @@ export function AIReportDetail({
                       <ExerciseList title="动作步骤" items={exercise.actionSteps ?? fallbackActionSteps(exercise)} />
                       <ExerciseList title="训练要点" items={exercise.keyPoints ?? fallbackKeyPoints()} />
                       <ExerciseList title="常见错误与纠正" items={exercise.commonMistakes ?? fallbackCommonMistakes()} />
-                      {(exercise.progression || exercise.selfCheck || exercise.cycleAdvice) && (
+                      {(exercise.progression || exercise.selfCheck) && (
                         <div className="mt-3 space-y-2 rounded-lg bg-primary/5 p-3">
                           {exercise.progression && (
                             <p className="text-[11px] leading-relaxed text-muted-foreground">
@@ -925,24 +1133,6 @@ export function AIReportDetail({
                               <span className="font-semibold text-foreground">自测标准：</span>{normalizeReportText(exercise.selfCheck)}
                             </p>
                           )}
-                          {exercise.cycleAdvice && (
-                            <p className="text-[11px] leading-relaxed text-muted-foreground">
-                              <span className="font-semibold text-foreground">周期建议：</span>{normalizeReportText(exercise.cycleAdvice)}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {!exercise.progression && !exercise.selfCheck && !exercise.cycleAdvice && (
-                        <div className="mt-3 space-y-2 rounded-lg bg-primary/5 p-3">
-                          <p className="text-[11px] leading-relaxed text-muted-foreground">
-                            <span className="font-semibold text-foreground">进阶方式：</span>先保证动作质量和完成度，连续 2 周能按计划完成且体感稳定后，再小幅增加 1 组、2-3 次或 5-10% 的距离/时长。
-                          </p>
-                          <p className="text-[11px] leading-relaxed text-muted-foreground">
-                            <span className="font-semibold text-foreground">自测标准：</span>训练后动作不明显变形、RPE 控制在 5-7/10、第二天无明显不适，并能在同一项目中保持成绩稳定或小幅提升。
-                          </p>
-                          <p className="text-[11px] leading-relaxed text-muted-foreground">
-                            <span className="font-semibold text-foreground">周期建议：</span>建议连续执行 4 周后复测一次同项目，复测前 24-48 小时避免高强度训练。
-                          </p>
                         </div>
                       )}
                       {exercise.notes && (
@@ -966,8 +1156,8 @@ export function AIReportDetail({
         </Card>
       )}
 
-      {/* Progressive Goals — 进阶目标（item_report 专用）*/}
-      {report.itemDeepAnalysis?.progressiveGoals && report.itemDeepAnalysis.progressiveGoals.length > 0 && (
+      {/* Progressive Goals — 进阶目标（旧格式 fallback，itemStagePlan 存在时隐藏）*/}
+      {!report.itemStagePlan && report.itemDeepAnalysis?.progressiveGoals && report.itemDeepAnalysis.progressiveGoals.length > 0 && (
         <Card className="rounded-xl shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -1016,7 +1206,7 @@ export function AIReportDetail({
             {report.teacherReviewNotes.map((note, i) => (
               <div key={i} className="flex items-start gap-2">
                 <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
-                <p className="text-xs text-muted-foreground">{normalizeReportText(note)}</p>
+                <p className="text-xs text-muted-foreground">{normalizeListItemText(note)}</p>
               </div>
             ))}
             <p className="text-[10px] text-muted-foreground pt-1">
@@ -1039,7 +1229,7 @@ export function AIReportDetail({
             {report.safetyReminders.map((reminder, i) => (
               <div key={`${reminder}-${i}`} className="flex items-start gap-2">
                 <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
-                <p className="text-xs text-muted-foreground">{normalizeReportText(reminder)}</p>
+                <p className="text-xs text-muted-foreground">{normalizeListItemText(reminder)}</p>
               </div>
             ))}
           </CardContent>
@@ -1078,7 +1268,7 @@ export function AIReportDetail({
           )}
         </Button>
         <p className="text-[10px] text-muted-foreground">
-          旧报告将被删除，使用相同的体测数据生成新报告。
+          将使用相同的体测与训练数据生成新报告，生成过程会停留在当前页面。
         </p>
       </div>
 
@@ -1088,7 +1278,7 @@ export function AIReportDetail({
           <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <p className="text-base font-semibold">确定重新生成报告吗？</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              旧版报告将被删除，使用相同的体测和训练数据调用最新的 AI 分析引擎生成新报告。此操作不可撤销。
+              将使用相同的体测和训练数据调用最新的 AI 分析引擎生成新报告，当前页面会直接进入生成进度。
             </p>
             <div className="mt-5 flex gap-3">
               <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirmRegenerate(false)} disabled={regenerating}>取消</Button>

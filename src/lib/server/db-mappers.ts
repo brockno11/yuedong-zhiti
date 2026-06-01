@@ -101,7 +101,12 @@ export function mapTeacherReview(row: TeacherReviewRow): TeacherReview {
 
 export function mapAIReport(row: AIReportRow): AIStudentReport | AIClassReport {
   const parsed = JSON.parse(row.contentJson) as unknown;
-  return sanitizeReportValue(parsed) as AIStudentReport | AIClassReport;
+  const report = sanitizeReportValue(parsed) as AIStudentReport | AIClassReport;
+  // DB column is authoritative — override stale contentJson timestamp
+  if (row.generatedAt) {
+    report.generatedAt = row.generatedAt.toISOString();
+  }
+  return report;
 }
 
 export function mapFitnessRecordItem(

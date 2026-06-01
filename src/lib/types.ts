@@ -166,6 +166,7 @@ export interface AIStudentReport {
     relatedDimensions?: string[];
   }[];
 
+  /** @deprecated 旧格式周计划，仅用于 record_report 和 batch_report 兼容。item_report 应使用 trainingActionLibrary + itemStagePlan */
   trainingPlan: {
     weekNumber: number;
     focus: string;
@@ -222,6 +223,39 @@ export interface AIStudentReport {
       actions: string[];
     }[];
   };
+
+  // ---- 动作教学库 + 阶段训练安排（item_report，v0.9.5+）----
+  /** 动作教学库：不按周拆分，是该项目的标准化动作参考 */
+  trainingActionLibrary?: {
+    name: string;
+    purpose: string;
+    suitableStage: string[];
+    steps: string[];
+    volume: string;
+    duration: string;
+    intensity: string;
+    keyPoints: string[];
+    commonMistakes: string[];
+    progression: string;
+    regression: string;
+    selfCheck: string;
+    safetyNote: string;
+  }[];
+
+  /** 阶段训练安排：按阶段组合动作库中的动作 */
+  itemStagePlan?: {
+    stage: string;
+    goal: string;
+    duration: string;
+    studentFitReason: string;
+    recommendedActions: string[];
+    weeklyFrequency: string;
+    sessionLength: string;
+    minimumVersion: string;
+    normalVersion: string;
+    recoveryVersion: string;
+    progressCriteria: string[];
+  }[];
 
   // ---- 报告元信息（所有报告类型）----
   // 数据来源摘要：AI 描述本报告使用了哪些数据

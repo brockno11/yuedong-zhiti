@@ -66,7 +66,8 @@ export function useAuthGuard() {
     }
 
     setReady(true);
-  }, [pathname, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not referentially stable, only pathname matters
+  }, [pathname]);
 
   return ready;
 }
