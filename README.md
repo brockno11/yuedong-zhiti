@@ -266,44 +266,88 @@ AI 指导页已升级为**「AI 报告中心」**，自动检测分析策略（�
 
 ## 🚀 快速开始
 
-### 环境要求
-- **Node.js** 18+
-- **npm** 8+
-- **操作系统**：Windows / macOS / Linux
+### 环境准备
 
-### 一键启动
+| 软件 | 最低版本 | 说明 | 下载地址 |
+|------|---------|------|---------|
+| **Node.js** | 18.0+ | JavaScript 运行时（npm 随其自动安装） | https://nodejs.org/ |
+| **Git** | 2.0+ | 版本控制工具 | https://git-scm.com/ |
+
+打开终端，验证环境是否就绪：
 
 ```bash
-# 1. 克隆项目
-cd E:\projects\体育课设
+node --version    # 预期输出：v18.x.x 或更高
+npm --version     # 预期输出：8.x.x 或更高
+git --version     # 预期输出：git version 2.x.x
+```
 
-# 2. 安装依赖
+> 💡 **未安装 Node.js？** Windows/macOS 用户访问 https://nodejs.org/ 下载 LTS 版本安装包，双击运行即可。Linux 用户参考下方命令：
+> ```bash
+> # Ubuntu / Debian
+> curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+> sudo apt-get install -y nodejs
+> ```
+
+### 获取代码
+
+```bash
+git clone https://github.com/brockno11/yuedong-zhiti.git
+cd yuedong-zhiti
+```
+
+### 安装依赖
+
+```bash
 npm install
-
-# 3. 初始化数据库（生成 Prisma Client + 创建 SQLite + 写入种子数据）
-npm run db:generate
-npm run db:migrate
-npm run db:seed
-
-# 4. 启动开发服务器
-npm run dev
-
-# 访问：
-# 学生端 → http://localhost:3000
-# 教师端 → http://localhost:3000/teacher
 ```
 
-### 可选：接入真实 AI
+> 📦 首次安装需下载约 200-300MB 依赖包，耗时 1-5 分钟。如遇网络超时，可切换镜像源：
+> ```bash
+> npm config set registry https://registry.npmmirror.com
+> npm install
+> ```
+
+### 初始化数据库
+
+依次执行以下三条命令（每条命令的预期输出见注释）：
 
 ```bash
-cp .env.example .env.local
-# 编辑 .env.local 填入：
-#   DEEPSEEK_API_KEY=sk-your-key-here
-#   DEEPSEEK_BASE_URL=https://api.deepseek.com/v1  （可选）
-#   DEEPSEEK_MODEL=deepseek-v4-flash                （可选）
-#   AI_REQUEST_TIMEOUT_MS=12000                      （可选）
-# 不配置 API Key 则自动使用内置 Mock 数据
+# 1. 生成 Prisma Client
+npm run db:generate
+# 预期：✔ Generated Prisma Client
+
+# 2. 执行数据库迁移（创建表结构，生成 prisma/dev.db）
+npm run db:migrate
+# 预期：Applied migration 20260531000000_init_sqlite_persistence
+#       Applied migration 20260531001000_add_ai_report_source_metadata
+#       Applied migration 20260531111450_add_assessment_batch
+#       Applied migration 20260531135539_add_item_feedback
+
+# 3. 写入演示种子数据（20 学生 + 1 教师 + 体测记录 + AI 报告）
+npm run db:seed
+# 预期：Seeding complete.
 ```
+
+> 💡 可选：执行 `npm run db:studio` 打开数据库可视化工具（http://localhost:5555），确认数据已写入。
+
+### 启动项目
+
+```bash
+npm run dev
+```
+
+预期输出：
+```
+  ▲ Next.js 14.2.x
+  - Local:    http://localhost:3000
+  - Network:  http://192.168.x.x:3000
+
+ ✓ Ready in 2.3s
+```
+
+🎉 **启动成功！** 在浏览器中访问 **http://localhost:3000** 即可看到登录页面。
+
+> ⚠️ 首次访问时 Next.js 需要编译页面，可能需要 3-5 秒，后续访问会明显加快。
 
 ### 演示账号
 
@@ -312,60 +356,132 @@ cp .env.example .env.local
 | 学生 | `S001` ~ `S020` | `demo123` | 20人 |
 | 教师 | `zhoulaoshi` | `demo123` | 1人 |
 
-###常用命令
+### 可选：接入真实 AI
+
+项目默认使用内置 Mock 数据（模拟 AI 分析结果），无需配置 API Key 即可体验全部功能。如需接入真实 AI 服务：
 
 ```bash
-npm run dev          # 启动开发服务器（localhost:3000）
-npm run build        # 生产构建
-npm run typecheck    # TypeScript 类型检查（tsc --noEmit）
-npm run lint         # ESLint 代码检查
-npm run db:studio    # 打开 Prisma Studio 数据库 GUI
-npm run db:seed      # 重新写入种子数据
-npm run db:reset     # 重置数据库
+# 1. 在项目根目录创建环境变量文件
+cp .env.example .env.local
+
+# 2. 编辑 .env.local，填入 DeepSeek API Key
+#    DEEPSEEK_API_KEY=sk-your-key-here
+#    其他配置项通常无需修改
+
+# 3. 重启开发服务器（Ctrl+C 停止 → npm run dev）
 ```
 
-> ⚠️ **开发提示**：如果页面突然变成"裸 HTML 样式"（CSS/JS chunk 404）或出现 `__webpack_modules__[moduleId] is not a function`，这是 `.next` 开发缓存损坏。解决方法：停止 dev server → 删除 `.next` 目录 → 重新 `npm run dev`。
+DeepSeek API Key 获取地址：https://platform.deepseek.com/
+
+> 💡 即使配置了 API Key，如果 AI 请求超时（默认 12 秒），系统会自动回退到 Mock 数据，确保演示不中断。
+
+### 常用命令
+
+| 命令 | 用途 |
+|------|------|
+| `npm run dev` | 启动开发服务器（http://localhost:3000） |
+| `npm run build` | 生产构建（检查代码是否有错误） |
+| `npm run typecheck` | TypeScript 类型检查 |
+| `npm run lint` | ESLint 代码检查 |
+| `npm run db:studio` | 打开数据库可视化工具 |
+| `npm run db:seed` | 重新写入种子数据 |
+| `npm run db:reset` | 重置数据库（删除并重建） |
 
 ---
 
-## 🎬 演示流程
+## 🎬 使用指南
 
-比赛演示建议按以下路径操作，覆盖「学生 → AI → 教师审核」完整闭环。
+### 学生端体验路径
 
-### 准备
+#### 1. 登录
 
-```bash
-npm install           # 安装依赖
-npx prisma db push    # 初始化 SQLite 数据库
-npm run db:seed       # 写入演示种子数据（20 学生 + 1 教师 + 体测记录 + AI 报告）
-npm run dev           # 启动 → http://localhost:3000
-```
+1. 打开 http://localhost:3000
+2. 点击右上角 **「我是学生」** 切换到学生登录
+3. 账号下拉选择 **S001**，密码自动填充为 `demo123`
+4. 点击 **「进入系统」**
 
-### 学生侧演示路径（约 3 分钟）
+#### 2. 学生首页（Dashboard）
 
-| 步骤 | 操作 | 页面 | 演示要点 |
-|------|------|------|----------|
-| 1 | 打开 `/`，选"我是学生"→ 下拉选 `S001` → 输入 `demo123` → 登录 | 登录页 | 展示角色切换、账号下拉、自动填充 |
-| 2 | 自动进入 `/dashboard` | 体质画像 | **亮点**：雷达图（个人 vs 班级）、综合评分、AI 洞察标签 |
-| 3 | 点击"查看 AI 体质分析"→ 进入 `/ai-guide` | AI 指导 | **亮点**：专项/综合分析切换、报告历史、训练计划、安全提醒、教师审核状态 |
-| 4 | 回到 `/`，退出登录，换 `S005` 重新登录 | — | **验证**：不同学生看到不同体质数据（证明不是静态页面） |
+登录后自动进入，可以看到：
+- 问候语 + 综合评分 + BMI 状态
+- 最近体测记录摘要
+- 快捷入口（体质画像 / AI 指导）
 
-### 教师侧演示路径（约 3 分钟）
+#### 3. 体质画像
 
-| 步骤 | 操作 | 页面 | 演示要点 |
-|------|------|------|----------|
-| 1 | 打开 `/`，选"我是教师"→ 选 `张老师` → 输入 `demo123` → 登录 | 登录页 | 教师角色切换 |
-| 2 | 自动进入 `/teacher` | 班级总览 | **亮点**：今日教学建议、等级分布、薄弱项排行、重点关注学生 |
-| 3 | 点击"AI 班级报告"→ `/teacher/report` | AI 班级报告 | **亮点**：AI 生成的班级体质分析、分层教学建议 |
-| 4 | 点击"审核中心"→ `/teacher/review` | 审核中心 | **亮点**：教师审核 AI 报告（通过/退回/修改），展示「AI 辅助 · 教师主导」理念 |
-| 5 | 进入某学生详情 `/teacher/students/S001` | 学生详情 | **亮点**：教师视角查看学生体质画像、记录历史、AI 报告 |
+点击底部导航 **「画像」**：
+- 综合评分 + 本期洞察
+- **五维体质雷达图**（速度 / 力量 / 耐力 / 柔韧 / 身体形态）
+- 历史成绩趋势图
+- 优势项目与待提升项目
 
-### 核心亮点话术
+#### 4. AI 智能指导
 
-- **逐项体感采集**（`/record`）：每项运动后采集疲劳程度、恢复速度、肌肉酸痛 —— 这是区别于传统体测系统的创新点
+点击底部导航 **「AI指导」**：
+- **正式体测分析**：点击「查看报告」查看 13 模块全维度画像报告
+- **单项深度分析**：点击任意项目卡片，查看 14 模块专项分析报告
+- **训练情况**：近 7/30 天训练统计
+- **历史报告**：底部可回看所有历史报告
+
+#### 5. 记录体测数据
+
+点击首页 **「开始记录」** → 选择批次 → 勾选项目 → 输入成绩 → 填写体感反馈（RPE / 恢复速度 / 酸痛等）→ 保存
+
+#### 6. 个人中心
+
+点击底部导航 **「我的」**：查看/编辑身高体重、查看统计、退出登录
+
+### 教师端体验路径
+
+#### 1. 切换到教师登录
+
+退出当前登录 → 回到登录页 → 点击 **「我是教师」** → 选择 **张老师** → 登录
+
+#### 2. 班级总览
+
+自动进入，可以看到：
+- 今日教学建议 + 4 个统计卡片（人数 / 已记录 / 平均 BMI / 及格率）
+- 待审核提醒（红色脉冲圆点）
+- 班级薄弱项排行柱状图 + 等级分布环形图
+- 重点关注学生列表
+
+#### 3. 学生列表与详情
+
+侧边栏 **「学生列表」** → 搜索/浏览 → 点击进入详情（基础信息 + 成绩表 + 雷达图 + AI 报告状态）
+
+#### 4. AI 班级报告
+
+侧边栏 **「AI 班级报告」** → 班级整体分析 + 共性薄弱项 + 分层指导（A/B/C/D）+ 训练重点 + 教学建议
+
+#### 5. 审核中心
+
+侧边栏 **「审核中心」** → 查看 AI 生成的报告 → **通过** / **修改后通过** / **退回**，支持批量审批
+
+### 移动端体验
+
+项目采用移动端优先设计，推荐使用浏览器开发者工具模拟手机访问：
+
+1. 按 **F12** 打开开发者工具
+2. 点击 **设备切换图标**（或按 **Ctrl+Shift+M**）
+3. 选择 **iPhone 14 Pro** 或其他手机型号
+4. 刷新页面，即可看到移动端布局（底部液态玻璃导航、单列卡片、触控友好交互）
+
+### 核心亮点
+
+- **逐项体感采集**（`/record`）：每项运动后采集疲劳程度、恢复速度、肌肉酸痛 —— 区别于传统体测系统的创新点
 - **专项/综合分析**（`/ai-guide`）：单项目深度分析 vs 多项目综合评估，AI 自动选择策略
 - **教师审核闭环**：AI 生成 → 教师审核（通过/退回/修改）→ 学生查看，完整「AI 辅助 · 教师主导」
 - **数据口径透明**：登录页顶部演示模式提示条，明确标注匿名模拟数据
+
+### 常见问题
+
+| 问题 | 解决方法 |
+|------|---------|
+| 页面显示"裸 HTML 样式"，没有 CSS | 停止 dev server → 删除 `.next` 目录 → 重新 `npm run dev` |
+| `npm install` 网络超时 | `npm config set registry https://registry.npmmirror.com` 后重试 |
+| `npm run db:seed` 报错 "column does not exist" | 执行 `npm run db:reset` → `npm run db:migrate` → `npm run db:seed` |
+| 端口 3000 被占用 | 关闭占用进程，或修改 `package.json` 中 dev 脚本为 `next dev -p 3001` |
+| AI 报告一直显示"生成中" | 按 F12 查看 Console 报错；未配置 API Key 时系统使用 Mock 数据，通常几秒内完成 |
 
 ---
 
