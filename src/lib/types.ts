@@ -176,6 +176,14 @@ export interface AIStudentReport {
       frequency: string;
       duration: string;
       notes: string;
+      purpose?: string;
+      actionSteps?: string[];
+      keyPoints?: string[];
+      commonMistakes?: string[];
+      intensity?: string;
+      progression?: string;
+      selfCheck?: string;
+      cycleAdvice?: string;
     }[];
     recoveryAdvice: string;
   }[];

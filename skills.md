@@ -4,7 +4,7 @@
 >
 > 项目阶段：MVP 0.9.4 | 路由：23 个 | API：14 个 | 数据库表：7 个（+AssessmentBatch）| AI 分析体系重构 ✅ | 记录问答系统 v2 ✅
 
-> 2026-06-01 补充：AI 报告相关开发必须同时对齐数据来源元信息与展示层。报告详情需展示生成时间；专项分析新数据判断以 `sourceMeta.includedRecordIds/latestDataDate` 为主，并回退到 `sourceRecordId/sourceRecordDate/generatedAt`；AI 文本不得推测、补全缺失数据或使用医学化/标签化表达。
+> 2026-06-01 补充：AI 报告相关开发必须同时对齐数据来源元信息与展示层。报告详情需展示生成时间；专项分析新数据判断以 `sourceMeta.includedRecordIds/latestDataDate` 为主，并回退到 `sourceRecordId/sourceRecordDate/generatedAt`；AI 文本不得推测、补全缺失数据或使用医学化/标签化表达；单项训练建议需采用动作教学卡结构，覆盖目的、步骤、要点、错误纠正、强度、进阶、周期和自测标准。
 
 ---
 

@@ -302,7 +302,19 @@ function buildStudentUserPrompt(data: Record<string, unknown>): string {
 8. itemDeepAnalysis.relatedItems — 2-3条 { itemName(中文), relationship }
 9. itemDeepAnalysis.progressiveGoals — 短期(1-2周)/中期(3-6周)/长期(6-12周) { stage, target, timeline, actions[] }
 10. feedbackInsights — [ { factor, observation, implication } ] 基于问答反馈的洞察
-11. trainingPlan — 2-4个专项训练动作 { name, description, sets, frequency, duration, notes }
+11. trainingPlan — 2-4个专项训练动作，必须写成“动作教学卡”，每个动作都要让学生知道怎么练、练多久、怎么进阶：
+   {
+     name, purpose, description,
+     actionSteps[4-6条具体动作步骤],
+     keyPoints[3-5条训练要点],
+     commonMistakes[2-4条常见错误与纠正],
+     sets, frequency, duration, intensity,
+     progression(2-4周如何增加难度),
+     selfCheck(学生自测达标标准),
+     cycleAdvice(建议执行周期与复测节点),
+     notes
+   }
+   每个动作说明要具体到姿势、节奏、呼吸、休息和安全提醒，不要只写一句话。
 12. safetyReminders — 至少5条该项目专项安全提醒
 13. teacherReviewNotes — 至少2条需要教师重点审核的内容`,
     record_report: `\n【报告类型：record_report 本次记录反馈】
@@ -445,7 +457,29 @@ function buildReportSchema(reportType: string): string {
     ]
   },
   "trainingPlan": [
-    { "weekNumber": 1, "focus": "训练重点", "exercises": [{ "name": "动作名", "description": "描述", "sets": "组数", "frequency": "频率", "duration": "时长", "notes": "注意" }], "recoveryAdvice": "恢复建议" }
+    {
+      "weekNumber": 1,
+      "focus": "训练重点",
+      "exercises": [
+        {
+          "name": "动作名",
+          "purpose": "这个动作主要提升什么能力，以及为什么适合当前项目",
+          "description": "动作整体说明，至少2句话",
+          "actionSteps": ["准备姿势", "开始动作", "发力/呼吸", "完成与还原", "组间休息或节奏"],
+          "keyPoints": ["关键要点1", "关键要点2", "关键要点3"],
+          "commonMistakes": ["常见错误1 + 纠正方法", "常见错误2 + 纠正方法"],
+          "sets": "组数/次数，如3组×8次",
+          "frequency": "每周频率",
+          "duration": "单次时长",
+          "intensity": "强度建议，如RPE 5-6/10或能完整说短句",
+          "progression": "2-4周进阶方法，说明何时增加组数/次数/距离/难度",
+          "selfCheck": "学生自测标准，如动作不变形、完成指定次数、成绩稳定提升",
+          "cycleAdvice": "执行周期和复测节点，如连续练习4周后复测一次",
+          "notes": "安全提醒，必须含需经体育教师审核后使用"
+        }
+      ],
+      "recoveryAdvice": "恢复建议"
+    }
   ],
   "safetyReminders": ["至少5条项目专项安全提醒"],
   "teacherReviewNotes": ["至少2条教师需重点审核的内容"]

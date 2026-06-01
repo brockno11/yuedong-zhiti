@@ -871,7 +871,7 @@ export function AIReportDetail({
       {report.trainingPlan.length > 0 && (
         <Card className="rounded-xl shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">训练建议</CardTitle>
+            <CardTitle className="text-sm">专项动作训练指导</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {report.trainingPlan.map((week) => (
@@ -879,15 +879,74 @@ export function AIReportDetail({
                 <p className="mb-2 text-xs font-semibold text-muted-foreground">
                   第 {week.weekNumber} 周 · {week.focus}
                 </p>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-3">
                   {week.exercises.map((exercise) => (
-                    <div key={exercise.name} className="rounded-xl border p-3">
-                      <p className="text-xs font-semibold">{normalizeReportText(exercise.name)}</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        {normalizeReportText(exercise.frequency)} · {normalizeReportText(exercise.duration)}
+                    <div key={exercise.name} className="rounded-xl border p-3.5">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold">{normalizeReportText(exercise.name)}</p>
+                          {exercise.purpose && (
+                            <p className="mt-1 text-[11px] text-primary">{normalizeReportText(exercise.purpose)}</p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {normalizeReportText(exercise.frequency)}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                        {normalizeReportText(exercise.description)}
                       </p>
+                      <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
+                        <div className="rounded-lg bg-muted/30 p-2">
+                          <p className="text-[10px] text-muted-foreground">训练量</p>
+                          <p className="mt-1 font-medium">{normalizeReportText(exercise.sets)}</p>
+                        </div>
+                        <div className="rounded-lg bg-muted/30 p-2">
+                          <p className="text-[10px] text-muted-foreground">单次时长</p>
+                          <p className="mt-1 font-medium">{normalizeReportText(exercise.duration)}</p>
+                        </div>
+                        <div className="rounded-lg bg-muted/30 p-2">
+                          <p className="text-[10px] text-muted-foreground">强度</p>
+                          <p className="mt-1 font-medium">{normalizeReportText(exercise.intensity ?? "中等强度，动作不变形")}</p>
+                        </div>
+                      </div>
+                      <ExerciseList title="动作步骤" items={exercise.actionSteps ?? fallbackActionSteps(exercise)} />
+                      <ExerciseList title="训练要点" items={exercise.keyPoints ?? fallbackKeyPoints()} />
+                      <ExerciseList title="常见错误与纠正" items={exercise.commonMistakes ?? fallbackCommonMistakes()} />
+                      {(exercise.progression || exercise.selfCheck || exercise.cycleAdvice) && (
+                        <div className="mt-3 space-y-2 rounded-lg bg-primary/5 p-3">
+                          {exercise.progression && (
+                            <p className="text-[11px] leading-relaxed text-muted-foreground">
+                              <span className="font-semibold text-foreground">进阶方式：</span>{normalizeReportText(exercise.progression)}
+                            </p>
+                          )}
+                          {exercise.selfCheck && (
+                            <p className="text-[11px] leading-relaxed text-muted-foreground">
+                              <span className="font-semibold text-foreground">自测标准：</span>{normalizeReportText(exercise.selfCheck)}
+                            </p>
+                          )}
+                          {exercise.cycleAdvice && (
+                            <p className="text-[11px] leading-relaxed text-muted-foreground">
+                              <span className="font-semibold text-foreground">周期建议：</span>{normalizeReportText(exercise.cycleAdvice)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {!exercise.progression && !exercise.selfCheck && !exercise.cycleAdvice && (
+                        <div className="mt-3 space-y-2 rounded-lg bg-primary/5 p-3">
+                          <p className="text-[11px] leading-relaxed text-muted-foreground">
+                            <span className="font-semibold text-foreground">进阶方式：</span>先保证动作质量和完成度，连续 2 周能按计划完成且体感稳定后，再小幅增加 1 组、2-3 次或 5-10% 的距离/时长。
+                          </p>
+                          <p className="text-[11px] leading-relaxed text-muted-foreground">
+                            <span className="font-semibold text-foreground">自测标准：</span>训练后动作不明显变形、RPE 控制在 5-7/10、第二天无明显不适，并能在同一项目中保持成绩稳定或小幅提升。
+                          </p>
+                          <p className="text-[11px] leading-relaxed text-muted-foreground">
+                            <span className="font-semibold text-foreground">周期建议：</span>建议连续执行 4 周后复测一次同项目，复测前 24-48 小时避免高强度训练。
+                          </p>
+                        </div>
+                      )}
                       {exercise.notes && (
-                        <p className="mt-1 text-[10px] text-muted-foreground">{normalizeReportText(exercise.notes)}</p>
+                        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{normalizeReportText(exercise.notes)}</p>
                       )}
                     </div>
                   ))}
@@ -1046,6 +1105,50 @@ export function AIReportDetail({
 }
 
 // ===== Sub-components =====
+
+function ExerciseList({ title, items }: { title: string; items?: string[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <p className="text-[11px] font-semibold">{title}</p>
+      <div className="mt-1.5 space-y-1">
+        {items.map((item, index) => (
+          <div key={`${title}-${index}`} className="flex items-start gap-2">
+            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] text-muted-foreground">
+              {index + 1}
+            </span>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">{normalizeReportText(item)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function fallbackActionSteps(exercise: { description: string; sets: string; frequency: string; duration: string; notes: string }): string[] {
+  return [
+    `先用 5-8 分钟完成热身，再进入 ${normalizeReportText(exercise.description)}。`,
+    `按 ${normalizeReportText(exercise.sets)} 完成训练，组间保持充分休息，动作质量优先于速度和数量。`,
+    `训练频率控制为 ${normalizeReportText(exercise.frequency)}，单次约 ${normalizeReportText(exercise.duration)}。`,
+    exercise.notes ? normalizeReportText(exercise.notes) : "训练过程中保持呼吸自然，出现明显不适时立即停止并告知体育教师。",
+  ];
+}
+
+function fallbackKeyPoints(): string[] {
+  return [
+    "每次先做动态热身，训练中保持动作路线稳定，不为了追求次数牺牲姿势。",
+    "强度以能完成全程且动作不变形为准，主观用力程度建议控制在 5-7/10。",
+    "训练后记录成绩、疲劳感和恢复情况，下一次训练根据体感小幅调整。",
+  ];
+}
+
+function fallbackCommonMistakes(): string[] {
+  return [
+    "一开始强度过大：改为先降低次数或距离，等动作稳定后再增加训练量。",
+    "只看成绩不看动作：请让同学或教师观察动作质量，优先纠正姿势和节奏。",
+    "恢复不足仍连续加练：出现明显酸痛或疲劳时，改做轻松活动和拉伸。",
+  ];
+}
 
 function CollapsibleStage({
   stage,
